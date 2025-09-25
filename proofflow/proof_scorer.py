@@ -578,10 +578,9 @@ def match_evaluations(evaluations):
     return converted
 
 
-# XJ versions
+
 def generate_mu(evaluations):
-    # print("generate mu evaluations")
-    # print(evaluations)
+
 
     """
     Dynamically generate fuzzy measure mu(A) with rules:
@@ -598,8 +597,6 @@ def generate_mu(evaluations):
         a_count = int(math.floor(a_count * 10))  # round down to the nearest integer
         b_count = 10 - a_count
 
-        # print(f'evaluations before: {evaluations}')
-
         n = 10  # set n to 10
         # new an evaluations array with 10 elements
         evaluations = []
@@ -608,7 +605,6 @@ def generate_mu(evaluations):
         for i in range(b_count):
             evaluations.append("B")
 
-        # print(f'evaluations after: {evaluations}')
 
     mu = {}
     all_tasks = frozenset(range(n))
@@ -640,8 +636,6 @@ def generate_mu(evaluations):
 
 
 def sugeno_integral(evaluations):
-    # print("sugeno integral evaluations")
-    # print(evaluations)
 
     """
     Strictly ensure score is 0 when C exists:
@@ -660,7 +654,6 @@ def sugeno_integral(evaluations):
         return 0.0
 
     n = len(f)
-    # print(f"n={n}")
 
     sorted_indices = sorted(range(n), key=lambda i: f[i])
     sugeno = 0.0
