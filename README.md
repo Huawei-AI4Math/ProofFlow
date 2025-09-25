@@ -137,7 +137,7 @@ print(f"Proof success rate: {summary['solv_acc']:.2%}")
 
 ### LLM Models
 
-AutoFormalize supports multiple LLM providers:
+ProofFlow supports multiple LLM providers:
 
 - **OpenRouter**: Claude, GPT, Gemini models
 - **OpenAI**: GPT-3.5, GPT-4, GPT-4o
@@ -218,7 +218,7 @@ Due to potential connection timeouts and rate limits with some services, it's a 
 
 ## 📈 Performance Metrics
 
-AutoFormalize tracks detailed performance metrics:
+ProofFlow tracks detailed performance metrics:
 
 - **Formalization Accuracy**: Percentage of successfully formalized proof steps
 - **Proof Success Rate**: Percentage of steps that can be automatically proven
