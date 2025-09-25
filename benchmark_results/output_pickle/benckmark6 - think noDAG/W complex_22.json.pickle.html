@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z=x+iy$ be a complex number with $x, y \in \mathbb{R}$. If $\sin(z) = i \sinh(1)$ and $-\frac{\pi}{2} \le x \le \frac{\pi}{2}$, then $z=i$.
+
+Proof: Using the identity for the complex sine, $\sin(z) = \sin(x)\cosh(y) + i\cos(x)\sinh(y)$, we equate the real and imaginary parts of the condition $\sin(z) = i \sinh(1)$. This yields the system of equations $\sin(x)\cosh(y) = 0$ and $\cos(x)\sinh(y) = \sinh(1)$. From the first equation, $\sin(x)\cosh(y) = 0$, and since $\cosh(y) \ge 1$ for any real $y$, we must have $\sin(x) = 0$. Given the condition that $-\frac{\pi}{2} \le x \le \frac{\pi}{2}$, the only solution is $x=0$. Substituting $x=0$ into the second equation $\cos(x)\sinh(y) = \sinh(1)$ gives $\cos(0)\sinh(y) = \sinh(1)$, which simplifies to $\sinh(y)=\sinh(1)$. Since the hyperbolic sine function is one-to-one, we deduce that $y=1$. Therefore, with $x=0$ and $y=1$, we conclude that $z=i$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $z=x+iy$ be a complex number with $x, y \\in \\mathbb{R}$.", "statement": "Premise:\n\u2022 z = x + i*y where x and y are real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)\n(tc_1 : \u2203 x y : \u211d, z = x + I * y)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures z = x + i*y using the standard Mathlib notation I for the imaginary unit. The mathematical meaning is identical.", "The Lean formalization correctly specifies that x and y are real numbers through the type annotation \u211d in the existential quantifier."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $\\sin(z) = i \\sinh(1)$", "statement": "Premise:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  (z : \u2102)\n  (h1 : \u2203 x y : \u211d, z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 (z.re) \u2227 (z.re) \u2264 Real.pi/2) :\n  z = I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The existential quantification in Lean correctly captures that z can be written as x + i*y with real x and y", "Complex.sin z = I * Real.sinh 1 is equivalent to sin(z) = i * sinh(1), just using Lean's notation", "The additional constraint h3 is an extra condition not mentioned in natural language, but extra conditions are acceptable according to the guidelines", "The natural language explicitly states no conclusions are derived (premise only), but the Lean theorem derives a specific conclusion z = I, which contradicts the stated nature of the premise"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The existential quantification in Lean correctly captures that z can be written as x + i*y with real x and y', \"Complex.sin z = I * Real.sinh 1 is equivalent to sin(z) = i * sinh(1), just using Lean's notation\", 'The additional constraint h3 is an extra condition not mentioned in natural language, but extra conditions are acceptable according to the guidelines', 'The natural language explicitly states no conclusions are derived (premise only), but the Lean theorem derives a specific conclusion z = I, which contradicts the stated nature of the premise']"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "and $-\\frac{\\pi}{2} \\le x \\le \\frac{\\pi}{2}$", "statement": "Premise:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)\n(tc_1 : \u2203 x y : \u211d, z = x + I * y)\n(tc_2 : Complex.sin z = I * Real.sinh 1)\n(tc_3 : -Real.pi/2 \u2264 (z.re) \u2227 (z.re) \u2264 Real.pi/2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number expressible as x + I*y where x and y are real numbers using existential quantification", "The Lean formalization correctly represents sin(z) = i * sinh(1) using Complex.sin for the complex sine function and I * Real.sinh 1 for i * sinh(1)", "The Lean formalization correctly represents the constraint -\u03c0/2 \u2264 x \u2264 \u03c0/2 by using z.re (the real part of z) which corresponds to x in the decomposition z = x + i*y"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Using the identity for the complex sine, $\\sin(z) = \\sin(x)\\cosh(y) + i\\cos(x)\\sinh(y)$", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3].\nTherefore, we conclude:\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (z : \u2102)\n  (tc_1 : \u2203 x y : \u211d, z = x + I * y)\n  (tc_2 : Complex.sin z = I * Real.sinh 1)\n  (tc_3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2) :\n  Complex.sin z = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (z : \u2102)\n  (tc_1 : \u2203 x y : \u211d, z = x + I * y)\n  (tc_2 : Complex.sin z = I * Real.sinh 1)\n  (tc_3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2) :\n  Complex.sin z = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by\n  have h_main : Complex.sin z = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by\n    have h\u2081 : Complex.sin z = Complex.sin (z.re + Complex.I * z.im) := by\n      have h\u2082 : (z : \u2102) = z.re + Complex.I * z.im := by\n        simp [Complex.ext_iff]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff]\n        <;> norm_num\n      rw [h\u2082]\n      <;> simp [Complex.sin]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff]\n      <;> norm_num\n    rw [h\u2081]\n    -- Use the sine addition formula for complex numbers\n    have h\u2082 : Complex.sin (z.re + Complex.I * z.im) = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by\n      rw [Complex.sin_add]\n      simp [Complex.sin, Complex.cos, Complex.exp_re, Complex.exp_im, Complex.ext_iff,\n        Real.sin_add, Real.cos_add, Real.sin_sub, Real.cos_sub, Real.sinh, Real.cosh]\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, Real.sin_add, Real.cos_add, Real.sin_sub, Real.cos_sub,\n        Real.sinh, Real.cosh]\n      <;> norm_num\n      <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one (z.re), Real.cos_le_one (z.re), Real.sinh_sq (z.im),\n            Real.cosh_sq (z.im)]\n        })\n    rw [h\u2082]\n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 26, "column": 6, "endLine": 27, "endColumn": 85, "data": "tactic 'simp' failed, nested error:\nmaximum recursion depth has been reached\nuse `set_option maxRecDepth <num>` to increase limit\nuse `set_option diagnostics true` to get diagnostic information"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The existential quantification in Lean correctly captures that z can be expressed as x + iy for real x, y, which is mathematically equivalent to the natural language statement.", "Direct and accurate translation of the sine equation with appropriate type specifications.", "Using z.re instead of x is mathematically equivalent since z.re represents the real part of z, which equals x when z = x + iy.", "The conclusion formula is correctly translated using z.re and z.im, which are equivalent to x and y respectively. All mathematical operations and structure are preserved.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (z : \u2102)\n  (tc_1 : \u2203 x y : \u211d, z = x + I * y)\n  (tc_2 : Complex.sin z = I * Real.sinh 1)\n  (tc_3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2) :\n  Complex.sin z = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by\n  have h_main : Complex.sin z = Complex.sin (z.re) * Real.cosh (z.im) + I * Complex.cos (z.re) * Real.sinh (z.im) := by\n    rw [Complex.sin_eq]\n  \n  exact h_main"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "we equate the real and imaginary parts of the condition $\\sin(z) = i \\sinh(1)$. This yields the system of equations $\\sin(x)\\cosh(y) = 0$ and $\\cos(x)\\sinh(y) = \\sinh(1)$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1].\nTherefore, we conclude:\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y) :\n  Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y) :\n  Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1 := by\n  have h1 : Real.sin x * Real.cosh y = 0 := by\n    have h2 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y := h_decomp\n    have h3 : Complex.sin z = I * Real.sinh 1 := h_sin\n    have h4 : (Real.sin x * Real.cosh y : \u2102) + I * (Real.cos x * Real.sinh y : \u2102) = (I * Real.sinh 1 : \u2102) := by\n      calc\n        (Real.sin x * Real.cosh y : \u2102) + I * (Real.cos x * Real.sinh y : \u2102) = (Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y : \u2102) := by\n          ring_nf\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n        _ = Complex.sin z := by\n          rw [h2]\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n        _ = (I * Real.sinh 1 : \u2102) := by\n          rw [h3]\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n    have h5 : Real.sin x * Real.cosh y = 0 := by\n      have h6 := h4\n      simp [Complex.ext_iff, Complex.I_mul_I, pow_two] at h6\n      <;> norm_num at h6 <;>\n      (try norm_num) <;>\n      (try linarith [Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]) <;>\n      (try nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n        Real.cosh_pos y, Real.sinh_sq y]) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        }) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        }) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> linarith [Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n    exact h5\n  have h2 : Real.cos x * Real.sinh y = Real.sinh 1 := by\n    have h3 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y := h_decomp\n    have h4 : Complex.sin z = I * Real.sinh 1 := h_sin\n    have h5 : (Real.sin x * Real.cosh y : \u2102) + I * (Real.cos x * Real.sinh y : \u2102) = (I * Real.sinh 1 : \u2102) := by\n      calc\n        (Real.sin x * Real.cosh y : \u2102) + I * (Real.cos x * Real.sinh y : \u2102) = (Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y : \u2102) := by\n          ring_nf\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n        _ = Complex.sin z := by\n          rw [h3]\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n        _ = (I * Real.sinh 1 : \u2102) := by\n          rw [h4]\n          <;> simp [Complex.ext_iff, pow_two]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num at *\n          <;> linarith\n    have h6 : Real.cos x * Real.sinh y = Real.sinh 1 := by\n      have h7 := h5\n      simp [Complex.ext_iff, Complex.I_mul_I, pow_two] at h7\n      <;> norm_num at h7 <;>\n      (try norm_num) <;>\n      (try linarith [Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]) <;>\n      (try nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n        Real.cosh_pos y, Real.sinh_sq y]) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        }) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        }) <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> linarith [Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try\n        {\n          nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, pow_two]\n          <;> norm_num at *\n          <;> nlinarith [Real.sin_le_one x, Real.cos_le_one x, Real.sin_sq_add_cos_sq x,\n            Real.cosh_pos y, Real.sinh_sq y, Real.sinh_pos_of_pos (show (0 : \u211d) < 1 by norm_num)]\n        })\n      <;>\n      (try linarith)\n    exact h6\n  exact \u27e8h1, h2\u27e9", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 43, "column": 46, "endLine": 110, "endColumn": 20, "data": "unsolved goals\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp h2 : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh3 : Complex.sin z = I * \u2191(sinh 1)\nh4 : \u2191(sin x) * \u2191(cosh y) + I * (\u2191(cos x) * \u2191(sinh y)) = I * \u2191(sinh 1)\nh6 :\n  (Complex.sin \u2191x).re * cosh y + I.re * ((Complex.cos \u2191x).re * (Complex.sinh \u2191y).re) =\n      I.re * (Complex.sinh 1).re - I.im * (Complex.sinh 1).im \u2227\n    I.im * ((Complex.cos \u2191x).re * (Complex.sinh \u2191y).re) = I.re * (Complex.sinh 1).im + I.im * (Complex.sinh 1).re\n\u22a2 sin x = 0 \u2228 cosh y = 0"}, {"line": 144, "column": 56, "endLine": 211, "endColumn": 20, "data": "unsolved goals\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh1 : sin x * cosh y = 0\nh3 : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh4 : Complex.sin z = I * \u2191(sinh 1)\nh5 : \u2191(sin x) * \u2191(cosh y) + I * (\u2191(cos x) * \u2191(sinh y)) = I * \u2191(sinh 1)\nh7 :\n  (Complex.sin \u2191x).re * cosh y + I.re * ((Complex.cos \u2191x).re * (Complex.sinh \u2191y).re) =\n      I.re * (Complex.sinh 1).re - I.im * (Complex.sinh 1).im \u2227\n    I.im * ((Complex.cos \u2191x).re * (Complex.sinh \u2191y).re) = I.re * (Complex.sinh 1).im + I.im * (Complex.sinh 1).re\n\u22a2 cos x * sinh y = sinh 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The variable declarations and complex number definition z = x + I*y correctly capture the natural language specification with appropriate type annotations", "The sine equation sin(z) = i * sinh(1) is accurately formalized using Complex.sin and Real.sinh with proper namespace qualifications", "The range constraint -\u03c0/2 \u2264 x \u2264 \u03c0/2 is correctly expressed using Real.pi and logical conjunction", "The complex sine decomposition formula is perfectly captured with all trigonometric and hyperbolic functions properly qualified", "The conclusion with both equalities is correctly formalized using conjunction, maintaining the exact mathematical relationships", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y) :\n  Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1 := by\n  have h\u2083 : Real.sin x * Real.cosh y = 0 := by\n    have h\u2083\u2081 := h_decomp\n    have h\u2083\u2082 := h_sin\n    have h\u2083\u2083 : (Real.sin x * Real.cosh y : \u211d) = 0 := by\n      -- Use the fact that the real parts of the two expressions for sin(z) must be equal\n      simp [Complex.ext_iff, pow_two, pow_three, Complex.sin, Complex.cos, Complex.exp_re, Complex.exp_im,\n        Complex.ext_iff, pow_two, pow_three] at h\u2083\u2081 h\u2083\u2082 \u22a2\n      <;>\n      (try ring_nf at h\u2083\u2081 h\u2083\u2082 \u22a2) <;>\n      (try norm_num at h\u2083\u2081 h\u2083\u2082 \u22a2) <;>\n      (try\n        {\n          nlinarith [Real.sin_sq_add_cos_sq x, Real.cosh_sq_sub_sinh_sq y, Real.sinh_pos_of_pos (by norm_num : (0 : \u211d) < 1),\n            Real.cosh_pos y, Real.sin_le_one x, Real.cos_le_one x, Real.sinh_le_cosh y]\n        }) <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.sin, Complex.cos, Complex.exp_re, Complex.exp_im, pow_two, pow_three]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          nlinarith [Real.sin_sq_add_cos_sq x, Real.cosh_sq_sub_sinh_sq y, Real.sinh_pos_of_pos (by norm_num : (0 : \u211d) < 1),\n            Real.cosh_pos y, Real.sin_le_one x, Real.cos_le_one x, Real.sinh_le_cosh y]\n        })\n    -- Convert the result back to the desired form\n    exact_mod_cast h\u2083\u2083\n  \n  have h\u2084 : Real.cos x * Real.sinh y = Real.sinh 1 := by\n    have h\u2084\u2081 := h_decomp\n    have h\u2084\u2082 := h_sin\n    have h\u2084\u2083 : (Real.cos x * Real.sinh y : \u211d) = Real.sinh 1 := by\n      -- Use the fact that the imaginary parts of the two expressions for sin(z) must be equal\n      simp [Complex.ext_iff, pow_two, pow_three, Complex.sin, Complex.cos, Complex.exp_re, Complex.exp_im,\n        Complex.ext_iff, pow_two, pow_three] at h\u2084\u2081 h\u2084\u2082 \u22a2\n      <;>\n      (try ring_nf at h\u2084\u2081 h\u2084\u2082 \u22a2) <;>\n      (try norm_num at h\u2084\u2081 h\u2084\u2082 \u22a2) <;>\n      (try\n        {\n          nlinarith [Real.sin_sq_add_cos_sq x, Real.cosh_sq_sub_sinh_sq y, Real.sinh_pos_of_pos (by norm_num : (0 : \u211d) < 1),\n            Real.cosh_pos y, Real.sin_le_one x, Real.cos_le_one x, Real.sinh_le_cosh y]\n        }) <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.sin, Complex.cos, Complex.exp_re, Complex.exp_im, pow_two, pow_three]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          nlinarith [Real.sin_sq_add_cos_sq x, Real.cosh_sq_sub_sinh_sq y, Real.sinh_pos_of_pos (by norm_num : (0 : \u211d) < 1),\n            Real.cosh_pos y, Real.sin_le_one x, Real.cos_le_one x, Real.sinh_le_cosh y]\n        })\n    -- Convert the result back to the desired form\n    exact_mod_cast h\u2084\u2083\n  \n  exact \u27e8h\u2083, h\u2084\u27e9"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "since $\\cosh(y) \\ge 1$ for any real $y$", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2].\nTherefore, we conclude:\n\u2022 cosh(y) \u2265 1 [l3].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1) :\n  Real.cosh y \u2265 1 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1) :\n  Real.cosh y \u2265 1 := by\n  have h1 : Real.cosh y \u2265 1 := by\n    by_contra h\n    have h2 : Real.cosh y < 1 := by linarith\n    have h3 : Real.sin x * Real.cosh y = 0 := h_system.1\n    have h4 : Real.cos x * Real.sinh y = Real.sinh 1 := h_system.2\n    have h5 : Real.sin x = 0 := by\n      by_contra h6\n      have h7 : Real.sin x \u2260 0 := h6\n      have h8 : Real.cosh y = 0 := by\n        apply mul_left_cancel\u2080 h7\n        nlinarith [Real.cosh_pos y]\n      have h9 : Real.cosh y > 0 := Real.cosh_pos y\n      linarith\n    have h6 : Real.cos x \u2260 0 := by\n      by_contra h7\n      have h8 : Real.cos x = 0 := by simpa using h7\n      have h9 : Real.sin x = 0 := h5\n      have h10 : Real.sin x ^ 2 + Real.cos x ^ 2 = 0 := by\n        rw [h9, h8]\n        <;> norm_num\n      have h11 : Real.sin x ^ 2 + Real.cos x ^ 2 = 1 := by\n        rw [Real.sin_sq_add_cos_sq]\n      linarith\n    have h7 : Real.cos x > 0 := by\n      have h8 : -Real.pi / 2 \u2264 x := h_range.1\n      have h9 : x \u2264 Real.pi / 2 := h_range.2\n      have h10 : Real.cos x > 0 := by\n        apply Real.cos_pos_of_mem_Ioo\n        constructor <;> linarith [Real.pi_pos]\n      linarith\n    have h8 : Real.sinh 1 > 0 := by\n      have h9 : Real.sinh 1 > 0 := by\n        -- Prove that sinh(1) > 0\n        have h10 : Real.sinh 1 > 0 := by\n          -- Use the fact that sinh is positive for positive arguments\n          have h11 : Real.sinh 1 = (Real.exp 1 - Real.exp (-1)) / 2 := by\n            rw [Real.sinh_eq]\n            <;> ring_nf\n            <;> field_simp [Real.exp_neg]\n            <;> ring_nf\n          rw [h11]\n          have h12 : Real.exp 1 > Real.exp (-1) := by\n            apply Real.exp_lt_exp.mpr\n            linarith\n          have h13 : (Real.exp 1 - Real.exp (-1)) / 2 > 0 := by\n            linarith [Real.exp_pos 1, Real.exp_pos (-1)]\n          linarith\n        linarith\n      linarith\n    have h9 : Real.sinh y = 0 := by\n      have h10 : Real.cos x * Real.sinh y = Real.sinh 1 := h_system.2\n      have h11 : Real.cosh y < 1 := h2\n      have h12 : Real.cosh y ^ 2 - Real.sinh y ^ 2 = 1 := by\n        rw [Real.cosh_sq_sub_sinh_sq]\n      have h13 : Real.sinh y ^ 2 > 0 := by\n        by_contra h14\n        have h15 : Real.sinh y ^ 2 \u2264 0 := by linarith\n        have h16 : Real.sinh y = 0 := by\n          nlinarith [sq_nonneg (Real.sinh y)]\n        have h17 : Real.cos x * Real.sinh y = 0 := by\n          rw [h16]\n          <;> ring_nf\n        have h18 : Real.cos x * Real.sinh y = Real.sinh 1 := h_system.2\n        have h19 : Real.sinh 1 > 0 := h8\n        linarith\n      have h14 : Real.cosh y ^ 2 < 1 := by nlinarith\n      nlinarith [Real.cosh_pos y]\n    have h10 : Real.cos x * Real.sinh y = Real.sinh 1 := h_system.2\n    have h11 : Real.sinh y = 0 := h9\n    rw [h11] at h10\n    have h12 : Real.cos x * 0 = Real.sinh 1 := by simpa using h10\n    have h13 : Real.sinh 1 = 0 := by linarith\n    linarith [h8]\n  exact h1", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 40, "column": 24, "endLine": 40, "endColumn": 46, "data": "linarith failed to find a contradiction\ncase hx.left.h\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh_system : sin x * cosh y = 0 \u2227 cos x * sinh y = sinh 1\nh : \u00accosh y \u2265 1\nh2 : cosh y < 1\nh3 : sin x * cosh y = 0\nh4 : cos x * sinh y = sinh 1\nh5 : sin x = 0\nh6 : cos x \u2260 0\nh8 : -\u03c0 / 2 \u2264 x\nh9 : x \u2264 \u03c0 / 2\na\u271d : -(\u03c0 / 2) \u2265 x\n\u22a2 False failed"}, {"line": 40, "column": 24, "endLine": 40, "endColumn": 46, "data": "linarith failed to find a contradiction\ncase hx.right.h\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh_system : sin x * cosh y = 0 \u2227 cos x * sinh y = sinh 1\nh : \u00accosh y \u2265 1\nh2 : cosh y < 1\nh3 : sin x * cosh y = 0\nh4 : cos x * sinh y = sinh 1\nh5 : sin x = 0\nh6 : cos x \u2260 0\nh8 : -\u03c0 / 2 \u2264 x\nh9 : x \u2264 \u03c0 / 2\na\u271d : x \u2265 \u03c0 / 2\n\u22a2 False failed"}, {"line": 77, "column": 43, "endLine": 77, "endColumn": 52, "data": "linarith failed to find a contradiction\ncase h\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh_system : sin x * cosh y = 0 \u2227 cos x * sinh y = sinh 1\nh : \u00accosh y \u2265 1\nh2 : cosh y < 1\nh3 : sin x * cosh y = 0\nh4 : cos x * sinh y = sinh 1\nh5 : sin x = 0\nh6 : cos x \u2260 0\nh7 : cos x > 0\nh8 : sinh 1 > 0\nh10 : cos x * sinh y = sinh 1\nh11 : cosh y < 1\nh12 : cosh y ^ 2 - sinh y ^ 2 = 1\nh13 : sinh y ^ 2 > 0\na\u271d : cosh y ^ 2 \u2265 1\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and complex number definition (tc_1) are correctly formalized with appropriate type annotations", "The equation sin(z) = i * sinh(1) (tc_2) is accurately captured with proper type distinctions", "The range constraint -\u03c0/2 \u2264 x \u2264 \u03c0/2 (tc_3) is correctly formalized using conjunction", "The sine decomposition formula (l1) is properly represented with appropriate real/complex type distinctions", "The system of equations (l2) is correctly captured as a conjunction of two equalities", "The conclusion cosh(y) \u2265 1 (l3) is accurately formalized", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "NL statement", "error_report": "Formalization appears correct (score=1.0 > 0.6), and the prover could prove the NEGATION of the NL lemma. The NL statement is likely incorrect."}, "solved_negation": {"lean_verify": true, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1) :\n  Real.cosh y \u2265 1 := by\n  have h\u2081 : Real.exp y > 0 := Real.exp_pos y\n  \n  have h\u2082 : Real.exp y + Real.exp (-y) \u2265 2 := by\n    have h\u2082\u2081 : Real.exp y > 0 := Real.exp_pos y\n    have h\u2082\u2082 : Real.exp (-y) > 0 := Real.exp_pos (-y)\n    have h\u2082\u2083 : Real.exp y * Real.exp (-y) = 1 := by\n      rw [\u2190 Real.exp_add]\n      ring_nf\n      <;> simp [Real.exp_zero]\n    have h\u2082\u2084 : Real.exp y + Real.exp (-y) \u2265 2 := by\n      -- Use AM-GM inequality: (a + b)/2 \u2265 sqrt(ab)\n      have h\u2082\u2084\u2081 : 0 < Real.exp y := Real.exp_pos y\n      have h\u2082\u2084\u2082 : 0 < Real.exp (-y) := Real.exp_pos (-y)\n      have h\u2082\u2084\u2083 : Real.exp y * Real.exp (-y) = 1 := by\n        rw [\u2190 Real.exp_add]\n        ring_nf\n        <;> simp [Real.exp_zero]\n      nlinarith [sq_nonneg (Real.exp y - Real.exp (-y))]\n    exact h\u2082\u2084\n  \n  have h\u2083 : Real.cosh y \u2265 1 := by\n    have h\u2083\u2081 : Real.cosh y = (Real.exp y + Real.exp (-y)) / 2 := by\n      rw [Real.cosh_eq]\n      <;> ring_nf\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n    rw [h\u2083\u2081]\n    linarith\n  \n  exact h\u2083"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "From the first equation, $\\sin(x)\\cosh(y) = 0$, and since $\\cosh(y) \\ge 1$ for any real $y$, we must have $\\sin(x) = 0$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2];\n\u2022 cosh(y) \u2265 1 [l3].\nTherefore, we conclude:\n\u2022 sin(x) = 0 [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (x y : \u211d)\n  (z : \u2102)\n  (h1 : z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h5 : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h6 : Real.cosh y \u2265 1) :\n  Real.sin x = 0 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (x y : \u211d)\n  (z : \u2102)\n  (h1 : z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h5 : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h6 : Real.cosh y \u2265 1) :\n  Real.sin x = 0 := by\n  have h7 : Real.sin x * Real.cosh y = 0 := h5.1\n  have h8 : Real.cos x * Real.sinh y = Real.sinh 1 := h5.2\n  have h9 : Real.cosh y \u2265 1 := h6\n  have h10 : Real.sin x = 0 := by\n    by_contra h\n    have h11 : Real.sin x \u2260 0 := h\n    have h12 : Real.cosh y > 0 := by linarith [h6]\n    have h13 : Real.sin x * Real.cosh y \u2260 0 := by\n      apply mul_ne_zero\n      \u00b7 exact h11\n      \u00b7 linarith\n    have h14 : Real.sin x * Real.cosh y = 0 := h7\n    contradiction\n  exact h10", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly establish x, y as real numbers and z as complex number, matching tc_1", "The equation z = x + I * y perfectly translates the complex number representation from natural language", "The condition Complex.sin z = I * Real.sinh 1 correctly captures tc_2 using appropriate Lean notation", "The range constraint -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2 accurately represents tc_3", "The complex sine formula in h4 correctly translates l1 with proper real/complex function distinctions", "The conjunction in h5 perfectly captures both equations from l2", "The inequality h6 correctly represents l3, and the goal statement properly captures the conclusion l4"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Given the condition that $-\\frac{\\pi}{2} \\le x \\le \\frac{\\pi}{2}$, the only solution is $x=0$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2];\n\u2022 cosh(y) \u2265 1 [l3];\n\u2022 sin(x) = 0 [l4].\nTherefore, we conclude:\n\u2022 x = 0 [l5].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h_cosh : Real.cosh y \u2265 1)\n  (h_sin_x : Real.sin x = 0) :\n  x = 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h_cosh : Real.cosh y \u2265 1)\n  (h_sin_x : Real.sin x = 0) :\n  x = 0 := by\n  have h_cos_x_pos : Real.cos x > 0 := by\n    by_contra h\n    have h\u2081 : Real.cos x \u2264 0 := by linarith [Real.cos_le_one x]\n    have h\u2082 : -Real.pi / 2 \u2264 x := h_range.1\n    have h\u2083 : x \u2264 Real.pi / 2 := h_range.2\n    have h\u2084 : Real.cos x = 0 := by\n      -- Use the fact that cos x is non-negative in the interval [-\u03c0/2, \u03c0/2]\n      have h\u2085 : Real.cos x \u2265 0 := Real.cos_nonneg_of_mem_Icc \u27e8by linarith [Real.pi_pos], by linarith [Real.pi_pos]\u27e9\n      linarith\n    -- If cos x = 0, then x must be \u00b1\u03c0/2\n    have h\u2085 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n      have h\u2086 : Real.cos x = 0 := h\u2084\n      have h\u2087 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n        -- Use the fact that cos x = 0 in the interval [-\u03c0/2, \u03c0/2] implies x = \u00b1\u03c0/2\n        have h\u2088 : Real.cos x = 0 := h\u2086\n        have h\u2089 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n          -- Use the fact that cos x = 0 in the interval [-\u03c0/2, \u03c0/2] implies x = \u00b1\u03c0/2\n          have h\u2081\u2080 : -Real.pi / 2 \u2264 x := h_range.1\n          have h\u2081\u2081 : x \u2264 Real.pi / 2 := h_range.2\n          have h\u2081\u2082 : Real.cos x = 0 := h\u2088\n          have h\u2081\u2083 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n            -- Use the fact that cos x = 0 in the interval [-\u03c0/2, \u03c0/2] implies x = \u00b1\u03c0/2\n            have h\u2081\u2084 : Real.cos x = 0 := h\u2081\u2082\n            have h\u2081\u2085 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n              -- Use the fact that cos x = 0 in the interval [-\u03c0/2, \u03c0/2] implies x = \u00b1\u03c0/2\n              have h\u2081\u2086 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n                -- Use the fact that cos x = 0 in the interval [-\u03c0/2, \u03c0/2] implies x = \u00b1\u03c0/2\n                have h\u2081\u2087 : Real.cos x = 0 := h\u2081\u2084\n                have h\u2081\u2088 : Real.cos (Real.pi / 2) = 0 := by norm_num\n                have h\u2081\u2089 : Real.cos (-Real.pi / 2) = 0 := by\n                  rw [show -Real.pi / 2 = -(Real.pi / 2) by ring]\n                  rw [Real.cos_neg, show Real.cos (Real.pi / 2) = 0 by norm_num]\n                  <;> ring\n                -- Use the fact that cos is injective on [0, \u03c0]\n                have h\u2082\u2080 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n                  -- Use the fact that cos is injective on [0, \u03c0]\n                  have h\u2082\u2081 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n                    -- Use the fact that cos is injective on [0, \u03c0]\n                    have h\u2082\u2082 : x = Real.pi / 2 \u2228 x = -Real.pi / 2 := by\n                      -- Use the fact that cos is injective on [0, \u03c0]\n                      apply or_iff_not_imp_left.mpr\n                      intro h\u2082\u2083\n                      -- If x \u2260 \u03c0/2, then x = -\u03c0/2\n                      have h\u2082\u2084 : x = -Real.pi / 2 := by\n                        -- Use the fact that cos is injective on [0, \u03c0]\n                        have h\u2082\u2085 : Real.cos x = Real.cos (-Real.pi / 2) := by\n                          rw [h\u2081\u2087, h\u2081\u2089]\n                        have h\u2082\u2086 : x = -Real.pi / 2 := by\n                          -- Use the fact that cos is injective on [0, \u03c0]\n                          apply (injOn_cos.eq_iff \u27e8by linarith [Real.pi_pos], by linarith [Real.pi_pos]\u27e9 \u27e8by linarith [Real.pi_pos], by linarith [Real.pi_pos]\u27e9).1\n                          exact h\u2082\u2085\n                        exact h\u2082\u2086\n                      exact h\u2082\u2084\n                    exact h\u2082\u2082\n                  exact h\u2082\u2081\n                exact h\u2082\u2080\n              exact h\u2081\u2086\n            exact h\u2081\u2085\n          exact h\u2081\u2083\n        exact h\u2089\n      exact h\u2087\n    -- If x = \u00b1\u03c0/2, then sin x = \u00b11, which contradicts sin x = 0\n    cases h\u2085 with\n    | inl h\u2085 =>\n      have h\u2086 : x = Real.pi / 2 := h\u2085\n      have h\u2087 : Real.sin x = 1 := by\n        rw [h\u2086]\n        norm_num\n      linarith [h_sin_x]\n    | inr h\u2085 =>\n      have h\u2086 : x = -Real.pi / 2 := h\u2085\n      have h\u2087 : Real.sin x = -1 := by\n        rw [h\u2086]\n        have h\u2088 : Real.sin (-Real.pi / 2) = -1 := by\n          rw [show -Real.pi / 2 = -(Real.pi / 2) by ring]\n          rw [Real.sin_neg, show Real.sin (Real.pi / 2) = 1 by norm_num]\n          <;> ring\n        rw [h\u2088]\n      linarith [h_sin_x]\n  \n  have h_x_eq_zero : x = 0 := by\n    have h\u2081 : Real.sin x = 0 := h_sin_x\n    have h\u2082 : -Real.pi / 2 \u2264 x := h_range.1\n    have h\u2083 : x \u2264 Real.pi / 2 := h_range.2\n    have h\u2084 : Real.cos x > 0 := h_cos_x_pos\n    -- Use the fact that sin x = 0 and cos x > 0 to deduce x = 0\n    have h\u2085 : x = 0 := by\n      -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n      have h\u2086 : x = 0 := by\n        -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n        have h\u2087 : x = 0 := by\n          -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n          have h\u2088 : Real.sin x = 0 := h\u2081\n          have h\u2089 : x = 0 := by\n            -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n            have h\u2081\u2080 : Real.sin x = 0 := h\u2081\n            have h\u2081\u2081 : x = 0 := by\n              -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n              have h\u2081\u2082 : x = 0 := by\n                -- Use the fact that sin x = 0 and cos x > 0 in the interval [-\u03c0/2, \u03c0/2]\n                apply le_antisymm\n                \u00b7 -- Prove x \u2264 0\n                  by_contra h\u2081\u2083\n                  have h\u2081\u2084 : x > 0 := by linarith\n                  have h\u2081\u2085 : Real.sin x > 0 := by\n                    -- Use the fact that sin x > 0 for 0 < x \u2264 \u03c0/2\n                    apply Real.sin_pos_of_pos_of_lt_pi\n                    \u00b7 linarith\n                    \u00b7 linarith [Real.pi_gt_three]\n                  linarith [h\u2081\u2080]\n                \u00b7 -- Prove x \u2265 0\n                  by_contra h\u2081\u2083\n                  have h\u2081\u2084 : x < 0 := by linarith\n                  have h\u2081\u2085 : Real.sin x < 0 := by\n                    -- Use the fact that sin x < 0 for -\u03c0/2 \u2264 x < 0\n                    have h\u2081\u2086 : Real.sin x < 0 := by\n                      apply Real.sin_neg_of_neg_of_neg_pi_lt\n                      \u00b7 linarith\n                      \u00b7 linarith [Real.pi_gt_three]\n                    exact h\u2081\u2086\n                  linarith [h\u2081\u2080]\n              exact h\u2081\u2082\n            exact h\u2081\u2081\n          exact h\u2089\n        exact h\u2087\n      exact h\u2086\n    exact h\u2085\n  \n  exact h_x_eq_zero", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 63, "column": 54, "endLine": 63, "endColumn": 76, "data": "linarith failed to find a contradiction\ncase a\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh_system : sin x * cosh y = 0 \u2227 cos x * sinh y = sinh 1\nh_cosh : cosh y \u2265 1\nh_sin_x : sin x = 0\nh : \u00accos x > 0\nh\u2081 : cos x \u2264 0\nh\u2082 : -\u03c0 / 2 \u2264 x\nh\u2083 : x \u2264 \u03c0 / 2\nh\u2084 h\u2086 h\u2088 : cos x = 0\nh\u2081\u2080 : -\u03c0 / 2 \u2264 x\nh\u2081\u2081 : x \u2264 \u03c0 / 2\nh\u2081\u2082 h\u2081\u2084 h\u2081\u2087 : cos x = 0\nh\u2081\u2088 : cos (\u03c0 / 2) = 0\nh\u2081\u2089 : cos (-\u03c0 / 2) = 0\nh\u2082\u2083 : \u00acx = \u03c0 / 2\nh\u2082\u2085 : cos x = cos (-\u03c0 / 2)\na\u271d : 0 > x\n\u22a2 False failed"}, {"line": 63, "column": 109, "endLine": 63, "endColumn": 131, "data": "linarith failed to find a contradiction\ncase a\nI : \u2102\nx y : \u211d\nz : \u2102\nhz : z = \u2191x + I * \u2191y\nh_sin : Complex.sin z = I * \u2191(sinh 1)\nh_range : -\u03c0 / 2 \u2264 x \u2227 x \u2264 \u03c0 / 2\nh_decomp : Complex.sin z = \u2191(sin x) * \u2191(cosh y) + I * \u2191(cos x) * \u2191(sinh y)\nh_system : sin x * cosh y = 0 \u2227 cos x * sinh y = sinh 1\nh_cosh : cosh y \u2265 1\nh_sin_x : sin x = 0\nh : \u00accos x > 0\nh\u2081 : cos x \u2264 0\nh\u2082 : -\u03c0 / 2 \u2264 x\nh\u2083 : x \u2264 \u03c0 / 2\nh\u2084 h\u2086 h\u2088 : cos x = 0\nh\u2081\u2080 : -\u03c0 / 2 \u2264 x\nh\u2081\u2081 : x \u2264 \u03c0 / 2\nh\u2081\u2082 h\u2081\u2084 h\u2081\u2087 : cos x = 0\nh\u2081\u2088 : cos (\u03c0 / 2) = 0\nh\u2081\u2089 : cos (-\u03c0 / 2) = 0\nh\u2082\u2083 : \u00acx = \u03c0 / 2\nh\u2082\u2085 : cos x = cos (-\u03c0 / 2)\na\u271d : 0 > -\u03c0 / 2\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly and completely captures all logical and mathematical meaning from the natural language. All assumptions (tc_1 through l4) are properly translated with appropriate type declarations and namespace usage. The conclusion (l5) is correctly stated as the theorem goal. The mathematical relationships, constraints, and logical structure are faithfully preserved.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "NL statement", "error_report": "Formalization appears correct (score=1.0 > 0.6), and the prover could prove the NEGATION of the NL lemma. The NL statement is likely incorrect."}, "solved_negation": {"lean_verify": true, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h_cosh : Real.cosh y \u2265 1)\n  (h_sin_x : Real.sin x = 0) :\n  x = 0 := by\n  have h_x_zero : x = 0 := by\n    have h\u2081 : Real.arcsin (Real.sin x) = x := by\n      apply Real.arcsin_sin\n      <;> linarith [h_range.1, h_range.2]\n    have h\u2082 : Real.arcsin (Real.sin x) = 0 := by\n      rw [h_sin_x]\n      norm_num [Real.arcsin_zero]\n    linarith\n  \n  exact h_x_zero"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Substituting $x=0$ into the second equation $\\cos(x)\\sinh(y) = \\sinh(1)$ gives $\\cos(0)\\sinh(y) = \\sinh(1)$, which simplifies to $\\sinh(y)=\\sinh(1)$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2];\n\u2022 cosh(y) \u2265 1 [l3];\n\u2022 sin(x) = 0 [l4];\n\u2022 x = 0 [l5].\nTherefore, we conclude:\n\u2022 sinh(y) = sinh(1) [l6].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h_cosh : Real.cosh y \u2265 1)\n  (h_sin_x : Real.sin x = 0)\n  (h_x_zero : x = 0) :\n  Real.sinh y = Real.sinh 1 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (x y : \u211d)\n  (z : \u2102) (hz : z = x + I * y)\n  (h_sin : Complex.sin z = I * Real.sinh 1)\n  (h_range : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h_decomp : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h_system : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h_cosh : Real.cosh y \u2265 1)\n  (h_sin_x : Real.sin x = 0)\n  (h_x_zero : x = 0) :\n  Real.sinh y = Real.sinh 1 := by\n  have h1 : Real.cos x * Real.sinh y = Real.sinh 1 := by\n    have h2 : Real.cos x * Real.sinh y = Real.sinh 1 := h_system.2\n    exact h2\n  have h2 : x = 0 := h_x_zero\n  have h3 : Real.cos x = Real.cos 0 := by rw [h2]\n  have h4 : Real.cos 0 = (1 : \u211d) := by norm_num\n  have h5 : Real.cos x = (1 : \u211d) := by\n    rw [h3]\n    <;> rw [h4]\n  have h6 : Real.cos x * Real.sinh y = Real.sinh y := by\n    rw [h5]\n    <;> ring\n  have h7 : Real.sinh y = Real.sinh 1 := by\n    linarith\n  exact h7", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The complex number definition z = x + i*y with real x, y is correctly formalized with proper type declarations", "The equation sin(z) = i * sinh(1) is accurately represented using Complex.sin and Real.sinh", "The range constraint -\u03c0/2 \u2264 x \u2264 \u03c0/2 is properly expressed as a conjunction of inequalities", "The complex sine decomposition formula is correctly formalized with appropriate real and complex function types", "The system of equations is properly represented as a conjunction of two equalities", "The inequality cosh(y) \u2265 1 is directly and correctly translated", "The equation sin(x) = 0 is accurately formalized", "The simple equation x = 0 is correctly represented", "The conclusion sinh(y) = sinh(1) is properly formalized as the theorem's goal"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Since the hyperbolic sine function is one-to-one, we deduce that $y=1$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2];\n\u2022 cosh(y) \u2265 1 [l3];\n\u2022 sin(x) = 0 [l4];\n\u2022 x = 0 [l5];\n\u2022 sinh(y) = sinh(1) [l6].\nTherefore, we conclude:\n\u2022 y = 1 [l7].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (x y : \u211d)\n  (z : \u2102)\n  (h1 : z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h5 : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h6 : Real.cosh y \u2265 1)\n  (h7 : Real.sin x = 0)\n  (h8 : x = 0)\n  (h9 : Real.sinh y = Real.sinh 1) :\n  y = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (x y : \u211d)\n  (z : \u2102)\n  (h1 : z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 x \u2227 x \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin x * Real.cosh y + I * Real.cos x * Real.sinh y)\n  (h5 : Real.sin x * Real.cosh y = 0 \u2227 Real.cos x * Real.sinh y = Real.sinh 1)\n  (h6 : Real.cosh y \u2265 1)\n  (h7 : Real.sin x = 0)\n  (h8 : x = 0)\n  (h9 : Real.sinh y = Real.sinh 1) :\n  y = 1 := by\n  have h10 : Real.cos x > 0 := by\n    have h10\u2081 : x = 0 := h8\n    have h10\u2082 : Real.cos x = Real.cos 0 := by rw [h10\u2081]\n    have h10\u2083 : Real.cos 0 = 1 := by norm_num\n    have h10\u2084 : Real.cos x = 1 := by rw [h10\u2082, h10\u2083]\n    have h10\u2085 : Real.cos x > 0 := by linarith\n    exact h10\u2085\n  \n  have h11 : Real.sinh y = Real.sinh 1 := h9\n  \n  have h12 : Real.cosh y = Real.cosh 1 := by\n    have h12\u2081 : Real.sinh y = Real.sinh 1 := h9\n    have h12\u2082 : Real.cosh y ^ 2 = 1 + Real.sinh y ^ 2 := by\n      rw [Real.cosh_sq]\n      <;> ring_nf\n      <;> field_simp [Real.sinh_sq]\n      <;> ring_nf\n    have h12\u2083 : Real.cosh 1 ^ 2 = 1 + Real.sinh 1 ^ 2 := by\n      rw [Real.cosh_sq]\n      <;> ring_nf\n      <;> field_simp [Real.sinh_sq]\n      <;> ring_nf\n    have h12\u2084 : Real.cosh y ^ 2 = Real.cosh 1 ^ 2 := by\n      calc\n        Real.cosh y ^ 2 = 1 + Real.sinh y ^ 2 := by rw [h12\u2082]\n        _ = 1 + Real.sinh 1 ^ 2 := by rw [h12\u2081]\n        _ = Real.cosh 1 ^ 2 := by rw [h12\u2083]\n    have h12\u2085 : Real.cosh y \u2265 0 := Real.cosh_pos y |>.le\n    have h12\u2086 : Real.cosh 1 \u2265 0 := Real.cosh_pos 1 |>.le\n    have h12\u2087 : Real.cosh y = Real.cosh 1 := by\n      nlinarith [Real.cosh_pos y, Real.cosh_pos 1]\n    exact h12\u2087\n  \n  have h13 : y = 1 := by\n    have h13\u2081 : Real.sinh y = Real.sinh 1 := h9\n    have h13\u2082 : Real.cosh y = Real.cosh 1 := h12\n    have h13\u2083 : y = 1 := by\n      -- Use the fact that sinh and cosh are injective to deduce y = 1\n      have h13\u2084 : Real.sinh y = Real.sinh 1 := h9\n      have h13\u2085 : Real.cosh y = Real.cosh 1 := h12\n      -- Use the fact that sinh and cosh together imply injectivity\n      have h13\u2086 : y = 1 := by\n        -- Use the fact that sinh is injective and cosh is injective on certain intervals\n        -- Here, we use the fact that if sinh(y) = sinh(1) and cosh(y) = cosh(1), then y = 1\n        -- This follows from the identity cosh(y)^2 - sinh(y)^2 = 1 and the injectivity of sinh and cosh\n        -- on the interval [0, \u221e)\n        have h13\u2087 : Real.exp y = Real.exp 1 \u2228 Real.exp y = Real.exp (-1) := by\n          -- Use the fact that cosh(y) = cosh(1) to deduce that exp(y) = exp(1) or exp(y) = exp(-1)\n          have h13\u2088 : Real.cosh y = Real.cosh 1 := h12\n          have h13\u2089 : Real.exp y + Real.exp (-y) = Real.exp 1 + Real.exp (-1) := by\n            -- Use the definition of cosh to express the equality in terms of exp\n            have h13\u2081\u2080 : Real.cosh y = (Real.exp y + Real.exp (-y)) / 2 := by\n              rw [Real.cosh_eq]\n              <;> ring_nf\n            have h13\u2081\u2081 : Real.cosh 1 = (Real.exp 1 + Real.exp (-1)) / 2 := by\n              rw [Real.cosh_eq]\n              <;> ring_nf\n            rw [h13\u2081\u2080] at h13\u2088\n            rw [h13\u2081\u2081] at h13\u2088\n            linarith\n          have h13\u2081\u2082 : Real.exp y = Real.exp 1 \u2228 Real.exp y = Real.exp (-1) := by\n            -- Solve the equation exp(y) + exp(-y) = exp(1) + exp(-1)\n            have h13\u2081\u2083 : Real.exp y > 0 := Real.exp_pos y\n            have h13\u2081\u2084 : Real.exp (-y) > 0 := Real.exp_pos (-y)\n            have h13\u2081\u2085 : Real.exp 1 > 0 := Real.exp_pos 1\n            have h13\u2081\u2086 : Real.exp (-1) > 0 := Real.exp_pos (-1)\n            have h13\u2081\u2087 : Real.exp y * Real.exp (-y) = 1 := by\n              rw [\u2190 Real.exp_add]\n              ring_nf\n              <;> simp [Real.exp_neg]\n              <;> field_simp\n            have h13\u2081\u2088 : Real.exp 1 * Real.exp (-1) = 1 := by\n              rw [\u2190 Real.exp_add]\n              ring_nf\n              <;> simp [Real.exp_neg]\n              <;> field_simp\n            have h13\u2081\u2089 : Real.exp y + Real.exp (-y) = Real.exp 1 + Real.exp (-1) := h13\u2089\n            have h13\u2082\u2080 : Real.exp y = Real.exp 1 \u2228 Real.exp y = Real.exp (-1) := by\n              apply or_iff_not_imp_left.mpr\n              intro h13\u2082\u2081\n              apply mul_left_cancel\u2080 (sub_ne_zero.mpr h13\u2082\u2081)\n              nlinarith [sq_nonneg (Real.exp y - Real.exp 1),\n                sq_nonneg (Real.exp y - Real.exp (-1)),\n                sq_nonneg (Real.exp (-y) - Real.exp 1),\n                sq_nonneg (Real.exp (-y) - Real.exp (-1))]\n            exact h13\u2082\u2080\n          exact h13\u2081\u2082\n        -- Deduce y = 1 from the possible values of exp(y)\n        cases h13\u2087 with\n        | inl h13\u2088 =>\n          -- Case: exp(y) = exp(1)\n          have h13\u2089 : Real.exp y = Real.exp 1 := h13\u2088\n          have h13\u2081\u2080 : y = 1 := by\n            -- Use the injectivity of exp to deduce y = 1\n            apply_fun (fun x => Real.log x) at h13\u2089\n            <;> field_simp [Real.log_exp] at h13\u2089 \u22a2\n            <;> linarith\n          exact h13\u2081\u2080\n        | inr h13\u2088 =>\n          -- Case: exp(y) = exp(-1)\n          have h13\u2089 : Real.exp y = Real.exp (-1) := h13\u2088\n          have h13\u2081\u2080 : y = -1 := by\n            -- Use the injectivity of exp to deduce y = -1\n            apply_fun (fun x => Real.log x) at h13\u2089\n            <;> field_simp [Real.log_exp] at h13\u2089 \u22a2\n            <;> linarith\n          -- Check if y = -1 is possible given sinh(y) = sinh(1)\n          have h13\u2081\u2081 : Real.sinh y = Real.sinh 1 := h9\n          have h13\u2081\u2082 : Real.sinh y = Real.sinh (-1) := by\n            rw [h13\u2081\u2080]\n            <;> simp [Real.sinh_neg]\n          have h13\u2081\u2083 : Real.sinh 1 = Real.sinh (-1) := by linarith\n          have h13\u2081\u2084 : Real.sinh 1 > 0 := by\n            have h\u2081 : Real.sinh 1 = (Real.exp 1 - Real.exp (-1)) / 2 := by\n              rw [Real.sinh_eq]\n              <;> ring_nf\n            rw [h\u2081]\n            have h\u2082 : Real.exp 1 > Real.exp (-1) := by\n              apply Real.exp_lt_exp.mpr\n              linarith [Real.exp_pos 1, Real.exp_pos (-1)]\n            have h\u2083 : (Real.exp 1 - Real.exp (-1)) / 2 > 0 := by\n              have h\u2084 : Real.exp 1 - Real.exp (-1) > 0 := by linarith\n              linarith\n            linarith\n          have h13\u2081\u2085 : Real.sinh (-1) < 0 := by\n            have h13\u2081\u2086 : Real.sinh (-1) = -Real.sinh 1 := by\n              rw [Real.sinh_neg]\n              <;> ring_nf\n            rw [h13\u2081\u2086]\n            linarith\n          linarith\n      exact h13\u2086\n    exact h13\u2083\n  \n  exact h13", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly and completely captures all logical and mathematical meaning from the natural language. Each assumption (tc_1 through l6) is properly translated to corresponding hypotheses (h1 through h9), with appropriate Lean mathematical notation. The conclusion y = 1 is correctly stated as the theorem goal. The mathematical relationships, including complex number operations, trigonometric and hyperbolic functions, inequalities, and logical conjunctions, are all accurately preserved. The formalization maintains the logical flow from assumptions to conclusion without any missing or contradictory elements."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, with $x=0$ and $y=1$, we conclude that $z=i$.", "statement": "We assume:\n\u2022 z = x + i*y where x and y are real numbers [tc_1];\n\u2022 sin(z) = i * sinh(1) [tc_2];\n\u2022 -\u03c0/2 \u2264 x \u2264 \u03c0/2 [tc_3];\n\u2022 sin(z) = sin(x)*cosh(y) + i*cos(x)*sinh(y) [l1];\n\u2022 sin(x)*cosh(y) = 0 and cos(x)*sinh(y) = sinh(1) [l2];\n\u2022 cosh(y) \u2265 1 [l3];\n\u2022 sin(x) = 0 [l4];\n\u2022 x = 0 [l5];\n\u2022 sinh(y) = sinh(1) [l6];\n\u2022 y = 1 [l7].\nTherefore, we conclude:\n\u2022 z = i [ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (h1 : \u2203 x y : \u211d, z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin z.re * Real.cosh z.im + I * Real.cos z.re * Real.sinh z.im)\n  (h5 : Real.sin z.re * Real.cosh z.im = 0 \u2227 Real.cos z.re * Real.sinh z.im = Real.sinh 1)\n  (h6 : Real.cosh z.im \u2265 1)\n  (h7 : Real.sin z.re = 0)\n  (h8 : z.re = 0)\n  (h9 : Real.sinh z.im = Real.sinh 1)\n  (h10 : z.im = 1) :\n  z = I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (h1 : \u2203 x y : \u211d, z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin z.re * Real.cosh z.im + I * Real.cos z.re * Real.sinh z.im)\n  (h5 : Real.sin z.re * Real.cosh z.im = 0 \u2227 Real.cos z.re * Real.sinh z.im = Real.sinh 1)\n  (h6 : Real.cosh z.im \u2265 1)\n  (h7 : Real.sin z.re = 0)\n  (h8 : z.re = 0)\n  (h9 : Real.sinh z.im = Real.sinh 1)\n  (h10 : z.im = 1) :\n  z = I := by\n  have h11 : z.re = 0 := h8\n  have h12 : z.im = 1 := h10\n  have h13 : z = I := by\n    apply Complex.ext <;> simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n    <;>\n    (try ring_nf at *) <;>\n    (try norm_num at *) <;>\n    (try linarith [Real.pi_pos]) <;>\n    (try simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]) <;>\n    (try ring_nf at *) <;>\n    (try norm_num at *) <;>\n    (try linarith [Real.pi_pos])\n    <;>\n    simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n    <;>\n    norm_num at *\n    <;>\n    linarith [Real.pi_pos]\n  exact h13", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 30, "column": 4, "endLine": 30, "endColumn": 58, "data": "simp_all made no progress"}, {"line": 30, "column": 4, "endLine": 30, "endColumn": 58, "data": "simp_all made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. While there are notational differences (i vs I, x/y vs z.re/z.im, explicit type distinctions for mathematical functions), these represent equivalent mathematical concepts. The logical structure, assumptions, and conclusion are all faithfully preserved. The use of z.re and z.im instead of separate variables x, y is a valid and common approach in formal mathematics for representing complex numbers.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (h1 : \u2203 x y : \u211d, z = x + I * y)\n  (h2 : Complex.sin z = I * Real.sinh 1)\n  (h3 : -Real.pi/2 \u2264 z.re \u2227 z.re \u2264 Real.pi/2)\n  (h4 : Complex.sin z = Real.sin z.re * Real.cosh z.im + I * Real.cos z.re * Real.sinh z.im)\n  (h5 : Real.sin z.re * Real.cosh z.im = 0 \u2227 Real.cos z.re * Real.sinh z.im = Real.sinh 1)\n  (h6 : Real.cosh z.im \u2265 1)\n  (h7 : Real.sin z.re = 0)\n  (h8 : z.re = 0)\n  (h9 : Real.sinh z.im = Real.sinh 1)\n  (h10 : z.im = 1) :\n  z = I := by\n  have h_main : z = I := by\n    apply Complex.ext <;> simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n    <;> norm_num <;>\n    (try ring_nf at * <;> linarith) <;>\n    (try simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]) <;>\n    (try norm_num) <;>\n    (try linarith)\n  exact h_main"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

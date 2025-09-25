@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for all positive real numbers $a, b, c$, the following inequality holds: $9(a+b)(b+c)(c+a) \geq 8(a+b+c)(ab+bc+ca)$.
+
+Proof: We want to prove that $9(a+b)(b+c)(c+a) \ge 8(a+b+c)(ab+bc+ca)$ for positive real numbers $a, b, c$. To do this, consider the difference between the two sides: $9(a+b)(b+c)(c+a) - 8(a+b+c)(ab+bc+ca)$. Expanding each term, we have $9(a+b)(b+c)(c+a) = 9(2abc + a^2b + a^2c + ab^2 + b^2c + ac^2 + bc^2)$ and $8(a+b+c)(ab+bc+ca) = 8(a^2b + ab^2 + b^2c + bc^2 + c^2a + ca^2 + 3abc)$. Subtracting the second from the first gives $a(b-c)^2 + b(a-c)^2 + c(a-b)^2$. Since $a, b, c > 0$ and squares of real numbers are non-negative, each term $a(b-c)^2$, $b(a-c)^2$, $c(a-b)^2$ is non-negative, so their sum is non-negative. Therefore, the difference $9(a+b)(b+c)(c+a) - 8(a+b+c)(ab+bc+ca) \ge 0$, which establishes that $9(a+b)(b+c)(c+a) \ge 8(a+b+c)(ab+bc+ca)$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "for all positive real numbers $a, b, c$", "statement": "Premise:\n\u2022 a, b, c are positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly declares a, b, c as real numbers and captures their positivity through the conjunction 0 < a \u2227 0 < b \u2227 0 < c, which perfectly matches the natural language condition", "The Lean formalization contains no conclusions, which matches the natural language statement that explicitly notes no conclusions are derived in this premise step"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Expanding each term, we have $9(a+b)(b+c)(c+a) = 9(2abc + a^2b + a^2c + ab^2 + b^2c + ac^2 + bc^2)$", "statement": "We assume:\n\u2022 a, b, c are real numbers [tc_1].\nTherefore, we conclude:\n\u2022 9(a+b)(b+c)(c+a) = 9(2*a*b*c + a^2*b + a^2*c + a*b^2 + b^2*c + a*c^2 + b*c^2) [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (a b c : \u211d)\n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c) :\n  9 * (a + b) * (b + c) * (c + a) = \n  9 * (2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (a b c : \u211d)\n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c) :\n  9 * (a + b) * (b + c) * (c + a) = \n  9 * (2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2) := by\n  have h_main : (a + b) * (b + c) * (c + a) = 2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2 := by\n    have h1 : (a + b) * (b + c) * (c + a) = (a + b) * ((b + c) * (c + a)) := by ring\n    rw [h1]\n    have h2 : (b + c) * (c + a) = b * c + b * a + c * c + c * a := by ring\n    rw [h2]\n    have h3 : (a + b) * (b * c + b * a + c * c + c * a) = a * (b * c + b * a + c * c + c * a) + b * (b * c + b * a + c * c + c * a) := by ring\n    rw [h3]\n    have h4 : a * (b * c + b * a + c * c + c * a) = a * b * c + a * b * a + a * c * c + a * c * a := by ring\n    have h5 : b * (b * c + b * a + c * c + c * a) = b * b * c + b * b * a + b * c * c + b * c * a := by ring\n    rw [h4, h5]\n    ring_nf\n    <;>\n    (try ring_nf at *) <;>\n    (try linarith) <;>\n    (try nlinarith)\n  \n  have h_final : 9 * (a + b) * (b + c) * (c + a) = 9 * (2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2) := by\n    calc\n      9 * (a + b) * (b + c) * (c + a) = 9 * ((a + b) * (b + c) * (c + a)) := by ring\n      _ = 9 * (2 * a * b * c + a ^ 2 * b + a ^ 2 * c + a * b ^ 2 + b ^ 2 * c + a * c ^ 2 + b * c ^ 2) := by\n        rw [h_main]\n        <;> ring\n      _ = 9 * (2 * a * b * c + a ^ 2 * b + a ^ 2 * c + a * b ^ 2 + b ^ 2 * c + a * c ^ 2 + b * c ^ 2) := by rfl\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations match perfectly - both specify a, b, c as real numbers", "The mathematical equation is identical in both natural language and Lean, with only notational differences (explicit * operators in Lean)", "The Lean formalization includes an additional positivity constraint (0 < a \u2227 0 < b \u2227 0 < c) not mentioned in natural language, but this is an acceptable extra condition that strengthens the assumptions without contradicting the original statement"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "and $8(a+b+c)(ab+bc+ca) = 8(a^2b + ab^2 + b^2c + bc^2 + c^2a + ca^2 + 3abc)$.", "statement": "We assume:\n\u2022 a, b, c are real numbers [tc_1].\nTherefore, we conclude:\n\u2022 8(a+b+c)(a*b+b*c+c*a) = 8(a^2*b + a*b^2 + b^2*c + b*c^2 + c^2*a + c*a^2 + 3*a*b*c) [l2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) (h : 0 < a \u2227 0 < b \u2227 0 < c) :\n  8 * (a + b + c) * (a * b + b * c + c * a) = \n  8 * (a^2 * b + a * b^2 + b^2 * c + b * c^2 + c^2 * a + c * a^2 + 3 * a * b * c) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) (h : 0 < a \u2227 0 < b \u2227 0 < c) :\n  8 * (a + b + c) * (a * b + b * c + c * a) = \n  8 * (a^2 * b + a * b^2 + b^2 * c + b * c^2 + c^2 * a + c * a^2 + 3 * a * b * c) := by\n  have h_main : 8 * (a + b + c) * (a * b + b * c + c * a) = 8 * (a^2 * b + a * b^2 + b^2 * c + b * c^2 + c^2 * a + c * a^2 + 3 * a * b * c) := by\n    ring_nf\n    <;>\n    (try norm_num)\n    <;>\n    (try linarith [h.1, h.2.1, h.2.2])\n    <;>\n    (try nlinarith [h.1, h.2.1, h.2.2])\n  \n  apply h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical identity from the natural language. While it adds positivity constraints (0 < a \u2227 0 < b \u2227 0 < c) not mentioned in the natural language, these are extra conditions that don't contradict the original statement. The core algebraic identity is preserved exactly, and according to the guidelines, additional logically consistent constraints are acceptable."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Subtracting the second from the first gives $a(b-c)^2 + b(a-c)^2 + c(a-b)^2$.", "statement": "We assume:\n\u2022 a, b, c are real numbers [tc_1].\n\u2022 9(a+b)(b+c)(c+a) = 9(2*a*b*c + a^2*b + a^2*c + a*b^2 + b^2*c + a*c^2 + b*c^2) [l1].\n\u2022 8(a+b+c)(a*b+b*c+c*a) = 8(a^2*b + a*b^2 + b^2*c + b*c^2 + c^2*a + c*a^2 + 3*a*b*c) [l2].\nTherefore, we conclude:\n\u2022 9(a+b)(b+c)(c+a) - 8(a+b+c)(a*b+b*c+c*a) = a*(b-c)^2 + b*(a-c)^2 + c*(a-b)^2 [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c : \u211d) \n  (l1 : 9 * (a + b) * (b + c) * (c + a) = \n        9 * (2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2))\n  (l2 : 8 * (a + b + c) * (a * b + b * c + c * a) = \n        8 * (a^2 * b + a * b^2 + b^2 * c + b * c^2 + c^2 * a + c * a^2 + 3 * a * b * c))\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = \n  a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c : \u211d) \n  (l1 : 9 * (a + b) * (b + c) * (c + a) = \n        9 * (2 * a * b * c + a^2 * b + a^2 * c + a * b^2 + b^2 * c + a * c^2 + b * c^2))\n  (l2 : 8 * (a + b + c) * (a * b + b * c + c * a) = \n        8 * (a^2 * b + a * b^2 + b^2 * c + b * c^2 + c^2 * a + c * a^2 + 3 * a * b * c))\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = \n  a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 := by\n  have h\u2080 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = a^2*b + a^2*c + a*b^2 + b^2*c + a*c^2 + b*c^2 - 6*a*b*c := by\n    ring_nf at l1 l2 \u22a2\n    <;> nlinarith [sq_nonneg (a + b + c), sq_nonneg (a - b), sq_nonneg (a - c), sq_nonneg (b - c)]\n  \n  have h\u2081 : a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 = a^2*b + a^2*c + a*b^2 + b^2*c + a*c^2 + b*c^2 - 6*a*b*c := by\n    ring_nf at l1 l2 \u22a2\n    <;> nlinarith [sq_nonneg (a + b + c), sq_nonneg (a - b), sq_nonneg (a - c), sq_nonneg (b - c)]\n  \n  have h\u2082 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 := by\n    linarith\n  \n  exact h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.75, "semantic_feedback": ["The Lean formalization adds positivity constraints (0 < a \u2227 0 < b \u2227 0 < c) that are not mentioned in the natural language, which only states that a, b, c are real numbers. This is an additional constraint beyond what was specified.", "The first assumption l1 is perfectly captured in the Lean formalization with identical mathematical structure and content.", "The second assumption l2 is perfectly captured in the Lean formalization with identical mathematical structure and content.", "The conclusion l3 is perfectly captured in the Lean formalization with identical mathematical structure and content."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Since $a, b, c > 0$ and squares of real numbers are non-negative, each term $a(b-c)^2$, $b(a-c)^2$, $c(a-b)^2$ is non-negative, so their sum is non-negative.", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1].\nTherefore, we conclude:\n\u2022 a*(b-c)^2 + b*(a-c)^2 + c*(a-b)^2 \u2265 0 [l4].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (a b c : \u211d) \n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (a b c : \u211d) \n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 \u2265 0 := by\n  have h\u2081 : a * (b - c)^2 \u2265 0 := by\n    have h\u2081\u2081 : 0 \u2264 (b - c)^2 := sq_nonneg (b - c)\n    have h\u2081\u2082 : 0 < a := tc_1.1\n    nlinarith\n  \n  have h\u2082 : b * (a - c)^2 \u2265 0 := by\n    have h\u2082\u2081 : 0 \u2264 (a - c)^2 := sq_nonneg (a - c)\n    have h\u2082\u2082 : 0 < b := tc_1.2.1\n    nlinarith\n  \n  have h\u2083 : c * (a - b)^2 \u2265 0 := by\n    have h\u2083\u2081 : 0 \u2264 (a - b)^2 := sq_nonneg (a - b)\n    have h\u2083\u2082 : 0 < c := tc_1.2.2\n    nlinarith\n  \n  have h\u2084 : a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 \u2265 0 := by\n    -- Sum of non-negative terms is non-negative\n    linarith [h\u2081, h\u2082, h\u2083]\n  \n  exact h\u2084", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations correctly capture that a, b, c are real numbers, and the constraint tc_1 properly formalizes that they are positive (0 < a \u2227 0 < b \u2227 0 < c). The Lean formalization appropriately separates type declarations from constraints.", "The mathematical expression is identical in both versions. The spacing and parentheses in Lean match the mathematical meaning perfectly, with proper operator precedence for exponentiation, multiplication, and addition.", "The logical flow is correctly preserved: the positivity conditions serve as hypotheses (assumptions) and the inequality is the conclusion to be proven. The theorem structure properly reflects the 'assume...therefore conclude' pattern from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore, the difference $9(a+b)(b+c)(c+a) - 8(a+b+c)(ab+bc+ca) \\ge 0$", "statement": "We assume:\n\u2022 9(a+b)(b+c)(c+a) - 8(a+b+c)(a*b+b*c+c*a) = a*(b-c)^2 + b*(a-c)^2 + c*(a-b)^2 [l3].\n\u2022 a*(b-c)^2 + b*(a-c)^2 + c*(a-b)^2 \u2265 0 [l4].\nTherefore, we conclude:\n\u2022 9(a+b)(b+c)(c+a) - 8(a+b+c)(a*b+b*c+c*a) \u2265 0 [l5].", "dependencies": ["l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a b c : \u211d) \n  (l3 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = \n        a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2)\n  (l4 : a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 \u2265 0) :\n  9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a b c : \u211d) \n  (l3 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = \n        a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2)\n  (l4 : a * (b - c)^2 + b * (a - c)^2 + c * (a - b)^2 \u2265 0) :\n  9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0 := by\n  have h_main : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0 := by\n    have h1 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) = a * (b - c) ^ 2 + b * (a - c) ^ 2 + c * (a - b) ^ 2 := l3\n    have h2 : a * (b - c) ^ 2 + b * (a - c) ^ 2 + c * (a - b) ^ 2 \u2265 0 := l4\n    linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The mathematical expressions in l3, l4, and l5 are captured exactly as stated in the natural language, with identical algebraic formulations.", "The logical structure 'assume l3 and l4, therefore conclude l5' is perfectly preserved through the Lean theorem statement with hypotheses and conclusion.", "The implicit assumption that variables are real numbers is properly made explicit with type declarations (a b c : \u211d), which is a necessary and consistent addition.", "The reasoning pattern where l5 follows from l3 and l4 is correctly set up in the theorem structure, establishing the proper logical dependencies."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "which establishes that $9(a+b)(b+c)(c+a) \\ge 8(a+b+c)(ab+bc+ca)$.", "statement": "We assume:\n\u2022 9(a+b)(b+c)(c+a) - 8(a+b+c)(a*b+b*c+c*a) \u2265 0 [l5].\nTherefore, we conclude:\n\u2022 9(a+b)(b+c)(c+a) \u2265 8(a+b+c)(a*b+b*c+c*a) [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : a > 0) (hb : b > 0) (hc : c > 0)\n  (l5 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0) :\n  9 * (a + b) * (b + c) * (c + a) \u2265 8 * (a + b + c) * (a * b + b * c + c * a) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : a > 0) (hb : b > 0) (hc : c > 0)\n  (l5 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0) :\n  9 * (a + b) * (b + c) * (c + a) \u2265 8 * (a + b + c) * (a * b + b * c + c * a) := by\n  have h_main : 9 * (a + b) * (b + c) * (c + a) \u2265 8 * (a + b + c) * (a * b + b * c + c * a) := by\n    have h1 : 9 * (a + b) * (b + c) * (c + a) - 8 * (a + b + c) * (a * b + b * c + c * a) \u2265 0 := l5\n    have h2 : 9 * (a + b) * (b + c) * (c + a) \u2265 8 * (a + b + c) * (a * b + b * c + c * a) := by\n      -- Add 8 * (a + b + c) * (a * b + b * c + c * a) to both sides of the inequality\n      linarith\n    exact h2\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations include additional type information (real numbers) and positivity constraints not explicitly mentioned in natural language, but these are mathematically reasonable and don't contradict the premise", "The assumption l5 is captured exactly with identical mathematical content, just using explicit multiplication notation", "The conclusion ts_1 is mathematically equivalent to the natural language statement", "The logical structure correctly represents the inference from assumption to conclusion as described in the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

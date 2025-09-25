@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=2$ and the recurrence relation $a_n = \frac{1}{2}(a_{n-1}+a_{n-2})$ for $n \geq 3$. Prove that for all integers $n \geq 1$, the inequality $1 \leq a_n \leq 2$ holds.
+
+Proof: For $n=1$, we have $a_1=1$. The inequality is $1 \leq 1 \leq 2$, which is true. For $n=2$, we have $a_2=2$. The inequality is $1 \leq 2 \leq 2$, which is also true. Now for the inductive step, assume the inequality holds for all integers $j$ such that $1 \leq j \leq k$ for some integer $k \geq 2$. So, we assume $1 \leq a_j \leq 2$ is true. We must prove the inequality holds for $n=k+1$, i.e., $1 \leq a_{k+1} \leq 2$. From the recurrence relation, we have $a_{k+1} = \frac{1}{2}(a_k+a_{k-1})$. By the inductive hypothesis, we know that $1 \leq a_k \leq 2$ and $1 \leq a_{k-1} \leq 2$. Adding these two inequalities, we get: $1+1 \leq a_k+a_{k-1} \leq 2+2$, which simplifies to $2 \leq a_k+a_{k-1} \leq 4$. Now we divide the entire inequality by 2: $\frac{2}{2} \leq \frac{1}{2}(a_k+a_{k-1}) \leq \frac{4}{2}$, which simplifies to $1 \leq a_{k+1} \leq 2$. This matches the inequality for $n=k+1$. By the principle of **strong mathematical induction**, the inequality $1 \leq a_n \leq 2$ holds for all integers $n \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=2$ and the recurrence relation $a_n = \\frac{1}{2}(a_{n-1}+a_{n-2})$ for $n \\geq 3$.", "statement": "Premise:\n\u2022 The sequence $(a_n)_{n\\ge 1}$ is defined by:\n  \u2022 $a_1=1$\n  \u2022 $a_2=2$\n  \u2022 $a_n = \\frac{1}{2}(a_{n-1}+a_{n-2})$ for $n \\geq 3$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The first condition a_1 = 1 is exactly captured in the Lean formalization as 'a 1 = 1' within tc_1", "The second condition a_2 = 2 is exactly captured in the Lean formalization as 'a 2 = 2' within tc_1", "The recurrence relation is perfectly captured - the mathematical condition for n \u2265 3 is expressed as a universal quantification in Lean with the same constraint and formula", "The conclusion that the sequence is well-defined is implicitly captured by declaring 'a : \u2115 \u2192 \u211d' as a variable with the given constraints, which in Lean's type system means the sequence exists and is well-defined on all natural numbers"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "For $n=1$, we have $a_1=1$. The inequality is $1 \\leq 1 \\leq 2$, which is true.", "statement": "We assume:\n\u2022 The sequence $(a_n)_{n\\ge 1}$ is defined with $a_1=1$ [tc_1].\nTherefore, we conclude:\n\u2022 $1 \\leq a_1 \\leq 2$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2))) :\n  1 \u2264 a 1 \u2227 a 1 \u2264 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1) :\n  1 \u2264 a 1 \u2227 a 1 \u2264 2 := by\n  rw [tc_1]\n  constructor\n  \u00b7 linarith\n  \u00b7 linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all statements from the natural language. While tc_1 contains additional information about a_2 and a recurrence relation not mentioned in the natural language, this falls under acceptable 'extra, logically consistent details.' The core elements are preserved: a_1 = 1 as an assumption and 1 \u2264 a_1 \u2264 2 as the conclusion. The logical structure and mathematical meaning are fully maintained."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For $n=2$, we have $a_2=2$. The inequality is $1 \\leq 2 \\leq 2$, which is also true.", "statement": "We assume:\n\u2022 The sequence $(a_n)_{n\\ge 1}$ is defined with $a_2=2$ [tc_1].\nTherefore, we conclude:\n\u2022 $1 \\leq a_2 \\leq 2$ [l2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2))) :\n  1 \u2264 a 2 \u2227 a 2 \u2264 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2))) :\n  1 \u2264 a 2 \u2227 a 2 \u2264 2 := by\n  rcases tc_1 with \u27e8h1, h2, _\u27e9\n  rw [h2]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language only states that a_2 = 2, but the Lean formalization includes additional conditions not mentioned: a_1 = 1 and a recurrence relation for n \u2265 3. These are significant additions that change the mathematical context.", "The conclusion '1 \u2264 a_2 \u2264 2' is perfectly captured in the Lean formalization as '1 \u2264 a 2 \u2227 a 2 \u2264 2', maintaining the exact same logical meaning."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language only states that a_2 = 2, but the Lean formalization includes additional conditions not mentioned: a_1 = 1 and a recurrence relation for n \u2265 3. These are significant additions that change the mathematical context.', \"The conclusion '1 \u2264 a_2 \u2264 2' is perfectly captured in the Lean formalization as '1 \u2264 a 2 \u2227 a 2 \u2264 2', maintaining the exact same logical meaning.\"]"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Now for the inductive step, assume the inequality holds for all integers $j$ such that $1 \\leq j \\leq k$ for some integer $k \\geq 2$. So, we assume $1 \\leq a_j \\leq 2$ is true.", "statement": "Definition:\n\u2022 We introduce an integer $k \\geq 2$ and assume as the strong induction hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $1 \\leq a_j \\leq 2$ holds, where $a_j$ is defined in [tc_1] [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {a : \u2115 \u2192 \u211d}\n(tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n(k : \u2115) (hk : k \u2265 2)\n(def_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.75, "semantic_feedback": ["The natural language specifies k as an integer, but Lean uses natural numbers (\u2115). Since k \u2265 2, this is functionally equivalent but represents a slight type difference.", "The Lean formalization perfectly captures the inequality condition for all j in the specified range.", "The Lean tc_1 provides the definition of sequence a as referenced in the natural language, matching the requirement that a_j is defined.", "The strong induction hypothesis is correctly established in Lean through the def_1 assumption, which assumes the property holds for all j in the range 1 \u2264 j \u2264 k."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "From the recurrence relation, we have $a_{k+1} = \\frac{1}{2}(a_k+a_{k-1})$.", "statement": "We assume:\n\u2022 The sequence $(a_n)_{n\\ge 1}$ is defined by $a_n = \\frac{1}{2}(a_{n-1}+a_{n-2})$ for $n \\geq 3$ [tc_1].\n\u2022 $k$ is an integer such that $k \\geq 2$ [def_1].\nTherefore, we conclude:\n\u2022 $a_{k+1} = \\frac{1}{2}(a_k+a_{k-1})$ [l3].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d) (k : \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n  (def_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) :\n  a (k + 1) = (1 / 2) * (a k + a (k - 1)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d) (k : \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n  (def_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) :\n  a (k + 1) = (1 / 2) * (a k + a (k - 1)) := by\n  cases lt_or_ge (k + 1) 3 with\n  | inl h =>\n    cases k with\n    | zero =>\n      simp at h\n      have h1 := tc_1.1\n      simp [h1]\n    | succ zero =>\n      simp at h\n      have h2 := tc_1.2.1\n      simp [h2]\n  | inr h =>\n    exact tc_1.2.2 (k + 1) h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 11, "endLine": 16, "endColumn": 15, "data": "unsolved goals\ncase inl.zero\na : \u2115 \u2192 \u211d\ntc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = 1 / 2 * (a (n - 1) + a (n - 2))\ndef_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 0 \u2192 1 \u2264 a j \u2227 a j \u2264 2\nh : True\nh1 : a 1 = 1\n\u22a2 1 = 2\u207b\u00b9 * (a 0 + a 0)"}, {"line": 18, "column": 6, "endLine": 18, "endColumn": 15, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The recurrence relation is correctly captured, but the Lean formalization adds initial conditions (a 1 = 1, a 2 = 2) that are not specified in the natural language premise.", "The natural language states k \u2265 2, but this constraint is missing from the Lean formalization. Instead, there's an unrelated condition about bounds on the sequence values.", "The conclusion formula is perfectly translated from natural language to Lean notation.", "The Lean formalization includes an additional condition (def_1) about sequence bounds that is not mentioned in the natural language premise, though this doesn't contradict the stated logic.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The recurrence relation is correctly captured, but the Lean formalization adds initial conditions (a 1 = 1, a 2 = 2) that are not specified in the natural language premise.', \"The natural language states k \u2265 2, but this constraint is missing from the Lean formalization. Instead, there's an unrelated condition about bounds on the sequence values.\", 'The conclusion formula is perfectly translated from natural language to Lean notation.', \"The Lean formalization includes an additional condition (def_1) about sequence bounds that is not mentioned in the natural language premise, though this doesn't contradict the stated logic.\"]"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By the inductive hypothesis, we know that $1 \\leq a_k \\leq 2$ and $1 \\leq a_{k-1} \\leq 2$.", "statement": "We assume:\n\u2022 For an integer $k \\geq 2$, it is assumed that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $1 \\leq a_j \\leq 2$ holds [def_1].\nTherefore, we conclude:\n\u2022 $1 \\leq a_k \\leq 2$ and $1 \\leq a_{k-1} \\leq 2$ [l4].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (def_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) :\n  (1 \u2264 a k \u2227 a k \u2264 2) \u2227 (1 \u2264 a (k - 1) \u2227 a (k - 1) \u2264 2) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (def_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) :\n  (1 \u2264 a k \u2227 a k \u2264 2) \u2227 (1 \u2264 a (k - 1) \u2227 a (k - 1) \u2264 2) := by\n  constructor\n  \u00b7 exact def_1 k \u27e8by omega, by rfl\u27e9\n  \u00b7 have hk' : 1 \u2264 k - 1 := by omega\n    exact def_1 (k - 1) \u27e8hk', by omega\u27e9", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the logical and mathematical content from the natural language. The use of natural numbers instead of integers is semantically equivalent given the constraints (k \u2265 2, j \u2265 1). The universal quantification in def_1 properly represents the assumption, and the conclusion l4 accurately formalizes the derived inequalities for a_k and a_{k-1}. The logical structure and dependencies are preserved perfectly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Adding these two inequalities, we get: $1+1 \\leq a_k+a_{k-1} \\leq 2+2$, which simplifies to $2 \\leq a_k+a_{k-1} \\leq 4$.", "statement": "We assume:\n\u2022 $1 \\leq a_k \\leq 2$ and $1 \\leq a_{k-1} \\leq 2$ [l4].\nTherefore, we conclude:\n\u2022 $2 \\leq a_k+a_{k-1} \\leq 4$ [l5].", "dependencies": ["l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (l4 : (1 \u2264 a k \u2227 a k \u2264 2) \u2227 (1 \u2264 a (k - 1) \u2227 a (k - 1) \u2264 2)) :\n  2 \u2264 a k + a (k - 1) \u2227 a k + a (k - 1) \u2264 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (l4 : (1 \u2264 a k \u2227 a k \u2264 2) \u2227 (1 \u2264 a (k - 1) \u2227 a (k - 1) \u2264 2)) :\n  2 \u2264 a k + a (k - 1) \u2227 a k + a (k - 1) \u2264 4 := by\n  constructor\n  \u00b7 have h1 := l4.1.1\n    have h2 := l4.2.1\n    linarith\n  \u00b7 have h1 := l4.1.2\n    have h2 := l4.2.2\n    linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumptions about the bounds of a_k and a_{k-1} are correctly formalized using conjunction of inequalities", "The conclusion about the sum bounds is accurately represented as a conjunction of two inequalities", "The additional mathematical context (k \u2265 2, function type) provides necessary but reasonable assumptions implied by the natural language", "The logical structure of assumption leading to conclusion is properly maintained in the lemma formulation"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Now we divide the entire inequality by 2: $\\frac{2}{2} \\leq \\frac{1}{2}(a_k+a_{k-1}) \\leq \\frac{4}{2}$", "statement": "We assume:\n\u2022 $2 \\leq a_k+a_{k-1} \\leq 4$ [l5].\nTherefore, we conclude:\n\u2022 $1 \\leq \\frac{1}{2}(a_k+a_{k-1}) \\leq 2$ [l6].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (l5 : 2 \u2264 a k + a (k - 1) \u2227 a k + a (k - 1) \u2264 4) :\n  1 \u2264 (1 / 2) * (a k + a (k - 1)) \u2227 (1 / 2) * (a k + a (k - 1)) \u2264 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  {a : \u2115 \u2192 \u211d} (k : \u2115) (hk : k \u2265 2)\n  (l5 : 2 \u2264 a k + a (k - 1) \u2227 a k + a (k - 1) \u2264 4) :\n  1 \u2264 (1 / 2) * (a k + a (k - 1)) \u2227 (1 / 2) * (a k + a (k - 1)) \u2264 2 := by\n  constructor\n  \u00b7 rw [\u2190 mul_le_mul_left (by norm_num : (0:\u211d) < 2)]\n    simp [mul_assoc, mul_comm (a k + a (k - 1))]\n    exact l5.left\n  \u00b7 rw [\u2190 mul_le_mul_left (by norm_num : (0:\u211d) < 2)]\n    simp [mul_assoc, mul_comm (a k + a (k - 1))]\n    exact l5.right", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 4, "endLine": 15, "endColumn": 18, "data": "type mismatch\n  l5.right\nhas type\n  a k + a (k - 1) \u2264 4 : Prop\nbut is expected to have type\n  a k + a (k - 1) \u2264 2 * 2 : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization accurately captures the mathematical statement and logical structure from the natural language. The assumption l5 correctly represents the bounds on a_k + a_{k-1}, and the conclusion properly formalizes the bounds on (1/2)(a_k + a_{k-1}). The additional type declarations and constraint k \u2265 2 are reasonable mathematical details that don't contradict the natural language statement.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l6 :\n  \u2203 a : \u2115 \u2192 \u211d, \u2203 k : \u2115, \u2203 hk : k \u2265 2, \u2203 l5 : 2 \u2264 a k + a (k - 1) \u2227 a k + a (k - 1) \u2264 4,\n  \u00ac (1 \u2264 (1 / 2) * (a k + a (k - 1)) \u2227 (1 / 2) * (a k + a (k - 1)) \u2264 2) := by\n  use fun n => if n = 1 then 1.5 else 1.5\n  use 2\n  use by simp\n  use \u27e8by simp, by simp\u27e9\n  intro h\n  have : (1 / 2) * (1.5 + 1.5) = 1.5 := by norm_num\n  rw [this] at h\n  norm_num at h"}, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "which simplifies to $1 \\leq a_{k+1} \\leq 2$.", "statement": "We assume:\n\u2022 $a_{k+1} = \\frac{1}{2}(a_k+a_{k-1})$ [l3].\n\u2022 $1 \\leq \\frac{1}{2}(a_k+a_{k-1}) \\leq 2$ [l6].\nTherefore, we conclude:\n\u2022 $1 \\leq a_{k+1} \\leq 2$ [l7].", "dependencies": ["l3", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u211d) (k : \u2115)\n  (l3 : a (k + 1) = (1 / 2) * (a k + a (k - 1)))\n  (l6 : 1 \u2264 (1 / 2) * (a k + a (k - 1)) \u2227 (1 / 2) * (a k + a (k - 1)) \u2264 2) :\n  1 \u2264 a (k + 1) \u2227 a (k + 1) \u2264 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u211d) (k : \u2115)\n  (l3 : a (k + 1) = (1 / 2) * (a k + a (k - 1)))\n  (l6 : 1 \u2264 (1 / 2) * (a k + a (k - 1)) \u2227 (1 / 2) * (a k + a (k - 1)) \u2264 2) :\n  1 \u2264 a (k + 1) \u2227 a (k + 1) \u2264 2 := by\n  rw [l3]\n  exact l6", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The recurrence relation is captured exactly, with proper function notation and arithmetic operations", "The compound inequality is correctly formalized using conjunction, maintaining the same mathematical expression", "The conclusion matches perfectly, using the same compound inequality structure for a_{k+1}", "The logical flow from assumptions to conclusion is preserved - the proof follows directly by substitution of l3 into l6", "The explicit type declarations for the sequence and index are appropriate additions that don't change the mathematical meaning"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By the principle of strong mathematical induction, the inequality $1 \\leq a_n \\leq 2$ holds for all integers $n \\geq 1$.", "statement": "We assume:\n\u2022 The inequality $1 \\leq a_n \\leq 2$ holds for $n=1$ [l1].\n\u2022 The inequality $1 \\leq a_n \\leq 2$ holds for $n=2$ [l2].\n\u2022 For any integer $k \\geq 2$, if $1 \\leq a_j \\leq 2$ for all $1 \\leq j \\leq k$, then $1 \\leq a_{k+1} \\leq 2$ [l7].\nTherefore, we conclude:\n\u2022 For all integers $n \\geq 1$, the inequality $1 \\leq a_n \\leq 2$ holds [ts_1].", "dependencies": ["l1", "l2", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n  (l1 : 1 \u2264 a 1 \u2227 a 1 \u2264 2)\n  (l2 : 1 \u2264 a 2 \u2227 a 2 \u2264 2)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) \u2192 1 \u2264 a (k + 1) \u2227 a (k + 1) \u2264 2) :\n  \u2200 (n : \u2115), n \u2265 1 \u2192 1 \u2264 a n \u2227 a n \u2264 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n  (l1 : 1 \u2264 a 1 \u2227 a 1 \u2264 2)\n  (l2 : 1 \u2264 a 2 \u2227 a 2 \u2264 2)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) \u2192 1 \u2264 a (k + 1) \u2227 a (k + 1) \u2264 2) :\n  \u2200 (n : \u2115), n \u2265 1 \u2192 1 \u2264 a n \u2227 a n \u2264 2 := by\n  intro n hn\n  induction n using Nat.strong_induction_on with\n  | h n IH =>\n    cases' lt_or_ge n 3 with h_lt h_ge\n    \u00b7 cases' n with n\n      \u00b7 simp at hn\n      \u00b7 cases' n with n\n        \u00b7 exact l1\n        \u00b7 cases' n with n\n          \u00b7 exact l2\n          \u00b7 simp at h_lt\n    \u00b7 have hk : n \u2265 2 := by omega\n      have IH' : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 n \u2192 1 \u2264 a j \u2227 a j \u2264 2 := by\n        intro j hj\n        apply IH j\n        \u00b7 omega\n        \u00b7 exact hj.1\n      exact l7 n hk IH'", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 22, "column": 12, "endLine": 22, "endColumn": 24, "data": "simp made no progress"}, {"line": 27, "column": 10, "endLine": 27, "endColumn": 15, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  b \u2265 3\nwhere\n b := \u2191j"}, {"line": 29, "column": 6, "endLine": 29, "endColumn": 23, "data": "type mismatch\n  l7 n hk IH'\nhas type\n  1 \u2264 a (n + 1) \u2227 a (n + 1) \u2264 2 : Prop\nbut is expected to have type\n  1 \u2264 a n \u2227 a n \u2264 2 : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The base cases l1 and l2 are correctly formalized as conjunctions expressing the bounds 1 \u2264 a_n \u2264 2 for n=1 and n=2 respectively.", "The inductive step l7 correctly captures the logical structure: for k\u22652, if the property holds for all j from 1 to k, then it holds for k+1.", "The conclusion ts_1 properly formalizes the universal quantification over all n\u22651 with the same inequality bounds.", "The additional constraint tc_1 provides specific values and recurrence relation for the sequence. While not mentioned in the natural language, this is consistent with the logical framework and provides necessary context for a complete mathematical formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 (n : \u2115), n \u2265 3 \u2192 a n = (1 / 2) * (a (n - 1) + a (n - 2)))\n  (l1 : 1 \u2264 a 1 \u2227 a 1 \u2264 2)\n  (l2 : 1 \u2264 a 2 \u2227 a 2 \u2264 2)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 1 \u2264 a j \u2227 a j \u2264 2) \u2192 1 \u2264 a (k + 1) \u2227 a (k + 1) \u2264 2) :\n  \u00ac \u2200 (n : \u2115), n \u2265 1 \u2192 1 \u2264 a n \u2227 a n \u2264 2 := by\n  simp only [not_forall, not_imp]\n  use 3\n  constructor\n  \u00b7 simp\n  \u00b7 have h3 := tc_1.right.right 3 (by simp)\n    simp at h3\n    rw [h3, tc_1.left.right, tc_1.left.left]\n    norm_num\n    constructor\n    \u00b7 linarith\n    \u00b7 linarith"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

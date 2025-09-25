@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f: \mathbb{R} 	o \mathbb{R}$ be differentiable. If $f'(x) > 0$ for all $x \in \mathbb{R}$, then $f$ is strictly increasing.
+
+Proof: Take any two points $a, b \in \mathbb{R}$ with $a < b$. By the Mean Value Theorem, there exists $c \in (a, b)$ such that $f'(c) = rac{f(b) - f(a)}{b - a}$. Since $f'(c) > 0$ by hypothesis and $b - a > 0$, we have $rac{f(b) - f(a)}{b - a} > 0$. Therefore $f(b) - f(a) > 0$, which means $f(a) < f(b)$. Since this holds for any $a < b$, the function $f$ is strictly increasing.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f: \\mathbb{R} \to \\mathbb{R}$ be differentiable.", "statement": "Premise:\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a differentiable function [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u211d \u2192 \u211d)\n(tc_1 : Differentiable \u211d f)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration `(f : \u211d \u2192 \u211d)` perfectly captures the mathematical notation $f: \\mathbb{R} \\to \\mathbb{R}$, representing a function from real numbers to real numbers.", "The Lean condition `(tc_1 : Differentiable \u211d f)` perfectly captures the mathematical statement that f is a differentiable function. The `tc_1` is just a label name and doesn't affect the semantic meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $f'(x) > 0$ for all $x \\in \\mathbb{R}$", "statement": "Premise:\n\u2022 $f'(x) > 0$ for all $x \\in \\mathbb{R}$ [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (f : \u211d \u2192 \u211d) (hf_diff : Differentiable \u211d f) (hf_pos : \u2200 x, 0 < deriv f x) :\n  StrictMono f := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The condition f'(x) > 0 for all x in \u211d perfectly matches the Lean condition (hf_pos : \u2200 x, 0 < deriv f x)", "The Lean formalization includes additional conditions (f : \u211d \u2192 \u211d) and (hf_diff : Differentiable \u211d f) that are implicit assumptions needed for the derivative condition to make sense. These are logically consistent extra details.", "The natural language explicitly states there are no conclusions derived, but the Lean formalization concludes StrictMono f. This introduces a logical component not present in the natural language statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The condition f'(x) > 0 for all x in \u211d perfectly matches the Lean condition (hf_pos : \u2200 x, 0 < deriv f x)\", 'The Lean formalization includes additional conditions (f : \u211d \u2192 \u211d) and (hf_diff : Differentiable \u211d f) that are implicit assumptions needed for the derivative condition to make sense. These are logically consistent extra details.', 'The natural language explicitly states there are no conclusions derived, but the Lean formalization concludes StrictMono f. This introduces a logical component not present in the natural language statement.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "By the Mean Value Theorem, there exists $c \\in (a, b)$ such that $f'(c) = \frac{f(b) - f(a)}{b - a}$.", "statement": "We assume:\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a differentiable function [tc_1]\n\u2022 We consider arbitrary points $a, b \\in \\mathbb{R}$ with $a < b$.\nTherefore, we conclude:\n\u2022 There exists some $c \\in (a, b)$ such that $f'(c) = \\frac{f(b) - f(a)}{b - a}$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b) :\n  \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b) :\n  \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n  have h_main : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n    have h\u2081 : ContinuousOn f (Set.Icc a b) := hf_diff.continuous.continuousOn\n    have h\u2082 : DifferentiableOn \u211d f (Set.Ioo a b) := hf_diff.differentiableOn\n    have h\u2083 : a < b := hab\n    -- Apply the Mean Value Theorem\n    have h\u2084 : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n      apply exists_deriv_eq_slope f\n      <;> simp_all [h\u2083]\n      <;> linarith\n    exact h\u2084\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Function type and differentiability assumption are correctly formalized with appropriate Lean syntax", "Real number points and ordering constraint are properly captured", "Existential statement with open interval membership and derivative equality is accurately represented", "Overall logical structure correctly translates the implication from natural language to Lean theorem format"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "b - a > 0", "statement": "We assume:\n\u2022 We consider arbitrary points $a, b \\in \\mathbb{R}$ with $a < b$.\nTherefore, we conclude:\n\u2022 $b - a > 0$ [l2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b : \u211d) (h : a < b) : b - a > 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b : \u211d) (h : a < b) : b - a > 0 := by\n  have h_main : b - a > 0 := by\n    -- Use the fact that if a < b, then b - a > 0\n    linarith\n  -- The main result follows directly from the established fact\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and constraint are correctly captured. Both declare a, b as real numbers with the condition a < b. The Lean formalization uses 'h' as the hypothesis name for a < b, which is a standard and appropriate practice.", "The conclusion 'b - a > 0' is identically represented in both the natural language and Lean formalization. The mathematical statement is preserved exactly.", "The logical structure is correctly captured as a theorem statement. While the proof is incomplete (using 'sorry'), the theorem statement itself perfectly represents the logical relationship between the premise and conclusion described in natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Since $f'(c) > 0$ by hypothesis", "statement": "We assume:\n\u2022 $f'(x) > 0$ for all $x \\in \\mathbb{R}$ [tc_2]\n\u2022 There exists some $c \\in (a, b)$ [l1].\nTherefore, we conclude:\n\u2022 For the value $c$ from [l1], we have $f'(c) > 0$ [l3].", "dependencies": ["tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (hf_pos : \u2200 x, 0 < deriv f x)\n  (a b c : \u211d) \n  (hab : a < b)\n  (hc : c \u2208 Set.Ioo a b)\n  (h_mvt : deriv f c = (f b - f a) / (b - a)) :\n  0 < deriv f c := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (hf_pos : \u2200 x, 0 < deriv f x)\n  (a b c : \u211d) \n  (hab : a < b)\n  (hc : c \u2208 Set.Ioo a b)\n  (h_mvt : deriv f c = (f b - f a) / (b - a)) :\n  0 < deriv f c := by\n  have h_main : 0 < deriv f c := by\n    -- Directly apply the given hypothesis that the derivative is positive at every point.\n    have h\u2081 : 0 < deriv f c := hf_pos c\n    exact h\u2081\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization introduces a significant assumption 'h_mvt : deriv f c = (f b - f a) / (b - a)' that is not mentioned in the natural language. This appears to be a Mean Value Theorem condition that fundamentally changes the mathematical context. The natural language presents a simple logical deduction (universal instantiation), while the Lean version sets up a more complex theorem involving the Mean Value Theorem. This additional assumption is not just an extra detail but changes the core logical structure of the argument."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization introduces a significant assumption 'h_mvt : deriv f c = (f b - f a) / (b - a)' that is not mentioned in the natural language. This appears to be a Mean Value Theorem condition that fundamentally changes the mathematical context. The natural language presents a simple logical deduction (universal instantiation), while the Lean version sets up a more complex theorem involving the Mean Value Theorem. This additional assumption is not just an extra detail but changes the core logical structure of the argument.\"]"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "we have $\\frac{f(b) - f(a)}{b - a} > 0$.", "statement": "We assume:\n\u2022 There exists some $c \\in (a, b)$ such that $f'(c) = \\frac{f(b) - f(a)}{b - a}$ [l1]\n\u2022 For this value $c$, we have $f'(c) > 0$ [l3].\nTherefore, we conclude:\n\u2022 $\\frac{f(b) - f(a)}{b - a} > 0$ [l4].", "dependencies": ["l1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b)\n  (c : \u211d) \n  (hc : c \u2208 Set.Ioo a b)\n  (h_mvt : deriv f c = (f b - f a) / (b - a))\n  (h_pos : 0 < deriv f c) :\n  0 < (f b - f a) / (b - a) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b)\n  (c : \u211d) \n  (hc : c \u2208 Set.Ioo a b)\n  (h_mvt : deriv f c = (f b - f a) / (b - a))\n  (h_pos : 0 < deriv f c) :\n  0 < (f b - f a) / (b - a) := by\n  have h_main : 0 < (f b - f a) / (b - a) := by\n    have h\u2081 : (f b - f a) / (b - a) = deriv f c := by\n      linarith\n    rw [h\u2081]\n    exact h_pos\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Function type and differentiability correctly specified", "Interval endpoints and ordering properly captured", "Point c and open interval membership accurately represented", "Mean Value Theorem equation precisely formalized using deriv", "Positivity assumption correctly stated (equivalent formulation)", "Conclusion properly formalized with equivalent inequality"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore $f(b) - f(a) > 0$, which means $f(a) < f(b)$.", "statement": "We assume:\n\u2022 For arbitrary $a, b \\in \\mathbb{R}$ with $a < b$, we have $b - a > 0$ [l2]\n\u2022 For the same $a, b$, we have $\\frac{f(b) - f(a)}{b - a} > 0$ [l4].\nTherefore, we conclude:\n\u2022 For these $a,b$, we have $f(a) < f(b)$ [l5].", "dependencies": ["l2", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (f : \u211d \u2192 \u211d) \n  (hf : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b)\n  (h_l4 : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) \u2227 0 < deriv f c) :\n  f a < f b := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (f : \u211d \u2192 \u211d) \n  (hf : Differentiable \u211d f)\n  (a b : \u211d) \n  (hab : a < b)\n  (h_l4 : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) \u2227 0 < deriv f c) :\n  f a < f b := by\n  have h_b_minus_a_pos : 0 < b - a := by\n    linarith\n  \n  have h_main : 0 < (f b - f a) / (b - a) := by\n    obtain \u27e8c, hc, h_deriv_eq, h_deriv_pos\u27e9 := h_l4\n    have h\u2081 : deriv f c = (f b - f a) / (b - a) := h_deriv_eq\n    have h\u2082 : 0 < deriv f c := h_deriv_pos\n    have h\u2083 : 0 < (f b - f a) / (b - a) := by\n      linarith\n    exact h\u2083\n  \n  have h_f_b_minus_f_a_pos : 0 < f b - f a := by\n    have h\u2081 : 0 < (f b - f a) / (b - a) := h_main\n    have h\u2082 : 0 < b - a := h_b_minus_a_pos\n    have h\u2083 : 0 < f b - f a := by\n      by_contra h\n      -- Assume for contradiction that f b - f a \u2264 0\n      have h\u2084 : f b - f a \u2264 0 := by linarith\n      -- Since b - a > 0, dividing both sides by b - a preserves the inequality\n      have h\u2085 : (f b - f a) / (b - a) \u2264 0 := by\n        have h\u2085\u2081 : (f b - f a) / (b - a) \u2264 0 := by\n          apply div_nonpos_of_nonpos_of_nonneg\n          \u00b7 linarith\n          \u00b7 linarith\n        exact h\u2085\u2081\n      -- This contradicts the fact that (f b - f a) / (b - a) > 0\n      linarith\n    exact h\u2083\n  \n  have h_final : f a < f b := by\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The declaration of real variables a, b with constraint a < b is correctly captured in Lean.", "The condition b - a > 0 is implicitly captured through a < b, which is mathematically equivalent.", "The natural language directly assumes (f(b) - f(a))/(b - a) > 0, but the Lean formalization reformulates this using Mean Value Theorem with existence of a point c. This changes the logical structure from a direct assumption to a more complex mathematical framework.", "The conclusion f(a) < f(b) is perfectly captured in the Lean formalization."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The declaration of real variables a, b with constraint a < b is correctly captured in Lean.', 'The condition b - a > 0 is implicitly captured through a < b, which is mathematically equivalent.', 'The natural language directly assumes (f(b) - f(a))/(b - a) > 0, but the Lean formalization reformulates this using Mean Value Theorem with existence of a point c. This changes the logical structure from a direct assumption to a more complex mathematical framework.', 'The conclusion f(a) < f(b) is perfectly captured in the Lean formalization.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Since this holds for any $a < b$, the function $f$ is strictly increasing.", "statement": "We assume:\n\u2022 For any two arbitrary points $a, b \\in \\mathbb{R}$ with $a < b$, we have shown that $f(a) < f(b)$ [l5].\nTherefore, we conclude:\n\u2022 The function $f$ is strictly increasing [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (hf_pos : \u2200 x : \u211d, 0 < deriv f x) :\n  StrictMono f := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d) \n  (hf_diff : Differentiable \u211d f)\n  (hf_pos : \u2200 x : \u211d, 0 < deriv f x) :\n  StrictMono f := by\n  have h_main : \u2200 (a b : \u211d), a < b \u2192 f a < f b := by\n    intro a b hab\n    have h\u2081 : ContinuousOn f (Set.Icc a b) := hf_diff.continuous.continuousOn\n    have h\u2082 : DifferentiableOn \u211d f (Set.Ioo a b) := hf_diff.differentiableOn\n    have h\u2083 : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n      -- Apply the Mean Value Theorem\n      have h\u2084 : \u2203 c \u2208 Set.Ioo a b, deriv f c = (f b - f a) / (b - a) := by\n        apply exists_deriv_eq_slope f\n        <;> simp_all [hab]\n        <;> linarith\n      exact h\u2084\n    obtain \u27e8c, hc, hc'\u27e9 := h\u2083\n    have h\u2084 : 0 < deriv f c := hf_pos c\n    have h\u2085 : 0 < b - a := by linarith [hc.1, hc.2]\n    have h\u2086 : 0 < (b - a : \u211d) := by exact_mod_cast h\u2085\n    have h\u2087 : (f b - f a : \u211d) = deriv f c * (b - a) := by\n      have h\u2088 : deriv f c = (f b - f a) / (b - a) := hc'\n      have h\u2089 : (b - a : \u211d) \u2260 0 := by linarith\n      field_simp [h\u2089] at h\u2088 \u22a2\n      <;> nlinarith\n    have h\u2088 : (f b - f a : \u211d) > 0 := by\n      have h\u2089 : (deriv f c : \u211d) > 0 := by exact_mod_cast h\u2084\n      have h\u2081\u2080 : (b - a : \u211d) > 0 := by exact_mod_cast h\u2085\n      have h\u2081\u2081 : (deriv f c : \u211d) * (b - a : \u211d) > 0 := by positivity\n      linarith\n    have h\u2089 : f a < f b := by linarith\n    exact h\u2089\n  \n  exact fun a b hab => h_main a b hab", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The assumption in the natural language states that the property 'a < b implies f(a) < f(b)' has already been shown, but the Lean formalization instead assumes differentiability and positive derivative. These are different mathematical approaches - the natural language uses the direct definition of strict monotonicity as a premise, while Lean uses calculus-based conditions.", "The conclusion correctly captures that f is strictly increasing, as 'StrictMono f' in Lean precisely corresponds to the natural language statement that 'the function f is strictly increasing'."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The assumption in the natural language states that the property 'a < b implies f(a) < f(b)' has already been shown, but the Lean formalization instead assumes differentiability and positive derivative. These are different mathematical approaches - the natural language uses the direct definition of strict monotonicity as a premise, while Lean uses calculus-based conditions.\", \"The conclusion correctly captures that f is strictly increasing, as 'StrictMono f' in Lean precisely corresponds to the natural language statement that 'the function f is strictly increasing'.\"]"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

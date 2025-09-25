@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1/2)^{k+1}$ for $k \in \{0, 1, 2, ...\}$. The characteristic function of $X$ is defined as $\phi_X(t) = E[e^{itX}]$, and it is given that the first moment can be found using the derivative of the characteristic function at zero, $\phi'_X(0) = iE[X]$. Prove that the characteristic function is $\phi_X(t) = \frac{1}{2 - e^{it}}$ and the expectation is $E[X] = 1$.
+
+Proof: First, we express the characteristic function using its definition for a discrete variable, which gives $\phi_X(t) = \sum_{k=0}^{\infty} e^{itk} P(X=k)$. Substituting the given PMF, we get $\phi_X(t) = \sum_{k=0}^{\infty} e^{itk} (1/2)^{k+1}$. We can rewrite this sum as $\phi_X(t) = \frac{1}{2} \sum_{k=0}^{\infty} (\frac{e^{it}}{2})^k$. By applying the formula for the sum of a geometric series, we find the closed-form expression $\phi_X(t) = \frac{1}{2} \left( \frac{1}{1 - \frac{e^{it}}{2}} \right) = \frac{1}{2 - e^{it}}$. To find the expectation, we first differentiate the characteristic function with respect to $t$, which yields $\phi'_X(t) = \frac{i e^{it}}{(2 - e^{it})^2}$. Evaluating this derivative at $t=0$ gives $\phi'_X(0) = \frac{i e^{0}}{(2 - e^{0})^2} = i$. Finally, using the given relation $\phi'_X(0) = iE[X]$, we solve for the expectation to get $E[X] = \frac{\phi'_X(0)}{i} = 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1/2)^{k+1}$ for $k \\in \\{0, 1, 2, ...\\}$.", "statement": "Premise:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and a probability mass function (PMF) given by $P(X=k) = (1/2)^{k+1}$ for $k \\in S$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 :\n  \u2200 (PMF : \u2115 \u2192 \u211d) (char_func : \u211d \u2192 \u2102),\n    (\u2200 k : \u2115, PMF k = (1/2)^(k+1)) \u2192\n    (\u2200 k : \u2115, 0 \u2264 PMF k) \u2192\n    (\u2211' k : \u2115, PMF k = 1) \u2192\n    (\u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * \u2191(PMF k)) \u2192\n    (\u2203 E_X : \u211d, deriv char_func 0 = Complex.I * \u2191E_X \u2227 \n               E_X = \u2211' k : \u2115, \u2191k * PMF k) \u2192\n    (\u2200 t : \u211d, char_func t = 1 / (2 - Complex.exp (Complex.I * t))) \u2192\n    (\u2211' k : \u2115, \u2191k * PMF k = 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The PMF definition `\u2200 k : \u2115, PMF k = (1/2)^(k+1)` in Lean perfectly matches the natural language condition $P(X=k) = (1/2)^{k+1}$ for $k \u2208 S$. The sample space $S = \\{0, 1, 2, ...\\}$ corresponds to \u2115 in Lean.", "The natural language states this is just a premise with no conclusions, but the Lean theorem derives a specific conclusion `\u2211' k : \u2115, \u2191k * PMF k = 1` (the expectation equals 1) and includes many additional conditions not mentioned in the natural language (non-negativity, normalization, characteristic function properties, etc.). This represents a major expansion beyond the stated premise."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The PMF definition `\u2200 k : \u2115, PMF k = (1/2)^(k+1)` in Lean perfectly matches the natural language condition $P(X=k) = (1/2)^{k+1}$ for $k \u2208 S$. The sample space $S = \\\\{0, 1, 2, ...\\\\}$ corresponds to \u2115 in Lean.', \"The natural language states this is just a premise with no conclusions, but the Lean theorem derives a specific conclusion `\u2211' k : \u2115, \u2191k * PMF k = 1` (the expectation equals 1) and includes many additional conditions not mentioned in the natural language (non-negativity, normalization, characteristic function properties, etc.). This represents a major expansion beyond the stated premise.\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$", "statement": "Premise:\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 :\n  \u2203 (P : \u2115 \u2192 \u211d) (phi_X : \u211d \u2192 \u2102),\n    (\u2200 k, P k = (1/2)^(k+1)) \u2227\n    (\u2200 k, 0 \u2264 P k) \u2227\n    (\u2211' k, P k = 1) \u2227\n    (\u2200 t, phi_X t = \u2211' k, Complex.exp (Complex.I * t * \u2191k) * \u2191(P k)) \u2227\n    (\u2203 expectation : \u211d, \n      HasDerivAt phi_X (Complex.I * \u2191expectation) 0 \u2227\n      expectation = 1) \u2227\n    (\u2200 t, phi_X t = 1 / (2 - Complex.exp (Complex.I * t))) := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 65, "endLine": 12, "endColumn": 66, "data": "application type mismatch\n  P k\nargument\n  k\nhas type\n  \u2102 : Type\nbut is expected to have type\n  \u2115 : Type"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "it is given that the first moment can be found using the derivative of the characteristic function at zero, $\\phi'_X(0) = iE[X]$.", "statement": "Premise:\n\u2022 The first moment of $X$ is related to the characteristic function by the formula $\\phi'_X(0) = iE[X]$ [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3\n  (X : \u2115 \u2192 \u211d) (p : \u2115 \u2192 \u211d)\n  (h_char_func : \u2200 t : \u211d, \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102) = 1 / (2 - Complex.exp (Complex.I * t)))\n  (h_moment : \u2200 t : \u211d, deriv (fun s => \u2211' k, Complex.exp (Complex.I * s * X k) * (p k : \u2102)) t = Complex.I * (\u2211' k, X k * (p k : \u2102)))\n  (h_pmf : \u2200 k, p k = (1/2)^(k+1))\n  : (\u2200 t : \u211d, \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102) = 1 / (2 - Complex.exp (Complex.I * t))) \u2227 \n    (\u2211' k, X k * p k = 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language states that the first moment of X exists as a condition, but the Lean formalization provides a specific derivative formula (h_moment) that directly gives the relationship \u03c6'_X(0) = iE[X]. This is not just assuming existence but providing the exact formula.", "The natural language mentions \u03c6_X(t) as the characteristic function of X, but the Lean formalization provides a very specific characteristic function formula (1/(2-exp(it))) rather than a general characteristic function. This introduces specific constraints not present in the natural language.", "The natural language conclusion is \u03c6'_X(0) = iE[X], but the Lean formalization concludes with \u2211' k, X k * p k = 1, which is about the expected value equaling 1, not about the derivative of the characteristic function at 0.", "The Lean formalization introduces a specific probability mass function h_pmf: p k = (1/2)^(k+1) which is completely absent from the natural language statement. This adds constraints that fundamentally change the scope of the theorem."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language states that the first moment of X exists as a condition, but the Lean formalization provides a specific derivative formula (h_moment) that directly gives the relationship \u03c6'_X(0) = iE[X]. This is not just assuming existence but providing the exact formula.\", 'The natural language mentions \u03c6_X(t) as the characteristic function of X, but the Lean formalization provides a very specific characteristic function formula (1/(2-exp(it))) rather than a general characteristic function. This introduces specific constraints not present in the natural language.', \"The natural language conclusion is \u03c6'_X(0) = iE[X], but the Lean formalization concludes with \u2211' k, X k * p k = 1, which is about the expected value equaling 1, not about the derivative of the characteristic function at 0.\", 'The Lean formalization introduces a specific probability mass function h_pmf: p k = (1/2)^(k+1) which is completely absent from the natural language statement. This adds constraints that fundamentally change the scope of the theorem.']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "First, we express the characteristic function using its definition for a discrete variable, which gives $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ [tc_1]\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [tc_2]\nDefinition:\n\u2022 For a discrete random variable $X$, its expectation is given by $E[g(X)] = \\sum_{k \\in S} g(k)P(X=k)$. Applying this to $g(X) = e^{itX}$, the characteristic function is $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 \n  (PMF : \u2115 \u2192 \u211d) \n  (char_func : \u211d \u2192 \u2102)\n  (h_PMF_pos : \u2200 k : \u2115, 0 \u2264 PMF k)\n  (h_PMF_sum : \u2211' k : \u2115, PMF k = 1)\n  (h_char_func_def : \u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * \u2191(PMF k))\n  (h_PMF_specific : \u2200 k : \u2115, PMF k = (1/2)^(k+1))\n  (h_char_func_specific : \u2200 t : \u211d, char_func t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (h_char_func_derivative : \u2203 E_X : \u211d, deriv char_func 0 = Complex.I * \u2191E_X \u2227 E_X = \u2211' k : \u2115, \u2191k * PMF k) :\n  (\u2211' k : \u2115, \u2191k * PMF k = 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language mentions discrete random variable X with sample space S = {0,1,2,...}, while Lean uses PMF : \u2115 \u2192 \u211d which represents the same concept but with different notation (probability mass function instead of random variable)", "The natural language defines characteristic function as \u03c6_X(t) = E[e^{itX}], while Lean defines char_func with the explicit sum formula. The mathematical meaning is equivalent but the representation differs", "The natural language gives the general expectation formula E[g(X)] = \u03a3 g(k)P(X=k), while Lean implicitly uses this in h_char_func_def but doesn't state it as a separate condition", "The natural language specifies g(X) = e^{itX}, while Lean incorporates this directly into the characteristic function definition without explicitly stating g(X)", "The natural language conclusion is \u03c6_X(t) = \u03a3 e^{itk} P(X=k), but the Lean theorem concludes that \u03a3 k * PMF k = 1, which is about the expectation of X equaling 1, not about the characteristic function formula. This is a completely different mathematical statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language mentions discrete random variable X with sample space S = {0,1,2,...}, while Lean uses PMF : \u2115 \u2192 \u211d which represents the same concept but with different notation (probability mass function instead of random variable)', 'The natural language defines characteristic function as \u03c6_X(t) = E[e^{itX}], while Lean defines char_func with the explicit sum formula. The mathematical meaning is equivalent but the representation differs', \"The natural language gives the general expectation formula E[g(X)] = \u03a3 g(k)P(X=k), while Lean implicitly uses this in h_char_func_def but doesn't state it as a separate condition\", 'The natural language specifies g(X) = e^{itX}, while Lean incorporates this directly into the characteristic function definition without explicitly stating g(X)', 'The natural language conclusion is \u03c6_X(t) = \u03a3 e^{itk} P(X=k), but the Lean theorem concludes that \u03a3 k * PMF k = 1, which is about the expectation of X equaling 1, not about the characteristic function formula. This is a completely different mathematical statement']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Substituting the given PMF, we get $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$.", "statement": "We assume:\n\u2022 $X$ has PMF $P(X=k) = (1/2)^{k+1}$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1]\n\u2022 The characteristic function is $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [def_1]\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l1].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (PMF : \u2115 \u2192 \u211d) \n  (char_func : \u211d \u2192 \u2102)\n  (h_PMF : \u2200 k : \u2115, PMF k = (1/2)^(k+1))\n  (h_char_func_def : \u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * \u2191(PMF k)) :\n  \u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * (1/2)^(k+1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (PMF : \u2115 \u2192 \u211d) \n  (char_func : \u211d \u2192 \u2102)\n  (h_PMF : \u2200 k : \u2115, PMF k = (1/2)^(k+1))\n  (h_char_func_def : \u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * \u2191(PMF k)) :\n  \u2200 t : \u211d, char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * (1/2 : \u2102)^(k+1) := by\n  intro t\n  have h_summand_eq : \u2200 (k : \u2115), (Complex.exp (Complex.I * t * (k : \u211d)) * (PMF k : \u2102)) = (Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1)) := by\n    intro k\n    have h\u2081 : (PMF k : \u2102) = (1/2 : \u2102)^(k+1) := by\n      have h\u2082 : PMF k = (1/2 : \u211d)^(k+1) := h_PMF k\n      have h\u2083 : (PMF k : \u2102) = ((1/2 : \u211d)^(k+1) : \u2102) := by\n        norm_cast\n        <;> simp [h\u2082]\n      rw [h\u2083]\n      -- Prove that ((1/2 : \u211d)^(k+1) : \u2102) = (1/2 : \u2102)^(k+1)\n      have h\u2084 : ((1/2 : \u211d) : \u2102) = (1/2 : \u2102) := by\n        norm_num [Complex.ext_iff]\n      calc\n        ((1/2 : \u211d)^(k+1) : \u2102) = (((1/2 : \u211d) : \u2102)^(k+1)) := by\n          norm_cast\n          <;> simp [zpow_ofNat]\n          <;> ring_nf\n          <;> norm_num\n        _ = ((1/2 : \u2102)^(k+1)) := by\n          rw [h\u2084]\n    calc\n      (Complex.exp (Complex.I * t * (k : \u211d)) * (PMF k : \u2102)) = (Complex.exp (Complex.I * t * (k : \u211d)) * ((1/2 : \u2102)^(k+1))) := by rw [h\u2081]\n      _ = (Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1)) := by rfl\n  \n  have h_sum_eq : (\u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (PMF k : \u2102)) = (\u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1)) := by\n    apply tsum_congr\n    intro k\n    exact h_summand_eq k\n  \n  have h_main : char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * \u2191k) * (1/2 : \u2102)^(k+1) := by\n    have h\u2081 : char_func t = \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (PMF k : \u2102) := by\n      rw [h_char_func_def]\n      <;> simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;> norm_cast\n      <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;> norm_num\n      <;> aesop\n    rw [h\u2081]\n    have h\u2082 : (\u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (PMF k : \u2102)) = (\u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1)) := h_sum_eq\n    rw [h\u2082]\n    <;> simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n    <;> norm_cast\n    <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n    <;> norm_num\n    <;> aesop\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The PMF definition is correctly formalized with identical mathematical content, using natural numbers domain as expected.", "The characteristic function definition correctly captures the infinite sum with complex exponentials, with appropriate type handling for Lean's type system.", "The conclusion correctly represents the substitution of the PMF into the characteristic function definition, maintaining the logical flow from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We can rewrite this sum as $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$.", "statement": "We assume:\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l1]\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l2].", "dependencies": ["l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (t : \u211d) :\n  \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = \n  (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (t : \u211d) :\n  \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = \n  (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k := by\n  have h1 : \u2200 (k : \u2115), Complex.exp (Complex.I * t * (k : \u211d)) = (Complex.exp (Complex.I * t)) ^ k := by\n    intro k\n    have h\u2081 : Complex.exp (Complex.I * t * (k : \u211d)) = Complex.exp (\u2191k * (Complex.I * t)) := by\n      ring_nf\n      <;> simp [Complex.ext_iff, pow_one]\n      <;> norm_cast\n      <;> simp [Complex.ext_iff, pow_one]\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, pow_one]\n      <;> norm_num\n      <;> linarith\n    rw [h\u2081]\n    rw [\u2190 Complex.exp_nat_mul]\n    <;> simp [mul_assoc]\n    <;> ring_nf\n    <;> simp [Complex.ext_iff, pow_one]\n    <;> norm_num\n  \n  have h2 : \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = \u2211' k : \u2115, (Complex.exp (Complex.I * t)) ^ k * (1/2 : \u2102)^(k+1) := by\n    apply tsum_congr\n    intro k\n    rw [h1 k]\n    <;> ring_nf\n  \n  have h3 : \u2211' k : \u2115, (Complex.exp (Complex.I * t)) ^ k * (1/2 : \u2102)^(k+1) = (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k := by\n    have h3\u2081 : \u2211' k : \u2115, (Complex.exp (Complex.I * t)) ^ k * (1 / 2 : \u2102) ^ (k + 1) = \u2211' k : \u2115, (1 / 2 : \u2102) * ((Complex.exp (Complex.I * t) / 2) ^ k) := by\n      apply tsum_congr\n      intro k\n      have h3\u2082 : (Complex.exp (Complex.I * t)) ^ k * (1 / 2 : \u2102) ^ (k + 1) = (1 / 2 : \u2102) * ((Complex.exp (Complex.I * t) / 2) ^ k) := by\n        calc\n          (Complex.exp (Complex.I * t)) ^ k * (1 / 2 : \u2102) ^ (k + 1) = (Complex.exp (Complex.I * t)) ^ k * ((1 / 2 : \u2102) ^ k * (1 / 2 : \u2102)) := by\n            rw [show (k + 1 : \u2115) = k + 1 by rfl]\n            simp [pow_succ, mul_assoc]\n            <;> ring_nf\n          _ = ((Complex.exp (Complex.I * t)) ^ k * (1 / 2 : \u2102) ^ k) * (1 / 2 : \u2102) := by ring\n          _ = ((Complex.exp (Complex.I * t) / 2) ^ k) * (1 / 2 : \u2102) := by\n            calc\n              ((Complex.exp (Complex.I * t)) ^ k * (1 / 2 : \u2102) ^ k) * (1 / 2 : \u2102) = ((Complex.exp (Complex.I * t) * (1 / 2 : \u2102)) ^ k) * (1 / 2 : \u2102) := by\n                rw [mul_pow]\n              _ = ((Complex.exp (Complex.I * t) / 2) ^ k) * (1 / 2 : \u2102) := by\n                ring_nf\n                <;> simp [Complex.ext_iff, pow_one]\n                <;> norm_num\n                <;> field_simp [Complex.ext_iff, pow_one]\n                <;> ring_nf\n                <;> simp [Complex.ext_iff, pow_one]\n                <;> norm_num\n          _ = (1 / 2 : \u2102) * ((Complex.exp (Complex.I * t) / 2) ^ k) := by ring\n      rw [h3\u2082]\n    rw [h3\u2081]\n    have h3\u2083 : \u2211' k : \u2115, (1 / 2 : \u2102) * ((Complex.exp (Complex.I * t) / 2) ^ k) = (1 / 2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2) ^ k := by\n      -- Factor out the constant (1/2 : \u2102) from the sum\n      rw [tsum_mul_left]\n    rw [h3\u2083]\n  \n  have h4 : \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k := by\n    rw [h2]\n    rw [h3]\n  \n  rw [h4]\n  <;>\n  simp_all\n  <;>\n  try norm_num\n  <;>\n  try ring_nf\n  <;>\n  try field_simp\n  <;>\n  try simp_all [Complex.ext_iff, pow_one]\n  <;>\n  try norm_num\n  <;>\n  try linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The left-hand side correctly represents the premise with proper complex exponential notation and power expressions. The infinite sum notation \u2211' correctly corresponds to the infinite series.", "The right-hand side accurately captures the conclusion with the factored (1/2) coefficient and the combined exponential-fraction term (e^{it}/2)^k.", "The equality relationship correctly represents the algebraic manipulation described in the natural language, showing the factorization of (1/2)^{k+1} and the combination of terms into (e^{it}/2)^k."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "By applying the formula for the sum of a geometric series...", "statement": "We assume:\n\u2022 (General mathematical knowledge)\nTherefore, we conclude:\n\u2022 For any complex number $r$ such that $|r| < 1$, the geometric series converges to $\\sum_{k=0}^{\\infty} r^k = \\frac{1}{1-r}$ [l3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (r : \u2102) (hr : Complex.abs r < 1) : \n  \u2211' k, r^k = 1 / (1 - r) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (r : \u2102) (hr : Complex.abs r < 1) : \n  \u2211' k, r^k = 1 / (1 - r) := by\n  have h_norm : \u2016r\u2016 < 1 := by\n    simpa [Complex.norm_eq_abs] using hr\n  \n  have h_sum : \u2211' k : \u2115, r ^ k = (1 - r)\u207b\u00b9 := by\n    rw [tsum_geometric_of_norm_lt_one h_norm]\n    <;> simp [sub_ne_zero]\n    <;>\n    (try\n      {\n        intro h\n        have h\u2081 : r = 1 := by\n          apply eq_of_sub_eq_zero\n          simpa [sub_eq_zero] using h\n        rw [h\u2081] at hr\n        norm_num [Complex.abs, Complex.normSq] at hr\n        <;>\n        (try contradiction)\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, pow_two, pow_three]\n        <;> nlinarith\n      })\n  \n  have h_final : \u2211' k, r ^ k = 1 / (1 - r) := by\n    have h\u2081 : \u2211' k, r ^ k = \u2211' k : \u2115, r ^ k := by\n      simp [tsum_eq_single 0]\n      <;>\n      (try simp_all)\n      <;>\n      (try\n        {\n          intro b hb\n          simp_all [Nat.cast_eq_zero]\n          <;>\n          (try omega)\n        })\n    rw [h\u2081]\n    rw [h_sum]\n    <;>\n    (try\n      {\n        field_simp [sub_ne_zero]\n        <;>\n        (try\n          {\n            intro h\n            have h\u2082 : r = 1 := by\n              apply eq_of_sub_eq_zero\n              simpa [sub_eq_zero] using h\n            rw [h\u2082] at hr\n            norm_num [Complex.abs, Complex.normSq] at hr\n            <;>\n            (try contradiction)\n          })\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, pow_two, pow_three]\n        <;> nlinarith\n      })\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization accurately captures all components of the natural language statement. The complex number domain (\u2102), the absolute value condition (Complex.abs r < 1), the infinite geometric series (\u2211' k, r^k), and the convergence value (1 / (1 - r)) are all correctly represented. The use of \u2211' implicitly handles convergence appropriately in Mathlib's framework."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By applying the formula for the sum of a geometric series, we find the closed-form expression $\\phi_X(t) = \\frac{1}{2} \\left( \\frac{1}{1 - \\frac{e^{it}}{2}} \\right) = \\frac{1}{2 - e^{it}}$.", "statement": "We assume:\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l2]\n\u2022 For any complex number $r$ such that $|r| < 1$, $\\sum_{k=0}^{\\infty} r^k = \\frac{1}{1-r}$ [l3]\n\u2022 We also have $|\\frac{e^{it}}{2}| = \\frac{|e^{it}|}{2} = \\frac{1}{2} < 1$.\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1].", "dependencies": ["l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (t : \u211d) \n  (l2 : \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = \n        (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k)\n  (l3 : \u2200 r : \u2102, Complex.abs r < 1 \u2192 \u2211' k, r^k = 1 / (1 - r))\n  (h_geom : Complex.abs (Complex.exp (Complex.I * t) / 2) < 1) :\n  (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k = \n  1 / (2 - Complex.exp (Complex.I * t)) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (t : \u211d) \n  (l2 : \u2211' k : \u2115, Complex.exp (Complex.I * t * (k : \u211d)) * (1/2 : \u2102)^(k+1) = \n        (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k)\n  (l3 : \u2200 r : \u2102, Complex.abs r < 1 \u2192 \u2211' k, r^k = 1 / (1 - r))\n  (h_geom : Complex.abs (Complex.exp (Complex.I * t) / 2) < 1) :\n  (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2)^k = \n  1 / (2 - Complex.exp (Complex.I * t)) := by\n  have h_sum : \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102)^k = 1 / (1 - Complex.exp (Complex.I * t) / 2) := by\n    have h1 : \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k = 1 / (1 - Complex.exp (Complex.I * t) / 2) := by\n      have h2 : Complex.abs (Complex.exp (Complex.I * t) / 2 : \u2102) < 1 := h_geom\n      have h3 : \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k = 1 / (1 - Complex.exp (Complex.I * t) / 2) := by\n        -- Apply the given lemma l3 to the complex number r = e^{it}/2\n        have h4 : \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k = \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k := rfl\n        rw [h4]\n        -- Use the geometric series sum formula\n        have h5 : \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k = 1 / (1 - Complex.exp (Complex.I * t) / 2) := by\n          apply l3\n          exact h2\n        rw [h5]\n      exact h3\n    exact h1\n  \n  have h_main : (1/2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102)^k = 1 / (2 - Complex.exp (Complex.I * t)) := by\n    have h\u2081 : (1 / 2 : \u2102) * \u2211' k : \u2115, (Complex.exp (Complex.I * t) / 2 : \u2102) ^ k = (1 / 2 : \u2102) * (1 / (1 - Complex.exp (Complex.I * t) / 2)) := by\n      rw [h_sum]\n      <;> ring_nf\n    rw [h\u2081]\n    have h\u2082 : (1 / 2 : \u2102) * (1 / (1 - Complex.exp (Complex.I * t) / 2)) = 1 / (2 - Complex.exp (Complex.I * t)) := by\n      have h\u2083 : (2 : \u2102) - Complex.exp (Complex.I * t) = 2 * (1 - Complex.exp (Complex.I * t) / 2) := by\n        ring_nf\n        <;> field_simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.ext_iff]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n        <;> norm_num\n        <;> linarith [Real.exp_pos t]\n      have h\u2084 : 1 - Complex.exp (Complex.I * t) / 2 \u2260 0 := by\n        by_contra h\n        have h\u2085 : 1 - Complex.exp (Complex.I * t) / 2 = 0 := by simpa using h\n        have h\u2086 : Complex.exp (Complex.I * t) / 2 = 1 := by\n          rw [sub_eq_zero] at h\u2085\n          linear_combination -h\u2085\n        have h\u2087 : Complex.abs (Complex.exp (Complex.I * t) / 2) = 1 := by\n          calc\n            Complex.abs (Complex.exp (Complex.I * t) / 2) = Complex.abs (1 : \u2102) := by rw [h\u2086]\n            _ = 1 := by simp\n        linarith [h_geom]\n      have h\u2085 : (2 : \u2102) - Complex.exp (Complex.I * t) \u2260 0 := by\n        rw [h\u2083]\n        intro h\u2086\n        apply h\u2084\n        simp_all [sub_eq_zero]\n        <;> ring_nf at *\n        <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n        <;> nlinarith [Real.exp_pos t]\n      -- Simplify the expression using field operations\n      calc\n        (1 / 2 : \u2102) * (1 / (1 - Complex.exp (Complex.I * t) / 2)) = 1 / (2 * (1 - Complex.exp (Complex.I * t) / 2)) := by\n          field_simp [h\u2084]\n          <;> ring_nf\n          <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n          <;> norm_num\n          <;> linarith [Real.exp_pos t]\n        _ = 1 / ((2 : \u2102) - Complex.exp (Complex.I * t)) := by\n          rw [h\u2083]\n          <;> field_simp [h\u2085]\n          <;> ring_nf\n          <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n          <;> norm_num\n          <;> linarith [Real.exp_pos t]\n    rw [h\u2082]\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The l2 assumption has a critical error: the left side uses Complex.exp (Complex.I * t * (k : \u211d)) which represents e^(itk), but should represent (e^(it))^k. This fundamentally changes the mathematical meaning of the series.", "The l3 assumption correctly captures the geometric series formula for complex numbers with absolute value less than 1.", "The convergence condition properly states that |e^(it)/2| < 1, which is mathematically equivalent to the natural language statement.", "The main conclusion ts_1 correctly represents the equality \u03c6_X(t) = 1/(2 - e^(it)), with the left side properly referencing the corrected form of the series from l2."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The l2 assumption has a critical error: the left side uses Complex.exp (Complex.I * t * (k : \u211d)) which represents e^(itk), but should represent (e^(it))^k. This fundamentally changes the mathematical meaning of the series.', 'The l3 assumption correctly captures the geometric series formula for complex numbers with absolute value less than 1.', 'The convergence condition properly states that |e^(it)/2| < 1, which is mathematically equivalent to the natural language statement.', 'The main conclusion ts_1 correctly represents the equality \u03c6_X(t) = 1/(2 - e^(it)), with the left side properly referencing the corrected form of the series from l2.']"}, "solved_negation": null, "type": "solution"}, "l4": {"id": "l4", "natural_language": "To find the expectation, we first differentiate the characteristic function with respect to $t$, which yields $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$.", "statement": "We assume:\n\u2022 The characteristic function is $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1]\nTherefore, we conclude:\n\u2022 The derivative of $\\phi_X(t)$ with respect to $t$ is $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$ [l4].", "dependencies": ["ts_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (t : \u211d) :\n  deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) t = \n  Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (t : \u211d) :\n  deriv (fun s : \u211d => 1 / (2 - Complex.exp (Complex.I * s))) t = \n  Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\n  have h\u2081 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (-Complex.I * Complex.exp (Complex.I * t)) t := by\n    have h\u2082 : HasDerivAt (fun s : \u211d => (Complex.exp (Complex.I * s) : \u2102)) (Complex.I * Complex.exp (Complex.I * t)) t := by\n      -- Use the chain rule to find the derivative of exp(i * s)\n      have h\u2083 : HasDerivAt (fun s : \u211d => (Complex.I * s : \u2102)) (Complex.I) t := by\n        simpa using (hasDerivAt_id t).const_mul (Complex.I : \u2102)\n      -- Apply the chain rule for exp\n      have h\u2084 : HasDerivAt (fun s : \u211d => (Complex.exp (Complex.I * s) : \u2102)) (Complex.exp (Complex.I * t) * Complex.I) t := by\n        have h\u2085 : HasDerivAt (fun s : \u211d => (Complex.I * s : \u2102)) (Complex.I) t := h\u2083\n        have h\u2086 : HasDerivAt (fun z : \u2102 => Complex.exp z) (Complex.exp (Complex.I * t)) (Complex.I * t) := by\n          simpa using Complex.hasDerivAt_exp (Complex.I * t)\n        have h\u2087 : HasDerivAt (fun s : \u211d => (Complex.exp (Complex.I * s) : \u2102)) (Complex.exp (Complex.I * t) * Complex.I) t := by\n          convert h\u2086.comp t h\u2085 using 1\n          <;> ring_nf\n          <;> simp [Complex.ext_iff, Complex.I_mul_I]\n          <;> field_simp\n          <;> ring_nf\n          <;> norm_num\n        exact h\u2087\n      convert h\u2084 using 1 <;> ring_nf <;> simp [Complex.ext_iff, Complex.I_mul_I] <;> field_simp <;> ring_nf <;> norm_num\n    -- Use the fact that the derivative of a constant is zero and the derivative of exp(i * s)\n    have h\u2088 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (-Complex.I * Complex.exp (Complex.I * t)) t := by\n      have h\u2089 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (0 - (Complex.I * Complex.exp (Complex.I * t))) t := by\n        have h\u2081\u2080 : HasDerivAt (fun s : \u211d => (2 : \u2102)) 0 t := by\n          simpa using hasDerivAt_const t (2 : \u2102)\n        have h\u2081\u2081 : HasDerivAt (fun s : \u211d => (Complex.exp (Complex.I * s) : \u2102)) (Complex.I * Complex.exp (Complex.I * t)) t := h\u2082\n        have h\u2081\u2082 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (0 - (Complex.I * Complex.exp (Complex.I * t))) t := by\n          convert h\u2081\u2080.sub h\u2081\u2081 using 1 <;> simp\n        exact h\u2081\u2082\n      convert h\u2089 using 1 <;> ring_nf <;> simp [Complex.ext_iff, Complex.I_mul_I] <;> field_simp <;> ring_nf <;> norm_num\n    exact h\u2088\n  \n  have h\u2082 : (2 : \u2102) - Complex.exp (Complex.I * t) \u2260 0 := by\n    have h\u2083 : Complex.abs (Complex.exp (Complex.I * t)) = 1 := by\n      simp [Complex.abs_exp]\n      <;> simp [Complex.normSq]\n      <;> ring_nf\n      <;> field_simp [Real.cos_sq_add_sin_sq]\n      <;> ring_nf\n      <;> norm_num\n    have h\u2084 : Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) \u2265 1 := by\n      have h\u2085 : Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) \u2265 2 - Complex.abs (Complex.exp (Complex.I * t)) := by\n        -- Use the reverse triangle inequality\n        have h\u2085\u2081 : Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) \u2265 Complex.abs (2 : \u2102) - Complex.abs (Complex.exp (Complex.I * t)) := by\n          -- Apply the reverse triangle inequality\n          calc\n            Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) \u2265 Complex.abs (2 : \u2102) - Complex.abs (Complex.exp (Complex.I * t)) := by\n              -- Use the reverse triangle inequality: |a - b| \u2265 |a| - |b|\n              have h\u2085\u2082 : Complex.abs (2 : \u2102) \u2264 Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) + Complex.abs (Complex.exp (Complex.I * t)) := by\n                -- Use the triangle inequality: |a| \u2264 |a - b| + |b|\n                calc\n                  Complex.abs (2 : \u2102) = Complex.abs (((2 : \u2102) - Complex.exp (Complex.I * t)) + Complex.exp (Complex.I * t)) := by ring_nf\n                  _ \u2264 Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) + Complex.abs (Complex.exp (Complex.I * t)) := by\n                    apply Complex.abs.add_le\n              linarith\n            _ = Complex.abs (2 : \u2102) - Complex.abs (Complex.exp (Complex.I * t)) := by rfl\n        have h\u2085\u2082 : Complex.abs (2 : \u2102) = 2 := by simp [Complex.abs_def, Complex.normSq]\n        rw [h\u2085\u2082] at h\u2085\u2081\n        linarith\n      have h\u2085\u2083 : (2 : \u211d) - Complex.abs (Complex.exp (Complex.I * t)) = 1 := by\n        have h\u2085\u2084 : Complex.abs (Complex.exp (Complex.I * t)) = 1 := h\u2083\n        rw [h\u2085\u2084]\n        <;> norm_num\n      linarith\n    -- Use the fact that the absolute value is at least 1 to conclude that the complex number is not zero\n    have h\u2086 : (2 : \u2102) - Complex.exp (Complex.I * t) \u2260 0 := by\n      by_contra h\u2086\u2081\n      have h\u2086\u2082 : (2 : \u2102) - Complex.exp (Complex.I * t) = 0 := by simpa using h\u2086\u2081\n      have h\u2086\u2083 : Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) = 0 := by\n        rw [h\u2086\u2082]\n        simp\n      have h\u2086\u2084 : (Complex.abs ((2 : \u2102) - Complex.exp (Complex.I * t)) : \u211d) \u2265 1 := by\n        exact_mod_cast h\u2084\n      linarith\n    exact h\u2086\n  \n  have h\u2083 : HasDerivAt (fun s : \u211d => 1 / (2 - Complex.exp (Complex.I * s))) (Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) t := by\n    have h\u2084 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (-Complex.I * Complex.exp (Complex.I * t)) t := h\u2081\n    have h\u2085 : (2 : \u2102) - Complex.exp (Complex.I * t) \u2260 0 := h\u2082\n    -- Use the fact that the derivative of 1/f is -f'/f^2\n    have h\u2086 : HasDerivAt (fun s : \u211d => 1 / (2 - Complex.exp (Complex.I * s))) (Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) t := by\n      have h\u2087 : HasDerivAt (fun s : \u211d => (2 : \u2102) - Complex.exp (Complex.I * s)) (-Complex.I * Complex.exp (Complex.I * t)) t := h\u2081\n      have h\u2088 : HasDerivAt (fun s : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * s))) (-(-Complex.I * Complex.exp (Complex.I * t)) / (2 - Complex.exp (Complex.I * t)) ^ 2) t := by\n        convert (hasDerivAt_const t (1 : \u2102)).div h\u2087 h\u2085 using 1\n        <;> field_simp [h\u2085, sub_eq_zero, Complex.ext_iff, pow_two]\n        <;> ring_nf\n        <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      convert h\u2088 using 1 <;>\n      (try simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]) <;>\n      (try ring_nf at * <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]) <;>\n      (try field_simp [h\u2085, sub_eq_zero, Complex.ext_iff, pow_two] at * <;> ring_nf at * <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]) <;>\n      (try norm_num at * <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]) <;>\n      (try linarith) <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n          <;> norm_num\n          <;> linarith\n        })\n    exact h\u2086\n  \n  have h\u2084 : deriv (fun s : \u211d => 1 / (2 - Complex.exp (Complex.I * s))) t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\n    have h\u2085 : deriv (fun s : \u211d => 1 / (2 - Complex.exp (Complex.I * s))) t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\n      apply HasDerivAt.deriv\n      exact h\u2083\n    exact h\u2085\n  \n  exact h\u2084", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 20, "endLine": 12, "endColumn": 63, "data": "typeclass instance problem is stuck, it is often due to metavariables\n  NormedAlgebra ?m.7160 \u2102"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The characteristic function is correctly formalized using complex exponentials and division, with appropriate variable binding", "The derivative expression accurately captures the mathematical formula with correct complex arithmetic operations", "The theorem statement properly expresses the derivative relationship using Lean's deriv function, establishing the mathematical equality between the derivative and the given expression", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (t : \u211d) :\n  deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) t = \n  Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\n  have h\u2080 : deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = (0 : \u2102) := by\n    have h\u2081 : \u00acDifferentiableAt \u211d (fun s : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) := by\n      intro h\n      have h\u2082 : DifferentiableAt \u211d (fun s : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) := h\n      -- We use the fact that the derivative of the function at 0 can be computed using the chain rule.\n      -- However, Lean cannot automatically deduce this, so we use a contradiction.\n      have h\u2083 : False := by\n        have h\u2084 : DifferentiableAt \u211d (fun s : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) := h\u2082\n        -- Use the fact that the function is differentiable to derive a contradiction.\n        -- This is a placeholder for a more detailed proof.\n        norm_num [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im] at h\u2084 \u22a2\n        <;>\n        (try contradiction) <;>\n        (try norm_num at h\u2084 \u22a2) <;>\n        (try simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]) <;>\n        (try linarith [Real.pi_pos]) <;>\n        (try\n          {\n            exfalso\n            -- Use the fact that the function is not differentiable at 0 to derive a contradiction.\n            -- This is a placeholder for a more detailed proof.\n            norm_num [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im] at h\u2084 \u22a2\n            <;>\n            simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n            <;>\n            norm_num at *\n            <;>\n            linarith [Real.pi_pos]\n          })\n      exact h\u2083\n    -- Since the function is not differentiable at 0, the derivative is 0.\n    have h\u2082 : deriv (fun s : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = (0 : \u2102) := by\n      rw [deriv_zero_of_not_differentiableAt h\u2081]\n      <;> simp\n    exact h\u2082\n  \n  have h\u2081 : Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 = Complex.I := by\n    have h\u2082 : Complex.exp (Complex.I * (0 : \u211d)) = 1 := by\n      simp [Complex.ext_iff, Complex.exp_zero]\n      <;> simp_all [Complex.ext_iff, Complex.exp_zero]\n      <;> norm_num\n      <;> simp_all [Complex.ext_iff, Complex.exp_zero]\n      <;> norm_num\n    rw [h\u2082]\n    norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;>\n    simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;>\n    norm_num\n    <;>\n    simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;>\n    norm_num\n  \n  have h\u2082 : False := by\n    have h\u2083 : deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = (0 : \u2102) := h\u2080\n    have h\u2084 : Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 = Complex.I := h\u2081\n    have h\u2085 : deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 := by\n      -- This step is to show that if the theorem were true, then the derivative at 0 would be i.\n      -- But we already have that the derivative at 0 is 0, so this leads to a contradiction.\n      have h\u2086 : deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = (0 : \u2102) := h\u2080\n      have h\u2087 : Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 = Complex.I := h\u2081\n      -- Use the given theorem to find the derivative at 0\n      have h\u2088 : deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) = Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 := by\n        -- This step would require proving the theorem, which we are trying to disprove\n        -- So we assume it is true for the sake of contradiction\n        simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;>\n        norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I] at *\n        <;>\n        simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;>\n        norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I] at *\n        <;>\n        linarith [Real.pi_pos]\n      exact h\u2088\n    -- Now we have a contradiction because the left side is 0 and the right side is i.\n    have h\u2086 : (0 : \u2102) = Complex.I := by\n      calc\n        (0 : \u2102) = deriv (fun s => 1 / (2 - Complex.exp (Complex.I * s))) (0 : \u211d) := by rw [h\u2083]\n        _ = Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 := by rw [h\u2085]\n        _ = Complex.I := by rw [h\u2084]\n    norm_num [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im] at h\u2086\n    <;>\n    (try contradiction) <;>\n    (try norm_num at h\u2086) <;>\n    (try simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]) <;>\n    (try linarith) <;>\n    (try nlinarith [Real.pi_pos])\n    <;>\n    (try\n      {\n        exfalso\n        -- Use the fact that the function is not differentiable at 0 to derive a contradiction.\n        -- This is a placeholder for a more detailed proof.\n        norm_num [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im] at h\u2086 \u22a2\n        <;>\n        simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n        <;>\n        norm_num at *\n        <;>\n        linarith [Real.pi_pos]\n      })\n  \n  exfalso\n  exact h\u2082"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Evaluating this derivative at $t=0$ gives $\\phi'_X(0) = \\frac{i e^{0}}{(2 - e^{0})^2} = i$.", "statement": "We assume:\n\u2022 The derivative of the characteristic function is $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$ [l4]\nTherefore, we conclude:\n\u2022 $\\phi'_X(0) = i$ [l5].", "dependencies": ["l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (deriv_phi : \u211d \u2192 \u2102)\n  (h_l4 : \u2200 t : \u211d, deriv_phi t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) :\n  deriv_phi 0 = Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (deriv_phi : \u211d \u2192 \u2102)\n  (h_l4 : \u2200 t : \u211d, deriv_phi t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) :\n  deriv_phi 0 = Complex.I := by\n  have h_exp_zero : Complex.exp (Complex.I * (0 : \u211d)) = 1 := by\n    have h\u2081 : Complex.I * (0 : \u211d) = 0 := by\n      simp [Complex.ext_iff]\n      <;> norm_num\n    rw [h\u2081]\n    -- Now we have Complex.exp 0, which is 1 by definition.\n    simp [Complex.exp_zero]\n  \n  have h_main : deriv_phi 0 = Complex.I := by\n    have h\u2081 : deriv_phi 0 = Complex.I * Complex.exp (Complex.I * (0 : \u211d)) / (2 - Complex.exp (Complex.I * (0 : \u211d)))^2 := by\n      -- Use the given formula for deriv_phi at t = 0\n      have h\u2082 := h_l4 0\n      simpa using h\u2082\n    rw [h\u2081]\n    have h\u2082 : Complex.exp (Complex.I * (0 : \u211d)) = 1 := h_exp_zero\n    rw [h\u2082]\n    -- Simplify the expression using the fact that exp(I * 0) = 1\n    have h\u2083 : (2 : \u2102) - (1 : \u2102) = 1 := by\n      norm_num [Complex.ext_iff]\n      <;> simp [Complex.ext_iff]\n      <;> norm_num\n    have h\u2084 : (1 : \u2102) ^ 2 = 1 := by norm_num [Complex.ext_iff]\n    -- Simplify the denominator\n    have h\u2085 : ((2 : \u2102) - (1 : \u2102)) ^ 2 = 1 := by\n      calc\n        ((2 : \u2102) - (1 : \u2102)) ^ 2 = (1 : \u2102) ^ 2 := by\n          rw [h\u2083]\n        _ = 1 := by\n          norm_num [Complex.ext_iff]\n    -- Simplify the entire expression\n    calc\n      Complex.I * (1 : \u2102) / ((2 : \u2102) - (1 : \u2102)) ^ 2 = Complex.I * (1 : \u2102) / 1 := by\n        rw [h\u2085]\n      _ = Complex.I := by\n        field_simp [Complex.ext_iff]\n        <;> simp [Complex.ext_iff]\n        <;> norm_num\n        <;>\n        simp_all [Complex.ext_iff, pow_two]\n        <;>\n        norm_num\n        <;>\n        linarith\n  \n  apply h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The derivative formula assumption is correctly formalized with the exact mathematical expression translated properly to Lean's complex number notation.", "The conclusion \u03c6'_X(0) = i is directly and accurately represented as deriv_phi 0 = Complex.I.", "The logical structure from assumption to conclusion is properly captured through the hypothesis-goal structure of the Lean theorem."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_2": {"id": "ts_2", "natural_language": "Finally, using the given relation $\\phi'_X(0) = iE[X]$, we solve for the expectation to get $E[X] = \\frac{\\phi'_X(0)}{i} = 1$.", "statement": "We assume:\n\u2022 The first moment is given by $\\phi'_X(0) = iE[X]$ [tc_3]\n\u2022 We have calculated that $\\phi'_X(0) = i$ [l5]\nTherefore, we conclude:\n\u2022 $E[X] = 1$ [ts_2].", "dependencies": ["tc_3", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem theorem_char_function\n  (X : \u2115 \u2192 \u211d) \n  (p : \u2115 \u2192 \u211d)\n  (h_pmf : \u2200 k, p k = (1/2)^(k+1))\n  (h_char_func : \u2200 t : \u211d, \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102) = 1 / (2 - Complex.exp (Complex.I * t)))\n  (h_moment : \u2200 t : \u211d, deriv (fun s => \u2211' k, Complex.exp (Complex.I * s * X k) * (p k : \u2102)) t = Complex.I * (\u2211' k, X k * (p k : \u2102)))\n  : (\u2211' k, X k * p k = 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem theorem_char_function\n  (X : \u2115 \u2192 \u211d) \n  (p : \u2115 \u2192 \u211d)\n  (h_pmf : \u2200 k, p k = (1/2)^(k+1))\n  (h_char_func : \u2200 t : \u211d, \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102) = 1 / (2 - Complex.exp (Complex.I * t)))\n  (h_moment : \u2200 t : \u211d, deriv (fun s => \u2211' k, Complex.exp (Complex.I * s * X k) * (p k : \u2102)) t = Complex.I * (\u2211' k, X k * (p k : \u2102)))\n  : (\u2211' k, X k * p k = 1) := by\n  have h_deriv_rhs : deriv (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) 0 = Complex.I := by\n    have h\u2081 : HasDerivAt (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) (Complex.I) 0 := by\n      have h\u2082 : HasDerivAt (fun t : \u211d => (2 : \u2102) - Complex.exp (Complex.I * t)) (-Complex.I) 0 := by\n        -- Differentiate 2 - exp(i*t)\n        have h\u2083 : HasDerivAt (fun t : \u211d => (Complex.I * t : \u2102)) (Complex.I) 0 := by\n          simpa using (hasDerivAt_id (0 : \u211d)).const_mul Complex.I\n        have h\u2084 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * (0 : \u211d)) * Complex.I) 0 := by\n          have h\u2085 : HasDerivAt (fun t : \u211d => (Complex.I * t : \u2102)) (Complex.I) 0 := h\u2083\n          have h\u2086 : HasDerivAt (fun z : \u2102 => Complex.exp z) (Complex.exp (Complex.I * (0 : \u211d))) (Complex.I * (0 : \u211d)) := by\n            simpa using Complex.hasDerivAt_exp (Complex.I * (0 : \u211d))\n          have h\u2087 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * (0 : \u211d)) * Complex.I) 0 := by\n            convert HasDerivAt.comp (0 : \u211d) h\u2086 h\u2085 using 1 <;>\n              simp [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Real.exp_zero] <;>\n                ring_nf <;>\n                  norm_num <;>\n                    simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n              simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n              norm_num\n          exact h\u2087\n        have h\u2088 : HasDerivAt (fun t : \u211d => (2 : \u2102) - Complex.exp (Complex.I * t)) (0 - (Complex.exp (Complex.I * (0 : \u211d)) * Complex.I)) 0 := by\n          have h\u2089 : HasDerivAt (fun t : \u211d => (2 : \u2102)) 0 0 := by\n            simpa using hasDerivAt_const (0 : \u211d) (2 : \u2102)\n          have h\u2081\u2080 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * (0 : \u211d)) * Complex.I) 0 := h\u2084\n          have h\u2081\u2081 : HasDerivAt (fun t : \u211d => (2 : \u2102) - Complex.exp (Complex.I * t)) (0 - (Complex.exp (Complex.I * (0 : \u211d)) * Complex.I)) 0 := by\n            convert h\u2089.sub h\u2081\u2080 using 1 <;>\n              simp [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Real.exp_zero] <;>\n                ring_nf <;>\n                  norm_num <;>\n                    simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n              simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n              norm_num\n          exact h\u2081\u2081\n        convert h\u2088 using 1 <;>\n          simp [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Real.exp_zero] <;>\n            ring_nf <;>\n              norm_num <;>\n                simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;>\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;>\n          norm_num\n      have h\u2083 : (2 : \u2102) - Complex.exp (Complex.I * (0 : \u211d)) \u2260 0 := by\n        norm_num [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_zero]\n        <;>\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;>\n          norm_num\n        <;>\n          linarith\n      -- Use the quotient rule to find the derivative of 1 / (2 - exp(i*t))\n      have h\u2084 : HasDerivAt (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) (Complex.I) 0 := by\n        convert (hasDerivAt_const (0 : \u211d) (1 : \u2102)).div h\u2082 h\u2083 using 1 <;>\n          field_simp [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Real.exp_zero] <;>\n            ring_nf <;>\n              norm_num <;>\n                simp_all [Complex.ext_iff, Complex.I_mul_I] <;>\n                  norm_num <;>\n                    linarith\n      exact h\u2084\n    -- Since the derivative exists, we can use it to get the result\n    have h\u2085 : deriv (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) 0 = Complex.I := by\n      apply HasDerivAt.deriv\n      exact h\u2081\n    exact h\u2085\n  \n  have h_deriv_lhs : deriv (fun t : \u211d => \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102)) 0 = Complex.I * (\u2211' k, X k * (p k : \u2102)) := by\n    have h\u2082 : deriv (fun t : \u211d => \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102)) 0 = Complex.I * (\u2211' k, X k * (p k : \u2102)) := by\n      have h\u2083 := h_moment 0\n      simpa using h\u2083\n    exact h\u2082\n  \n  have h_deriv_eq : deriv (fun t : \u211d => \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102)) 0 = deriv (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) 0 := by\n    have h\u2081 : (fun t : \u211d => \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102)) = (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) := by\n      funext t\n      rw [h_char_func t]\n    rw [h\u2081]\n  \n  have h_sum_complex : Complex.I * (\u2211' k, X k * (p k : \u2102)) = Complex.I := by\n    calc\n      Complex.I * (\u2211' k, X k * (p k : \u2102)) = deriv (fun t : \u211d => \u2211' k, Complex.exp (Complex.I * t * X k) * (p k : \u2102)) 0 := by\n        rw [h_deriv_lhs]\n        <;> ring_nf\n      _ = deriv (fun t : \u211d => (1 : \u2102) / (2 - Complex.exp (Complex.I * t))) 0 := by rw [h_deriv_eq]\n      _ = Complex.I := by rw [h_deriv_rhs]\n  \n  have h_sum_real : (\u2211' k, X k * p k : \u211d) = 1 := by\n    have h\u2081 : Complex.I * (\u2211' k, X k * (p k : \u2102)) = Complex.I := h_sum_complex\n    have h\u2082 : (\u2211' k, X k * (p k : \u2102)) = 1 := by\n      apply mul_left_cancel\u2080 (show (Complex.I : \u2102) \u2260 0 by simp [Complex.ext_iff])\n      rw [h\u2081]\n      <;> ring_nf <;> simp [Complex.ext_iff, Complex.I_mul_I]\n      <;> norm_num\n    have h\u2083 : (\u2211' k : \u2115, X k * (p k : \u2102)) = (\u2211' k : \u2115, (X k * p k : \u211d) : \u2102) := by\n      simp [Complex.ext_iff, Complex.ofReal_mul, Complex.ofReal_ofNat]\n      <;>\n      simp_all [h_pmf]\n      <;>\n      norm_num\n      <;>\n      simp_all [Complex.ext_iff, Complex.ofReal_mul, Complex.ofReal_ofNat]\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2083] at h\u2082\n    have h\u2084 : (\u2211' k : \u2115, (X k * p k : \u211d) : \u2102) = (1 : \u2102) := by simpa using h\u2082\n    have h\u2085 : (\u2211' k : \u2115, (X k * p k : \u211d) : \u211d) = 1 := by\n      simp [Complex.ext_iff] at h\u2084 \u22a2\n      <;>\n      (try norm_num at h\u2084 \u22a2) <;>\n      (try simp_all [Complex.ext_iff, Complex.ofReal_eq_zero]) <;>\n      (try norm_num) <;>\n      (try linarith) <;>\n      (try ring_nf at h\u2084 \u22a2) <;>\n      (try simp_all [Complex.ext_iff, Complex.ofReal_eq_zero]) <;>\n      (try norm_num) <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [tsum_eq_single 0]\n          <;>\n          norm_num\n          <;>\n          simp_all [h_pmf]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [tsum_eq_single 0]\n          <;>\n          norm_num\n          <;>\n          simp_all [h_pmf]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [tsum_eq_single 0]\n          <;>\n          norm_num\n          <;>\n          simp_all [h_pmf]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [tsum_eq_single 0]\n          <;>\n          norm_num\n          <;>\n          simp_all [h_pmf]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n    simpa using h\u2085\n  \n  simpa using h_sum_real", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 16, "column": 22, "endLine": 16, "endColumn": 65, "data": "typeclass instance problem is stuck, it is often due to metavariables\n  NormedAlgebra ?m.9795 \u2102"}, {"line": 83, "column": 6, "endLine": 83, "endColumn": 20, "data": "type mismatch, term\n  h\u2083\nafter simplification has type\n  deriv (fun (s : \u2102) => \u2211' (k : \u2115), Complex.exp (Complex.I * s * \u2191(X k)) * \u2191(p k)) 0 =\n    Complex.I * \u2211' (k : \u2115), \u2191(X k) * \u2191(p k) : Prop\nbut is expected to have type\n  deriv (fun (t : \u211d) => \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191(X k)) * \u2191(p k)) 0 =\n    Complex.I * \u2211' (k : \u2115), \u2191(X k) * \u2191(p k) : Prop"}, {"line": 121, "column": 53, "endLine": 191, "endColumn": 10, "data": "unsolved goals\nX p : \u2115 \u2192 \u211d\nh_pmf : \u2200 (k : \u2115), p k = (2 ^ (k + 1))\u207b\u00b9\nh_char_func :\n  \u2200 (t : \u211d),\n    (\u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191(X k)) * (2 ^ (k + 1))\u207b\u00b9).re =\n        (2 - (Complex.exp (Complex.I * \u2191t)).re) / Complex.normSq (2 - Complex.exp (Complex.I * \u2191t)) \u2227\n      (\u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191(X k)) * (2 ^ (k + 1))\u207b\u00b9).im =\n        (Complex.exp (Complex.I * \u2191t)).im / Complex.normSq (2 - Complex.exp (Complex.I * \u2191t))\nh_deriv_rhs :\n  (deriv (fun t => (2 - Complex.exp (Complex.I * \u2191t))\u207b\u00b9) 0).re = 0 \u2227\n    (deriv (fun t => (2 - Complex.exp (Complex.I * \u2191t))\u207b\u00b9) 0).im = 1\nh_deriv_eq : (\u2211' (k : \u2115), \u2191(X k) * (2 ^ (k + 1))\u207b\u00b9).im = 0 \u2227 (\u2211' (k : \u2115), \u2191(X k) * (2 ^ (k + 1))\u207b\u00b9).re = 1\n\u22a2 \u2211' (k : \u2115), X k * (2 ^ (k + 1))\u207b\u00b9 = 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The general relationship between derivative and expectation is captured in h_moment, but it's stated for arbitrary t rather than specifically at t=0 as mentioned in the natural language.", "The intermediate calculation \u03c6'_X(0) = i is completely missing from the Lean formalization, which is a key step in the natural language reasoning.", "The final conclusion E[X] = 1 is correctly represented as \u2211' k, X k * p k = 1, which properly captures the expectation formula.", "The overall logical flow is disrupted by the missing intermediate step, making the formalization incomplete compared to the natural language argument structure.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The general relationship between derivative and expectation is captured in h_moment, but it's stated for arbitrary t rather than specifically at t=0 as mentioned in the natural language.\", \"The intermediate calculation \u03c6'_X(0) = i is completely missing from the Lean formalization, which is a key step in the natural language reasoning.\", \"The final conclusion E[X] = 1 is correctly represented as \u2211' k, X k * p k = 1, which properly captures the expectation formula.\", 'The overall logical flow is disrupted by the missing intermediate step, making the formalization incomplete compared to the natural language argument structure.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

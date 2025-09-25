@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a continuous random variable with a probability density function (PDF) given by $f(x) = kx^2$ for $x \in [0, 2]$ and $f(x) = 0$ otherwise. Then, the expected value of $X$ is $E[X] = \frac{3}{2}$ and the variance of $X$ is $Var(X) = \frac{3}{20}$.
+
+Proof: From the definition of a PDF, the total probability must be 1, so we have the condition $\int_0^2 kx^2 \,dx = 1$. By solving the integral, we find $k[\frac{x^3}{3}]_0^2 = 1$, which gives $k(\frac{8}{3}) = 1$ and therefore $k = \frac{3}{8}$. The expected value is defined as $E[X] = \int_0^2 x f(x) \,dx$. Substituting our function and the derived value of $k$, the integral for the expected value becomes $E[X] = \int_0^2 x (\frac{3}{8}x^2) \,dx = \frac{3}{8} \int_0^2 x^3 \,dx$. Evaluating this integral gives the expected value $E[X] = \frac{3}{8} [\frac{x^4}{4}]_0^2 = \frac{3}{2}$. Similarly, the second moment is defined as $E[X^2] = \int_0^2 x^2 f(x) \,dx$. Substituting the function and $k$, this becomes $E[X^2] = \int_0^2 x^2 (\frac{3}{8}x^2) \,dx = \frac{3}{8} \int_0^2 x^4 \,dx$. The result of this integral is $E[X^2] = \frac{3}{8} [\frac{x^5}{5}]_0^2 = \frac{12}{5}$. The variance is defined by the formula $Var(X) = E[X^2] - (E[X])^2$. Using our computed values for $E[X^2]$ and $E[X]$, the variance is $Var(X) = \frac{12}{5} - (\frac{3}{2})^2 = \frac{3}{20}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a continuous random variable with a probability density function (PDF) given by $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise.", "statement": "Premise:\n\u2022 $X$ is a continuous random variable with a probability density function (PDF) $f(x)$ where $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u211d \u2192 \u211d)\n  (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization declares f as a function from reals to reals, which captures the mathematical function aspect, but it doesn't explicitly represent that X is a continuous random variable or that f is specifically a PDF. The function declaration is mathematically consistent but misses the probabilistic context.", "The Lean condition tc_1 has a logical error. It uses disjunction (\u2228) where it should use conjunction-like logic. The condition states either f(x) = kx\u00b2 for ALL x with 0 \u2264 x \u2264 2, OR f(x) = 0 for ALL x outside [0,2]. This is incorrect because it should be: f(x) = kx\u00b2 when x \u2208 [0,2] AND f(x) = 0 when x \u2209 [0,2]. The current formalization makes it impossible for both conditions to hold simultaneously.", "This condition is captured within the same problematic tc_1 formalization mentioned above. The 'otherwise' case (f(x) = 0 for x outside [0,2]) is represented but suffers from the same logical structure issue with the disjunction."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization declares f as a function from reals to reals, which captures the mathematical function aspect, but it doesn't explicitly represent that X is a continuous random variable or that f is specifically a PDF. The function declaration is mathematically consistent but misses the probabilistic context.\", 'The Lean condition tc_1 has a logical error. It uses disjunction (\u2228) where it should use conjunction-like logic. The condition states either f(x) = kx\u00b2 for ALL x with 0 \u2264 x \u2264 2, OR f(x) = 0 for ALL x outside [0,2]. This is incorrect because it should be: f(x) = kx\u00b2 when x \u2208 [0,2] AND f(x) = 0 when x \u2209 [0,2]. The current formalization makes it impossible for both conditions to hold simultaneously.', \"This condition is captured within the same problematic tc_1 formalization mentioned above. The 'otherwise' case (f(x) = 0 for x outside [0,2]) is represented but suffers from the same logical structure issue with the disjunction.\"]"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the definition of a PDF, the total probability must be 1, so we have the condition $\\int_0^2 kx^2 \\,dx = 1$.", "statement": "We assume:\n\u2022 $X$ is a continuous random variable with a PDF $f(x)$ where $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise [tc_1].\nTherefore, we conclude:\n\u2022 The property that a PDF integrates to 1 implies that $\\int_0^2 kx^2 \\,dx = 1$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u211d \u2192 \u211d)\n  (k : \u211d)\n  (tc_1 : (\u2200 x, (0 \u2264 x \u2227 x \u2264 2) \u2192 f x = k * x^2) \u2227 (\u2200 x, (x < 0 \u2228 x > 2) \u2192 f x = 0)) :\n  \u222b x in Icc 0 2, (k * x^2) = 1 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 9, "endLine": 9, "endColumn": 16, "data": "function expected at\n  Icc\nterm has type\n  ?m.1136"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u211d \u2192 \u211d)\n  (k : \u211d)\n  (tc_1 : (\u2200 x, (0 \u2264 x \u2227 x \u2264 2) \u2192 f x = k * x^2) \u2227 (\u2200 x, (x < 0 \u2228 x > 2) \u2192 f x = 0))\n  (hpdf : \u222b x, f x = 1) :\n  \u222b x in 0..2, k * x^2 = 1 := by\n  have h1 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2 := by\n    intro x hx\n    exact tc_1.1 x hx\n  have h2 : \u2200 x \u2209 Set.Icc 0 2, f x = 0 := by\n    intro x hx\n    exact tc_1.2 x (Or.inl (not_le.mp (And.left (not_and.mp hx))) <|> Or.inr (not_le.mp (And.right (not_and.mp hx))))\n  rw [\u2190 hpdf, \u2190 integral_of_eq_zero_of_ae (MeasureTheory.ae_of_all _ h2)]\n  simp only [integral_Icc_eq_integral_Ioc, integral_of_eq_zero_of_ae (MeasureTheory.ae_of_all _ (fun x hx => h2 x (fun h => hx (Set.Ioc_subset_Icc_self h))))]\n  rw [integral_congr h1]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 9, "endLine": 10, "endColumn": 13, "data": "invalid projection, structure has only 1 field(s)\n  0.\nhas type\n  Float"}, {"line": 16, "column": 48, "endLine": 16, "endColumn": 63, "data": "application type mismatch\n  And.left (not_and.mp hx)\nargument\n  not_and.mp hx\nhas type\n  0 \u2264 x \u2192 \u00acx \u2264 2 : Prop\nbut is expected to have type\n  \u00ac?m.5177 \u2264 ?m.5178 \u2227 ?m.5184 : Prop"}, {"line": 16, "column": 99, "endLine": 16, "endColumn": 114, "data": "application type mismatch\n  And.right (not_and.mp hx)\nargument\n  not_and.mp hx\nhas type\n  0 \u2264 x \u2192 \u00acx \u2264 2 : Prop\nbut is expected to have type\n  ?m.5615 \u2227 \u00ac?m.5611 \u2264 ?m.5612 : Prop"}, {"line": 16, "column": 20, "endLine": 16, "endColumn": 116, "data": "type mismatch\n  ?m.6126 <|> ?m.6187 ()\nhas type\n  ?m.6113 : outParam (Type ?u.5107)\nbut is expected to have type\n  x < 0 \u2228 x > 2 : Prop"}, {"line": 17, "column": 16, "endLine": 17, "endColumn": 41, "data": "unknown identifier 'integral_of_eq_zero_of_ae'"}, {"line": 17, "column": 14, "endLine": 17, "endColumn": 72, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.7086\nf : \u211d \u2192 \u211d\nk : \u211d\ntc_1 : (\u2200 (x : \u211d), 0 \u2264 x \u2227 x \u2264 2 \u2192 f x = k * x ^ 2) \u2227 \u2200 (x : \u211d), x < 0 \u2228 x > 2 \u2192 f x = 0\nhpdf : \u222b (x : \u211d), f x = 1\nh1 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x ^ 2\nh2 : \u2200 x \u2209 Set.Icc 0 2, f x = 0\n\u22a2 \u222b (x : \u211d) in sorry, k * x ^ 2 = \u222b (x : \u211d), f x"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By solving the integral, we find $k[\\frac{x^3}{3}]_0^2 = 1$.", "statement": "We assume:\n\u2022 $\\int_0^2 kx^2 \\,dx = 1$ [l1].\nTherefore, we conclude:\n\u2022 $k \\cdot [\\frac{x^3}{3}]_0^2 = 1$ [l2].", "dependencies": ["l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (k : \u211d)\n  (l1 : \u222b (x : \u211d) in (0)..2, k * x ^ 2 = 1) :\n  k * (2^3 / 3 - 0^3 / 3) = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (k : \u211d)\n  (l1 : \u222b (x : \u211d) in (0)..2, k * x ^ 2 = 1) :\n  k * (2^3 / 3 - 0^3 / 3) = 1 := by\n  rw [\u2190 l1, integral_mul_right, integral_pow]\n  norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 12, "endLine": 9, "endColumn": 30, "data": "unknown identifier 'integral_mul_right'"}, {"line": 9, "column": 12, "endLine": 9, "endColumn": 30, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.1635\nk : \u211d\nl1 : \u222b (x : \u211d) in 0 ..2, k * x ^ 2 = 1\n\u22a2 k * (2 ^ 3 / 3 - 0 ^ 3 / 3) = \u222b (x : \u211d) in 0 ..2, k * x ^ 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The integral assumption is correctly formalized using Lean's definite integral notation, accurately capturing the mathematical meaning of the natural language statement.", "The conclusion correctly represents the evaluation of the antiderivative using the fundamental theorem of calculus, with the bracket notation properly expanded to show the difference of the antiderivative evaluated at the bounds.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l2\n  (k : \u211d)\n  (l1 : \u222b (x : \u211d) in (0)..2, k * x ^ 2 = 1) :\n  \u00ac(k * (2^3 / 3 - 0^3 / 3) = 1) := by\n  have h : \u222b (x : \u211d) in (0)..2, k * x ^ 2 = k * (8/3) := by\n    rw [integral_mul_right]\n    simp\n    ring\n  rw [h] at l1\n  simp at l1\n  norm_num at l1\n  exact l1"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "which gives $k(\\frac{8}{3}) = 1$", "statement": "We assume:\n\u2022 $k \\cdot [\\frac{x^3}{3}]_0^2 = 1$ [l2].\nTherefore, we conclude:\n\u2022 $k \\cdot \\frac{8}{3} = 1$ [l3].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (k : \u211d)\n  (l2 : k * (2^3 / 3 - 0^3 / 3) = 1) :\n  k * (8 / 3) = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (k : \u211d)\n  (l2 : k * (2^3 / 3 - 0^3 / 3) = 1) :\n  k * (8 / 3) = 1 := by\n  rw [show (2:\u211d)^3 = 8 by norm_num, show (0:\u211d)^3 = 0 by norm_num] at l2\n  simp [sub_zero] at l2\n  exact l2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The definite integral notation [x\u00b3/3]\u2080\u00b2 is correctly formalized as the expanded form (2\u00b3/3 - 0\u00b3/3), which is the standard way to represent definite integral evaluation in Lean", "The conclusion k\u00b7(8/3) = 1 is correctly represented, with 8/3 being the simplified form of (2\u00b3/3 - 0\u00b3/3)", "The logical structure correctly captures the deductive relationship where l2 serves as the hypothesis for proving l3"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "and therefore $k = \\frac{3}{8}$.", "statement": "We assume:\n\u2022 $k \\cdot \\frac{8}{3} = 1$ [l3].\nTherefore, we conclude:\n\u2022 $k = \\frac{3}{8}$ [l4].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (k : \u211d)\n  (l3 : k * (8 / 3) = 1) :\n  k = 3 / 8 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (k : \u211d)\n  (l3 : k * (8 / 3) = 1) :\n  k = 3 / 8 := by\n  rw [\u2190 mul_left_inj' (by norm_num : (8/3 : \u211d) \u2260 0), \u2190 l3]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 53, "endLine": 9, "endColumn": 57, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  1\nk : \u211d\nl3 : k * (8 / 3) = 1\n\u22a2 k * (8 / 3) = 3 / 8 * (8 / 3)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all aspects of the natural language statement. The assumption k * (8/3) = 1 is properly represented as a hypothesis, and the conclusion k = 3/8 is correctly stated as the goal to prove. The mathematical content, logical structure, and semantic meaning are all preserved accurately. The additional type declaration (k : \u211d) is an appropriate formalization detail that doesn't contradict the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (k : \u211d)\n  (l3 : k * (8 / 3) = 1) :\n  \u00ac(k = 3 / 8) := by\n  intro h\n  rw [h] at l3\n  have : (3 / 8 : \u211d) * (8 / 3) = 1 := by norm_num\n  rw [this] at l3\n  exact (ne_of_eq_of_ne l3 one_ne_zero)"}, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "The expected value is defined as $E[X] = \\int_0^2 x f(x) \\,dx$.", "statement": "Definition:\n\u2022 The expected value of X is given by $E[X] = \\int_0^2 x f(x) \\,dx$ [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u211d \u2192 \u211d)\n  (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (def_1 : \u222b x in (0)..2, x * f x = Real.integral (fun x => x * f x) 0 2)", "lean_pass": false, "error_msg": [{"line": 9, "column": 36, "endLine": 9, "endColumn": 72, "data": "unknown constant 'Real.integral'"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l5": {"id": "l5", "natural_language": "Substituting our function and the derived value of $k$, the integral for the expected value becomes $E[X] = \\int_0^2 x (\\frac{3}{8}x^2) \\,dx = \\frac{3}{8} \\int_0^2 x^3 \\,dx$.", "statement": "We assume:\n\u2022 The PDF is $f(x) = kx^2$ for $x \\in [0, 2]$ [tc_1].\n\u2022 $k = \\frac{3}{8}$ [l4].\n\u2022 The expected value is $E[X] = \\int_0^2 x f(x) \\,dx$ [def_1].\nTherefore, we conclude:\n\u2022 $E[X] = \\frac{3}{8} \\int_0^2 x^3 \\,dx$ [l5].", "dependencies": ["tc_1", "l4", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_1 : \u222b x in (0)..2, x * f x = k * (\u222b x in (0)..2, x^3) ) :\n  \u222b x in (0)..2, x * f x = (3 / 8) * \u222b x in (0)..2, x^3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_1 : \u222b x in (0)..2, x * f x = k * (\u222b x in (0)..2, x^3) ) :\n  \u222b x in (0)..2, x * f x = (3 / 8) * \u222b x in (0)..2, x^3 := by\n  rw [l4, def_1]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 6, "endLine": 11, "endColumn": 8, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  k\nf : \u211d \u2192 \u211d\nk : \u211d\ntc_1 : (\u2200 (x : \u211d), f x = k * x ^ 2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 \u2200 (x : \u211d), f x = 0 \u2227 (x < 0 \u2228 x > 2)\nl4 : k = 3 / 8\ndef_1 : \u222b (x : \u211d) in 0 ..2, x * f x = k * \u222b (x : \u211d) in 0 ..2, x ^ 3\n\u22a2 \u222b (x : \u211d) in 0 ..2, x * f x = 3 / 8 * \u222b (x : \u211d) in 0 ..2, x ^ 3"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PDF definition in Lean adds the reasonable assumption that f(x)=0 outside [0,2], which is implicit for a PDF on a bounded interval but not explicitly stated in natural language.", "The value k = 3/8 is captured exactly as stated.", "The expected value definition is problematic. The natural language defines E[X] = \u222b\u2080\u00b2 x f(x) dx, but Lean assumes the relationship \u222b x f(x) = k * \u222b x\u00b3, which should be derived from substituting f(x) = kx\u00b2 rather than assumed.", "The final conclusion E[X] = (3/8) \u222b\u2080\u00b2 x\u00b3 dx is correctly captured in the Lean goal.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The PDF definition in Lean adds the reasonable assumption that f(x)=0 outside [0,2], which is implicit for a PDF on a bounded interval but not explicitly stated in natural language.', 'The value k = 3/8 is captured exactly as stated.', 'The expected value definition is problematic. The natural language defines E[X] = \u222b\u2080\u00b2 x f(x) dx, but Lean assumes the relationship \u222b x f(x) = k * \u222b x\u00b3, which should be derived from substituting f(x) = kx\u00b2 rather than assumed.', 'The final conclusion E[X] = (3/8) \u222b\u2080\u00b2 x\u00b3 dx is correctly captured in the Lean goal.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Evaluating this integral gives the expected value $E[X] = \\frac{3}{8} [\\frac{x^4}{4}]_0^2 = \\frac{3}{2}$.", "statement": "We assume:\n\u2022 $E[X] = \\frac{3}{8} \\int_0^2 x^3 \\,dx$ [l5].\nTherefore, we conclude:\n\u2022 $E[X] = \\frac{3}{2}$ [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_1 : \u222b x in (0)..2, x * f x = k * (\u222b x in (0)..2, x^3))\n  (l5 : \u222b x in (0)..2, x * f x = (3 / 8) * \u222b x in (0)..2, x^3) :\n  \u222b x in (0)..2, x * f x = 3 / 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_1 : \u222b x in (0)..2, x * f x = k * (\u222b x in (0)..2, x^3))\n  (l5 : \u222b x in (0)..2, x * f x = (3 / 8) * \u222b x in (0)..2, x^3) :\n  \u222b x in (0)..2, x * f x = 3 / 2 := by\n  rw [l5]\n  have : \u222b x in (0)..2, x^3 = 4 := by\n    have : (fun x => x^3) = (fun x => x^(3 : \u211d)) := by funext; simp\n    rw [this]\n    exact integral_pow 3\n  rw [this]\n  field_simp\n  norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 38, "endLine": 14, "endColumn": 47, "data": "typeclass instance problem is stuck, it is often due to metavariables\n  HPow ?m.2082 \u211d (?m.2091 x)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The assumption E[X] = (3/8) \u222b\u2080\u00b2 x\u00b3 dx is correctly captured in Lean as l5, using the mathematically equivalent integral form \u222b x * f x for the expected value. The extra context provided (tc_1, l4, def_1) gives additional mathematical structure without contradicting the natural language.", "The conclusion E[X] = 3/2 is perfectly captured as the goal \u222b x in (0)..2, x * f x = 3 / 2, maintaining the same mathematical meaning through the integral representation of expected value.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_1 : \u222b x in (0)..2, x * f x = k * (\u222b x in (0)..2, x^3))\n  (l5 : \u222b x in (0)..2, x * f x = (3 / 8) * \u222b x in (0)..2, x^3) :\n  \u00ac(\u222b x in (0)..2, x * f x = 3 / 2) := by\n  have h : \u222b x in (0)..2, x^3 = 4 := by\n    simp [integral_pow, show 2 - 0 = 2 by norm_num]\n    norm_num\n  rw [l5, h]\n  field_simp\n  norm_num\n  contradiction"}, "type": "solution"}, "def_2": {"id": "def_2", "natural_language": "Similarly, the second moment is defined as $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$.", "statement": "Definition:\n\u2022 The second moment of X is given by $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$ [def_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u211d \u2192 \u211d)\n  (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (def_2 : \u222b x in Icc 0 2, x^2 * f x = Real.integral (fun x => x^2 * f x) (Measure.mk Lebesgue.measure.volume) (Set.indicator (Set.Icc 0 2) (fun x => x^2 * f x)))", "lean_pass": false, "error_msg": [{"line": 9, "column": 39, "endLine": 9, "endColumn": 161, "data": "unknown constant 'Real.integral'"}, {"line": 9, "column": 18, "endLine": 9, "endColumn": 25, "data": "function expected at\n  Icc\nterm has type\n  ?m.360"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l6": {"id": "l6", "natural_language": "Substituting the function and $k$, this becomes $E[X^2] = \\int_0^2 x^2 (\\frac{3}{8}x^2) \\,dx = \\frac{3}{8} \\int_0^2 x^4 \\,dx$.", "statement": "We assume:\n\u2022 The PDF is $f(x) = kx^2$ for $x \\in [0, 2]$ [tc_1].\n\u2022 $k = \\frac{3}{8}$ [l4].\n\u2022 The second moment is $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$ [def_2].\nTherefore, we conclude:\n\u2022 $E[X^2] = \\frac{3}{8} \\int_0^2 x^4 \\,dx$ [l6].", "dependencies": ["tc_1", "l4", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_2 : \u222b (x : \u211d) in (0)..2, x^2 * f x = Real.integral (fun x => x^2 * f x) 0 2) :\n  (\u222b (x : \u211d) in (0)..2, x^2 * f x) = (3 / 8) * (\u222b (x : \u211d) in (0)..2, x^4) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 44, "endLine": 9, "endColumn": 82, "data": "unknown constant 'Real.integral'"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (f : \u211d \u2192 \u211d) (k : \u211d)\n  (tc_1 : (\u2200 x, f x = k * x^2 \u2227 0 \u2264 x \u2227 x \u2264 2) \u2228 (\u2200 x, f x = 0 \u2227 (x < 0 \u2228 x > 2)))\n  (l4 : k = 3 / 8)\n  (def_2 : \u222b (x : \u211d) in (0)..2, x^2 * f x = \u222b (x : \u211d) in (0)..2, x^2 * f x) :\n  (\u222b (x : \u211d) in (0)..2, x^2 * f x) = (3 / 8) * (\u222b (x : \u211d) in (0)..2, x^4) := by\n  rcases tc_1 with h | h\n  \u00b7 simp [h]\n    rw [l4]\n    simp\n    rw [integral_mul_right]\n    norm_num\n  \u00b7 have h1 : \u2200 x, 0 \u2264 x \u2192 x \u2264 2 \u2192 f x = 0 := by\n      intro x hx1 hx2\n      cases h x\n      apply h_right.left\n      exact h_right.right.elim (fun h' => (not_lt_of_le hx1 h').elim) (fun h' => (not_lt.mpr hx2 h').elim)\n    rw [intervalIntegral.integral_of_le (by norm_num), integral_zero_interval h1, integral_zero_interval h1]\n    norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 4, "endLine": 14, "endColumn": 8, "data": "simp made no progress"}, {"line": 20, "column": 12, "endLine": 20, "endColumn": 24, "data": "unknown identifier 'h_right.left'"}, {"line": 21, "column": 6, "endLine": 21, "endColumn": 106, "data": "no goals to be solved"}, {"line": 22, "column": 55, "endLine": 22, "endColumn": 77, "data": "unknown identifier 'integral_zero_interval'"}, {"line": 22, "column": 55, "endLine": 22, "endColumn": 80, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.9546\ncase inr\nf : \u211d \u2192 \u211d\nk : \u211d\nl4 : k = 3 / 8\ndef_2 : \u222b (x : \u211d) in 0 ..2, x ^ 2 * f x = \u222b (x : \u211d) in 0 ..2, x ^ 2 * f x\nh : \u2200 (x : \u211d), f x = 0 \u2227 (x < 0 \u2228 x > 2)\nh1 : \u2200 (x : \u211d), 0 \u2264 x \u2192 x \u2264 2 \u2192 f x = 0\n\u22a2 \u222b (x : \u211d) in Set.Ioc 0 2, x ^ 2 * f x \u2202MeasureTheory.volume = 3 / 8 * \u222b (x : \u211d) in 0 ..2, x ^ 4"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "The result of this integral is $E[X^2] = \\frac{3}{8} [\\frac{x^5}{5}]_0^2 = \\frac{12}{5}$.", "statement": "We assume:\n\u2022 $E[X^2] = \\frac{3}{8} \\int_0^2 x^4 \\,dx$ [l6].\nTherefore, we conclude:\n\u2022 $E[X^2] = \\frac{12}{5}$ [l7].", "dependencies": ["l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (l6 : ENNReal.ofReal (Expect (fun x : \u211d => x ^ 2)) = (3/8 : \u211d) * \u222b x in (0..2), x ^ 4) :\n  ENNReal.ofReal (Expect (fun x : \u211d => x ^ 2)) = (12/5 : \u211d) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 49, "endLine": 7, "endColumn": 59, "data": "type mismatch\n  12 / 5\nhas type\n  \u211d : outParam Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 6, "column": 24, "endLine": 6, "endColumn": 51, "data": "function expected at\n  Expect\nterm has type\n  ?m.4"}, {"line": 6, "column": 75, "endLine": 6, "endColumn": 79, "data": "invalid projection, structure has only 1 field(s)\n  0.\nhas type\n  Float"}, {"line": 7, "column": 18, "endLine": 7, "endColumn": 45, "data": "function expected at\n  Expect\nterm has type\n  ?m.4"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (l6 : ENNReal.ofReal (\u222b x in (0..2), x^2) = (3/8 : \u211d) * \u222b x in (0..2), x^4) :\n  ENNReal.ofReal (\u222b x in (0..2), x^2) = ENNReal.ofReal (12/5 : \u211d) := by\n  rw [l6]\n  simp only [integral_pow, ENNReal.ofReal_mul]\n  norm_num\n  rw [integral_pow]\n  norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 6, "column": 32, "endLine": 6, "endColumn": 36, "data": "invalid projection, structure has only 1 field(s)\n  0.\nhas type\n  Float"}, {"line": 6, "column": 66, "endLine": 6, "endColumn": 70, "data": "invalid projection, structure has only 1 field(s)\n  0.\nhas type\n  Float"}, {"line": 7, "column": 26, "endLine": 7, "endColumn": 30, "data": "invalid projection, structure has only 1 field(s)\n  0.\nhas type\n  Float"}, {"line": 9, "column": 2, "endLine": 9, "endColumn": 46, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "def_3": {"id": "def_3", "natural_language": "The variance is defined by the formula $Var(X) = E[X^2] - (E[X])^2$.", "statement": "Definition:\n\u2022 The variance of X is defined as $Var(X) = E[X^2] - (E[X])^2$ [def_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03a9 : Type*} [MeasureSpace \u03a9] [MeasurableSpace \u03a9] {X : \u03a9 \u2192 \u211d} [IsRandomVariable X] {\u03bc : Measure \u03a9}\n(def_3 :  variance X \u03bc = expectation (X ^ 2) \u03bc - (expectation X \u03bc) ^ 2)", "lean_pass": false, "error_msg": [{"line": 5, "column": 22, "endLine": 5, "endColumn": 36, "data": "invalid binder annotation, type is not a class instance\n  ?m.12\nuse the command `set_option checkBinderAnnotations false` to disable the check"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "ts_2": {"id": "ts_2", "natural_language": "Using our computed values for $E[X^2]$ and $E[X]$, the variance is $Var(X) = \\frac{12}{5} - (\\frac{3}{2})^2 = \\frac{3}{20}$.", "statement": "We assume:\n\u2022 The expected value is $E[X] = \\frac{3}{2}$ [ts_1].\n\u2022 The second moment is $E[X^2] = \\frac{12}{5}$ [l7].\n\u2022 The variance is defined as $Var(X) = E[X^2] - (E[X])^2$ [def_3].\nTherefore, we conclude:\n\u2022 $Var(X) = \\frac{3}{20}$ [ts_2].", "dependencies": ["ts_1", "l7", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (EX : \u211d) (EX2 : \u211d) (VarX : \u211d)\n  (ts_1 : EX = 3 / 2)\n  (l7 : EX2 = 12 / 5)\n  (def_3 : VarX = EX2 - EX^2) :\n  VarX = 3 / 20 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (EX : \u211d) (EX2 : \u211d) (VarX : \u211d)\n  (ts_1 : EX = 3 / 2)\n  (l7 : EX2 = 12 / 5)\n  (def_3 : VarX = EX2 - EX^2) :\n  VarX = 3 / 20 := by\n  rw [def_3, ts_1, l7]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization correctly captures all mathematical relationships and logical structure from the natural language. The only differences are in variable naming conventions: EX instead of E[X], EX2 instead of E[X\u00b2], and VarX instead of Var(X). These are minor notational differences that preserve the semantic meaning while adapting to Lean's syntax requirements."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization correctly captures all mathematical relationships and logical structure from the natural language. The only differences are in variable naming conventions: EX instead of E[X], EX2 instead of E[X\u00b2], and VarX instead of Var(X). These are minor notational differences that preserve the semantic meaning while adapting to Lean's syntax requirements.\"]"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

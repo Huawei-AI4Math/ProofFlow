@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $C$ be the upper semi-circular path in the complex plane from $z=1$ to $z=-1$, and let the function to be integrated be $f(z) = z^2$. Then the contour integral $\int_C f(z) dz$ is equal to $-2/3$.
+
+Proof: The path $C$ can be parameterized by $z(t) = e^{it}$ for $t \in [0, \pi]$. The derivative of the parameterization is $z'(t) = ie^{it}$. The function $f(z) = z^2$ becomes $f(z(t)) = (e^{it})^2 = e^{2it}$ along the path. Substituting these into the definition of the contour integral, $\int_C f(z) dz = \int_0^{\pi} f(z(t)) z'(t) dt$, we get the expression $\int_0^{\pi} e^{2it} (ie^{it}) dt$. Evaluating this integral gives $\int_0^{\pi} ie^{3it} dt = [\frac{e^{3it}}{3}]_0^{\pi} = \frac{1}{3}(e^{3i\pi} - e^0) = \frac{1}{3}(-1 - 1) = -2/3$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let C be the upper semi-circular path in the complex plane from z=1 to z=-1", "statement": "Premise:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (C : \u211d \u2192 \u2102)\n(tc_1 : \u2203 (C : \u211d \u2192 \u2102), -- upper semi-circular path from 1 to -1\n  (\u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t)) \u2227 \n  C 0 = 1 \u2227 C Real.pi = -1)", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the natural language condition. The mathematical representation C(t) = exp(it) for t \u2208 [0,\u03c0] is the standard parameterization of the upper semi-circular path in the complex plane, and the endpoint conditions C(0) = 1 and C(\u03c0) = -1 exactly match the specified start and end points. The existential quantification in Lean is appropriate for establishing that such a path exists."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "let the function to be integrated be f(z) = z^2", "statement": "Premise:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 :\n  \u2203 (C : \u211d \u2192 \u2102) (f : \u2102 \u2192 \u2102),\n  (\u2200 t \u2208 Set.Icc 0 Real.pi, Complex.abs (C t) = 1 \u2227 \n   (C t).re = Real.cos t \u2227 (C t).im = Real.sin t) \u2227\n  C 0 = 1 \u2227 C Real.pi = -1 \u2227\n  f = fun z => z^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the upper semi-circular path. It parametrizes C(t) = cos(t) + i*sin(t) for t \u2208 [0,\u03c0], which is exactly the upper semicircle on the unit circle from z=1 (at t=0) to z=-1 (at t=\u03c0). The conditions ensure |C(t)| = 1 (unit circle), the parametric form matches the upper semicircle, and the endpoints are correctly specified.", "The Lean formalization exactly matches the natural language condition, defining f as the function z \u21a6 z^2."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "The path C can be parameterized by z(t) = e^{it} for t \u2208 [0, \u03c0].", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\nDefinition:\n\u2022 The path C can be parameterized by z(t) = e^{it} for t in the interval [0, \u03c0] [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (C : \u211d \u2192 \u2102)\n(hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization declares C as a function from reals to complex numbers, which captures the essence of a parameterized path. However, it doesn't explicitly state that this represents an upper semi-circular path from z=1 to z=-1. The geometric interpretation is implicit in the parameterization but not explicitly stated.", "The natural language mentions f(z) = z^2 as the function to be integrated, but this is completely missing from the Lean formalization. There is no declaration or mention of any function f.", "The Lean formalization perfectly captures the parameterization z(t) = e^{it} for t \u2208 [0,\u03c0]. The notation Complex.exp (Complex.I * t) is exactly equivalent to e^{it}, and Set.Icc 0 Real.pi represents the interval [0,\u03c0]."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization declares C as a function from reals to complex numbers, which captures the essence of a parameterized path. However, it doesn't explicitly state that this represents an upper semi-circular path from z=1 to z=-1. The geometric interpretation is implicit in the parameterization but not explicitly stated.\", 'The natural language mentions f(z) = z^2 as the function to be integrated, but this is completely missing from the Lean formalization. There is no declaration or mention of any function f.', 'The Lean formalization perfectly captures the parameterization z(t) = e^{it} for t \u2208 [0,\u03c0]. The notation Complex.exp (Complex.I * t) is exactly equivalent to e^{it}, and Set.Icc 0 Real.pi represents the interval [0,\u03c0].']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "The derivative of the parameterization is z'(t) = ie^{it}.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [def_1]\nTherefore, we conclude:\n\u2022 The derivative of the parameterization z(t) is z'(t) = i * e^{it} [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (C : \u211d \u2192 \u2102) (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t)) :\n  \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (C : \u211d \u2192 \u2102) (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t)) :\n  \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t) := by\n  have h1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t := by\n    intro t ht\n    have h2 : \u2200\u1da0 (x : \u211d) in nhds t, C x = Complex.exp (Complex.I * x) := by\n      have h3 : t \u2208 Set.Icc 0 Real.pi := ht\n      have h4 : \u2200 x \u2208 Set.Icc 0 Real.pi, C x = Complex.exp (Complex.I * x) := by\n        intro x hx\n        exact hC x hx\n      -- Use the fact that t is in [0, \u03c0] to find a neighborhood where x is also in [0, \u03c0]\n      have h5 : \u2200\u1da0 (x : \u211d) in nhds t, x \u2208 Set.Icc 0 Real.pi := by\n        have h6 : IsOpen (Set.Ioo (t - 1) (t + 1)) := isOpen_Ioo\n        have h7 : t \u2208 Set.Ioo (t - 1) (t + 1) := by\n          constructor <;> linarith\n        have h8 : \u2200\u1da0 (x : \u211d) in nhds t, x \u2208 Set.Ioo (t - 1) (t + 1) := by\n          apply mem_nhds_iff.mpr\n          refine' \u27e8Set.Ioo (t - 1) (t + 1), h6, h7\u27e9\n        filter_upwards [h8] with x hx\n        have h9 : x \u2208 Set.Ioo (t - 1) (t + 1) := hx\n        have h10 : 0 \u2264 t := ht.1\n        have h11 : t \u2264 Real.pi := ht.2\n        have h12 : 0 \u2264 x := by\n          by_contra h\n          have h13 : x < 0 := by linarith\n          have h14 : x < t := by\n            linarith [Real.pi_gt_three]\n          have h15 : x > t - 1 := by linarith [h9.1]\n          linarith\n        have h16 : x \u2264 Real.pi := by\n          by_contra h\n          have h17 : x > Real.pi := by linarith\n          have h18 : x > t := by linarith [Real.pi_gt_three]\n          have h19 : x < t + 1 := by linarith [h9.2]\n          linarith\n        exact \u27e8h12, h16\u27e9\n      filter_upwards [h5] with x hx\n      have h20 : x \u2208 Set.Icc 0 Real.pi := hx\n      have h21 : C x = Complex.exp (Complex.I * x) := h4 x h20\n      exact h21\n    -- Use the fact that C(x) = exp(i * x) in a neighborhood of t to conclude that their derivatives are equal\n    have h3 : deriv C t = deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t := by\n      apply Filter.EventuallyEq.deriv_eq\n      filter_upwards [h2] with x hx\n      rw [hx]\n      <;>\n      simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith [Real.pi_pos]\n    exact h3\n  \n  -- Compute the derivative of exp(i * t)\n  have h2 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t = Complex.I * Complex.exp (Complex.I * t) := by\n    intro t ht\n    have h3 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.I * Complex.exp (Complex.I * t)) t := by\n      -- Differentiate the inner function (i * t)\n      have h4 : HasDerivAt (fun t : \u211d => (Complex.I : \u2102) * (t : \u2102)) (Complex.I : \u2102) t := by\n        -- Differentiate t \u21a6 (t : \u2102)\n        have h5 : HasDerivAt (fun t : \u211d => (t : \u2102)) 1 t := by\n          simpa using (hasDerivAt_id t).comp t (hasDerivAt_id t)\n        -- Multiply by Complex.I\n        convert h5.const_mul (Complex.I : \u2102) using 1 <;>\n          simp [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;>\n          ring_nf <;>\n          norm_num <;>\n          simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n          linarith [Real.pi_pos]\n      -- Differentiate the outer function (exp)\n      have h6 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * t) * Complex.I) t := by\n        have h7 : HasDerivAt (fun t : \u211d => (Complex.I : \u2102) * (t : \u2102)) (Complex.I : \u2102) t := h4\n        have h8 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * t) * Complex.I) t := by\n          -- Apply the chain rule\n          have h9 : HasDerivAt (fun t : \u211d => (Complex.I : \u2102) * (t : \u2102)) (Complex.I : \u2102) t := h7\n          have h10 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * t) * Complex.I) t := by\n            convert HasDerivAt.exp (h9) using 1 <;>\n            simp [Complex.ext_iff, Complex.I_mul_I, mul_comm, mul_assoc, mul_left_comm] <;>\n            ring_nf <;>\n            simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm, mul_assoc, mul_left_comm] <;>\n            norm_num <;>\n            linarith [Real.pi_pos]\n          exact h10\n        exact h8\n      -- Simplify the derivative\n      convert h6 using 1 <;>\n        simp [Complex.ext_iff, Complex.I_mul_I, mul_comm, mul_assoc, mul_left_comm] <;>\n        ring_nf <;>\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm, mul_assoc, mul_left_comm] <;>\n        norm_num <;>\n        linarith [Real.pi_pos]\n    -- Use the derivative to conclude the proof\n    have h10 : deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t = Complex.I * Complex.exp (Complex.I * t) := by\n      apply HasDerivAt.deriv\n      exact h3\n    exact h10\n  \n  -- Combine the results to get the final answer\n  intro t ht\n  have h3 : deriv C t = deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t := h1 t ht\n  have h4 : deriv (fun t : \u211d => Complex.exp (Complex.I * t)) t = Complex.I * Complex.exp (Complex.I * t) := h2 t ht\n  rw [h3, h4]\n  <;>\n  simp_all\n  <;>\n  ring_nf\n  <;>\n  simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n  <;>\n  norm_num\n  <;>\n  linarith [Real.pi_pos]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 20, "column": 44, "endLine": 20, "endColumn": 46, "data": "application type mismatch\n  And.intro h6\nargument\n  h6\nhas type\n  IsOpen (Set.Ioo (t - 1) (t + 1)) : Prop\nbut is expected to have type\n  Set.Ioo (t - 1) (t + 1) \u2286 {x | (fun x => x \u2208 Set.Ioo (t - 1) (t + 1)) x} : Prop"}, {"line": 31, "column": 10, "endLine": 31, "endColumn": 18, "data": "linarith failed to find a contradiction\nC : \u211d \u2192 \u2102\nhC : \u2200 t \u2208 Set.Icc 0 \u03c0, C t = Complex.exp (Complex.I * \u2191t)\nt : \u211d\nht h3 : t \u2208 Set.Icc 0 \u03c0\nh4 : \u2200 x \u2208 Set.Icc 0 \u03c0, C x = Complex.exp (Complex.I * \u2191x)\nh6 : IsOpen (Set.Ioo (t - 1) (t + 1))\nh7 : t \u2208 Set.Ioo (t - 1) (t + 1)\nh8 : \u2200\u1da0 (x : \u211d) in \ud835\udcdd t, x \u2208 Set.Ioo (t - 1) (t + 1)\nx : \u211d\nhx h9 : x \u2208 Set.Ioo (t - 1) (t + 1)\nh10 : 0 \u2264 t\nh11 : t \u2264 \u03c0\nh : \u00ac0 \u2264 x\nh13 : x < 0\nh14 : x < t\nh15 : x > t - 1\n\u22a2 False failed"}, {"line": 37, "column": 10, "endLine": 37, "endColumn": 18, "data": "linarith failed to find a contradiction\nC : \u211d \u2192 \u2102\nhC : \u2200 t \u2208 Set.Icc 0 \u03c0, C t = Complex.exp (Complex.I * \u2191t)\nt : \u211d\nht h3 : t \u2208 Set.Icc 0 \u03c0\nh4 : \u2200 x \u2208 Set.Icc 0 \u03c0, C x = Complex.exp (Complex.I * \u2191x)\nh6 : IsOpen (Set.Ioo (t - 1) (t + 1))\nh7 : t \u2208 Set.Ioo (t - 1) (t + 1)\nh8 : \u2200\u1da0 (x : \u211d) in \ud835\udcdd t, x \u2208 Set.Ioo (t - 1) (t + 1)\nx : \u211d\nhx h9 : x \u2208 Set.Ioo (t - 1) (t + 1)\nh10 : 0 \u2264 t\nh11 : t \u2264 \u03c0\nh12 : 0 \u2264 x\nh : \u00acx \u2264 \u03c0\nh17 : x > \u03c0\nh18 : x > t\nh19 : x < t + 1\n\u22a2 False failed"}, {"line": 66, "column": 10, "endLine": 66, "endColumn": 64, "data": "type mismatch, term\n  HasDerivAt.comp t (hasDerivAt_id t) (hasDerivAt_id t)\nafter simplification has type\n  HasDerivAt id 1 t : Prop\nbut is expected to have type\n  HasDerivAt (fun t => \u2191t) 1 t : Prop"}, {"line": 82, "column": 35, "endLine": 82, "endColumn": 39, "data": "application type mismatch\n  HasDerivAt.exp h9\nargument\n  h9\nhas type\n  HasDerivAt (fun t => Complex.I * \u2191t) Complex.I t : Prop\nbut is expected to have type\n  HasDerivAt ?m.29872 ?m.29873 ?m.29874 : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The parameterization z(t) = e^{it} for t \u2208 [0, \u03c0] is correctly captured in the hypothesis hC using Complex.exp (Complex.I * t)", "The derivative conclusion z'(t) = i * e^{it} is correctly formalized using deriv C t = Complex.I * Complex.exp (Complex.I * t)", "The Lean formalization omits the geometric description of C as upper semi-circular path (tc_1) and the function f(z) = z^2 (tc_2), but these are not essential for the derivative calculation being proven. The core mathematical content is preserved.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.67 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem disprove_l1 : \u00ac (\u2200 (C : \u211d \u2192 \u2102), (\u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t)) \u2192 (\u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))) := by\n  have h_main : \u2203 (C : \u211d \u2192 \u2102), (\u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t)) \u2227 (\u2203 (t : \u211d), t \u2208 Set.Icc 0 Real.pi \u2227 deriv C t \u2260 Complex.I * Complex.exp (Complex.I * t)) := by\n    use fun t => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)\n    constructor\n    \u00b7 -- Prove that C(t) = e^{it} on [0, \u03c0]\n      intro t ht\n      have h\u2081 : t \u2208 Set.Icc 0 Real.pi := ht\n      have h\u2082 : 0 \u2264 t := by exact h\u2081.1\n      have h\u2083 : t \u2264 Real.pi := by exact h\u2081.2\n      have h\u2084 : (t : \u211d) \u2264 Real.pi := by exact_mod_cast h\u2083\n      simp [h\u2084]\n      <;>\n      simp_all [Set.mem_Icc]\n      <;>\n      norm_num\n      <;>\n      linarith [Real.pi_pos]\n    \u00b7 -- Prove that there exists t \u2208 [0, \u03c0] such that deriv C t \u2260 i e^{it}\n      use Real.pi\n      constructor\n      \u00b7 -- Prove that \u03c0 \u2208 [0, \u03c0]\n        constructor <;> linarith [Real.pi_pos]\n      \u00b7 -- Prove that deriv C \u03c0 \u2260 i e^{i\u03c0}\n        have h\u2081 : \u00acDifferentiableAt \u2102 (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi := by\n          intro h_diff\n          have h\u2082 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = (0 : \u2102) := by\n            have h\u2083 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = (0 : \u2102) := by\n              -- Show that the derivative from the right is 0\n              have h\u2084 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = (0 : \u2102) := by\n                have h\u2085 : \u2200\u1da0 (t : \u211d) in nhds Real.pi, (if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) = (Complex.exp (Complex.I * Real.pi) : \u2102) := by\n                  filter_upwards [isOpen_Ioi.mem_nhds (by linarith [Real.pi_pos] : (Real.pi : \u211d) < Real.pi + 1)] with t ht\n                  have h\u2086 : Real.pi < t := ht\n                  have h\u2087 : \u00act \u2264 Real.pi := by linarith\n                  simp [h\u2087]\n                  <;>\n                  simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n                  <;>\n                  ring_nf\n                  <;>\n                  norm_num\n                  <;>\n                  linarith [Real.pi_pos]\n                have h\u2086 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = deriv (fun t : \u211d => (Complex.exp (Complex.I * Real.pi) : \u2102)) Real.pi := by\n                  apply Filter.EventuallyEq.deriv_eq\n                  filter_upwards [h\u2085] with t ht\n                  rw [ht]\n                have h\u2087 : deriv (fun t : \u211d => (Complex.exp (Complex.I * Real.pi) : \u2102)) Real.pi = (0 : \u2102) := by\n                  -- The derivative of a constant is 0\n                  simp [deriv_const]\n                rw [h\u2086, h\u2087]\n              exact h\u2084\n            exact h\u2083\n          have h\u2083 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) := by\n            -- Show that the derivative from the left is i * e^{i\u03c0}\n            have h\u2084 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) := by\n              have h\u2085 : deriv (fun t : \u211d => (Complex.exp (Complex.I * t) : \u2102)) Real.pi = (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) := by\n                -- Derivative of e^{it} is i * e^{it}\n                have h\u2086 : HasDerivAt (fun t : \u211d => (Complex.exp (Complex.I * t) : \u2102)) (Complex.I * Complex.exp (Complex.I * Real.pi)) Real.pi := by\n                  -- Use the chain rule to find the derivative\n                  have h\u2087 : HasDerivAt (fun t : \u211d => (Complex.I : \u2102) * (t : \u2102)) (Complex.I : \u2102) Real.pi := by\n                    simpa using (hasDerivAt_id Real.pi).const_mul (Complex.I : \u2102)\n                  have h\u2088 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * (Real.pi : \u211d)) * (Complex.I : \u2102)) Real.pi := by\n                    have h\u2089 : HasDerivAt (fun t : \u211d => (Complex.I : \u2102) * (t : \u2102)) (Complex.I : \u2102) Real.pi := by\n                      simpa using (hasDerivAt_id Real.pi).const_mul (Complex.I : \u2102)\n                    have h\u2081\u2080 : HasDerivAt (fun t : \u211d => Complex.exp (Complex.I * t)) (Complex.exp (Complex.I * (Real.pi : \u211d)) * (Complex.I : \u2102)) Real.pi := by\n                      convert HasDerivAt.exp (h\u2089) using 1\n                      <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n                      <;> ring_nf\n                      <;> simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n                      <;> norm_num\n                      <;> linarith [Real.pi_pos]\n                    exact h\u2081\u2080\n                  convert h\u2088 using 1 <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;> ring_nf <;> simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;> norm_num <;> linarith [Real.pi_pos]\n                have h\u2081\u2080 : deriv (fun t : \u211d => (Complex.exp (Complex.I * t) : \u2102)) Real.pi = (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) := by\n                  apply HasDerivAt.deriv\n                  exact h\u2086\n                exact h\u2081\u2080\n              have h\u2081\u2081 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = deriv (fun t : \u211d => (Complex.exp (Complex.I * t) : \u2102)) Real.pi := by\n                -- The function is equal to e^{it} in a neighborhood to the left of \u03c0\n                have h\u2081\u2082 : \u2200\u1da0 (t : \u211d) in nhdsWithin Real.pi (Set.Iic Real.pi), (if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) = (Complex.exp (Complex.I * t) : \u2102) := by\n                  filter_upwards [self_mem_nhdsWithin] with t ht\n                  simp [ht]\n                  <;>\n                  simp_all [Set.mem_Iic]\n                  <;>\n                  linarith\n                have h\u2081\u2083 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = deriv (fun t : \u211d => (Complex.exp (Complex.I * t) : \u2102)) Real.pi := by\n                  apply Filter.EventuallyEq.deriv_eq\n                  filter_upwards [h\u2081\u2082] with t ht\n                  rw [ht]\n                exact h\u2081\u2083\n              rw [h\u2081\u2081]\n              exact h\u2085\n            exact h\u2084\n          have h\u2084 : (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) = (0 : \u2102) := by\n            rw [h\u2083] at h\u2082\n            exact h\u2082\n          have h\u2085 : (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) \u2260 (0 : \u2102) := by\n            simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n            <;>\n            (try ring_nf) <;>\n            (try norm_num) <;>\n            (try\n              {\n                have h\u2086 : Real.exp 0 = (1 : \u211d) := by norm_num\n                have h\u2087 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n                have h\u2088 : Real.exp (-Real.pi) < 1 := by\n                  have h\u2089 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                  have h\u2081\u2080 : Real.exp 0 = (1 : \u211d) := by norm_num\n                  linarith\n                norm_num at *\n                <;>\n                (try nlinarith [Real.pi_gt_three]) <;>\n                (try linarith [Real.pi_pos])\n              })\n          exact h\u2085 h\u2084\n        have h\u2082 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi = 0 := by\n          rw [deriv_zero_of_not_differentiableAt h\u2081]\n        have h\u2083 : (Complex.I * Complex.exp (Complex.I * Real.pi) : \u2102) \u2260 0 := by\n          simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n          <;>\n          (try ring_nf) <;>\n          (try norm_num) <;>\n          (try\n            {\n              have h\u2084 : Real.exp 0 = (1 : \u211d) := by norm_num\n              have h\u2085 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n              have h\u2086 : Real.exp (-Real.pi) < 1 := by\n                have h\u2087 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                have h\u2088 : Real.exp 0 = (1 : \u211d) := by norm_num\n                linarith\n              norm_num at *\n              <;>\n              (try nlinarith [Real.pi_gt_three]) <;>\n              (try linarith [Real.pi_pos])\n            })\n          <;>\n          (try\n            {\n              have h\u2084 : Real.exp 0 = (1 : \u211d) := by norm_num\n              have h\u2085 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n              have h\u2086 : Real.exp (-Real.pi) < 1 := by\n                have h\u2087 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                have h\u2088 : Real.exp 0 = (1 : \u211d) := by norm_num\n                linarith\n              norm_num at *\n              <;>\n              (try nlinarith [Real.pi_gt_three]) <;>\n              (try linarith [Real.pi_pos])\n            })\n          <;>\n          (try\n            {\n              have h\u2084 : Real.exp 0 = (1 : \u211d) := by norm_num\n              have h\u2085 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n              have h\u2086 : Real.exp (-Real.pi) < 1 := by\n                have h\u2087 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                have h\u2088 : Real.exp 0 = (1 : \u211d) := by norm_num\n                linarith\n              norm_num at *\n              <;>\n              (try nlinarith [Real.pi_gt_three]) <;>\n              (try linarith [Real.pi_pos])\n            })\n          <;>\n          (try\n            {\n              have h\u2084 : Real.exp 0 = (1 : \u211d) := by norm_num\n              have h\u2085 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n              have h\u2086 : Real.exp (-Real.pi) < 1 := by\n                have h\u2087 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                have h\u2088 : Real.exp 0 = (1 : \u211d) := by norm_num\n                linarith\n              norm_num at *\n              <;>\n              (try nlinarith [Real.pi_gt_three]) <;>\n              (try linarith [Real.pi_pos])\n            })\n        have h\u2084 : deriv (fun t : \u211d => if t \u2264 Real.pi then Complex.exp (Complex.I * t) else Complex.exp (Complex.I * Real.pi)) Real.pi \u2260 Complex.I * Complex.exp (Complex.I * Real.pi) := by\n          intro h\n          rw [h\u2082] at h\n          simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.I_re, Complex.I_im]\n          <;>\n          (try ring_nf at *) <;>\n          (try norm_num at *) <;>\n          (try\n            {\n              have h\u2085 : Real.exp 0 = (1 : \u211d) := by norm_num\n              have h\u2086 : Real.exp (-Real.pi) > 0 := Real.exp_pos (-Real.pi)\n              have h\u2087 : Real.exp (-Real.pi) < 1 := by\n                have h\u2088 : Real.exp (-Real.pi) < Real.exp 0 := Real.exp_lt_exp.mpr (by linarith [Real.pi_pos])\n                have h\u2089 : Real.exp 0 = (1 : \u211d) := by norm_num\n                linarith\n              norm_num at *\n              <;>\n              (try nlinarith [Real.pi_gt_three]) <;>\n              (try linarith [Real.pi_pos])\n            })\n        exact h\u2084\n  intro h\n  rcases h_main with \u27e8C, hC, t, ht, h_deriv\u27e9\n  have h\u2081 := h C hC t ht\n  apply h_deriv\n  simp_all"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "The function f(z) = z^2 becomes f(z(t)) = (e^{it})^2 = e^{2it} along the path.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [def_1]\n\u2022 The derivative of the parameterization z(t) is z'(t) = i * e^{it} [l1]\nTherefore, we conclude:\n\u2022 Along the path C, f(z(t)) = e^{2it} [l2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (C : \u211d \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (f : \u2102 \u2192 \u2102)\n  (hf : f = fun z => z^2) :\n  \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (C : \u211d \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (f : \u2102 \u2192 \u2102)\n  (hf : f = fun z => z^2) :\n  \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t) := by\n  intro t ht\n  have h\u2081 : f (C t) = (C t) ^ 2 := by\n    rw [hf]\n    <;> simp [Complex.ext_iff, pow_two]\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff]\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff]\n    <;> norm_num\n    <;> linarith\n  have h\u2082 : C t = Complex.exp (Complex.I * t) := hC t ht\n  rw [h\u2081, h\u2082]\n  have h\u2083 : (Complex.exp (Complex.I * t)) ^ 2 = Complex.exp (2 * Complex.I * t) := by\n    calc\n      (Complex.exp (Complex.I * t)) ^ 2 = Complex.exp (Complex.I * t) * Complex.exp (Complex.I * t) := by\n        ring_nf\n      _ = Complex.exp (Complex.I * t + Complex.I * t) := by\n        rw [\u2190 Complex.exp_add]\n        <;> ring_nf\n      _ = Complex.exp (2 * Complex.I * t) := by\n        ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> ring_nf\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff]\n        <;> norm_num\n        <;> linarith\n  rw [h\u2083]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The path parameterization is correctly captured with proper domain specification using Set.Icc 0 Real.pi and the complex exponential function Complex.exp (Complex.I * t)", "The function definition f(z) = z^2 is accurately represented using lambda notation in Lean", "The conclusion correctly states that f(C(t)) equals Complex.exp (2 * Complex.I * t) for all t in the specified interval, which is mathematically equivalent to the natural language statement"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "the definition of the contour integral, \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) z'(t) dt", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [def_1]\n\u2022 The derivative of the parameterization z(t) is z'(t) = i * e^{it} [l1]\n\u2022 Along the path C, f(z(t)) = e^{2it} [l2]\nDefinition:\n\u2022 The contour integral is defined by the formula \u222b_C f(z) dz = \u222b_a^b f(z(t)) z'(t) dt, where the path is parameterized over [a,b] [def_2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03b1 : Type*} [NormedAddCommGroup \u03b1] [NormedSpace \u211d \u03b1] [CompleteSpace \u03b1]\n  (C : \u211d \u2192 \u2102) (f : \u2102 \u2192 \u2102) (a b : \u211d)\n\ntheorem def_2 :\n  \u2203 (integral : \u211d), \n  (\u222b t in a..b, f (C t) * (Complex.I * Complex.exp (Complex.I * t))) = integral := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean theorem does not specify that C is an upper semi-circular path from z=1 to z=-1. The path C is referenced but not defined or constrained.", "The Lean theorem does not define f(z) = z^2. The function f is referenced but not specified.", "The Lean theorem does not parameterize C as z(t) = e^{it} for t in [0, \u03c0]. While Complex.exp (Complex.I * t) appears in the integral, the parameterization of C itself is not established.", "The Lean theorem shows an integral formula \u222b t in a..b, f (C t) * (Complex.I * Complex.exp (Complex.I * t)), which corresponds to the contour integral definition, but uses generic bounds a..b instead of the specific interval [0, \u03c0].", "The conclusion z'(t) = i * e^{it} is implicitly present as Complex.I * Complex.exp (Complex.I * t) in the integral, but this derivative relationship is not explicitly stated or derived.", "The conclusion f(z(t)) = e^{2it} is not present in the Lean theorem. The Lean shows f (C t) but does not establish that this equals e^{2it}."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean theorem does not specify that C is an upper semi-circular path from z=1 to z=-1. The path C is referenced but not defined or constrained.', 'The Lean theorem does not define f(z) = z^2. The function f is referenced but not specified.', 'The Lean theorem does not parameterize C as z(t) = e^{it} for t in [0, \u03c0]. While Complex.exp (Complex.I * t) appears in the integral, the parameterization of C itself is not established.', 'The Lean theorem shows an integral formula \u222b t in a..b, f (C t) * (Complex.I * Complex.exp (Complex.I * t)), which corresponds to the contour integral definition, but uses generic bounds a..b instead of the specific interval [0, \u03c0].', \"The conclusion z'(t) = i * e^{it} is implicitly present as Complex.I * Complex.exp (Complex.I * t) in the integral, but this derivative relationship is not explicitly stated or derived.\", 'The conclusion f(z(t)) = e^{2it} is not present in the Lean theorem. The Lean shows f (C t) but does not establish that this equals e^{2it}.']"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "Substituting these into the definition of the contour integral, \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) z'(t) dt, we get the expression \u222b_0^\u03c0 e^{2it} (ie^{it}) dt.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [def_1]\n\u2022 The derivative of the parameterization z(t) is z'(t) = i * e^{it} [l1]\n\u2022 Along the path C, f(z(t)) = e^{2it} [l2]\n\u2022 The contour integral is defined by the formula \u222b_C f(z) dz = \u222b_a^b f(z(t)) z'(t) dt [def_2]\nTherefore, we conclude:\n\u2022 The contour integral is given by \u222b_C f(z) dz = \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt [l3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (C : \u211d \u2192 \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (hf : f = fun z => z^2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))\n  (l2 : \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t))\n  (def_2 : \u2200 (g : \u211d \u2192 \u2102) (a b : \u211d), \u222b t in a..b, g t = \u222b t in a..b, g t) :\n  \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \n  \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (C : \u211d \u2192 \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (hf : f = fun z => z^2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))\n  (l2 : \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t))\n  (def_2 : \u2200 (g : \u211d \u2192 \u2102) (a b : \u211d), \u222b t in a..b, g t = \u222b t in a..b, g t) :\n  \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \n  \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n  have h3 : (\u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t))) = \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n    have h4 : \u2200 t \u2208 Set.Icc (0 : \u211d) Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n      intro t ht\n      have h5 : f (C t) = Complex.exp (2 * Complex.I * t) := l2 t ht\n      rw [h5]\n      <;>\n      simp_all [Complex.ext_iff, pow_two, Complex.exp_re, Complex.exp_im, Complex.ext_iff, pow_two,\n        Complex.exp_re, Complex.exp_im]\n      <;>\n      ring_nf\n      <;>\n      simp_all [Complex.ext_iff, pow_two, Complex.exp_re, Complex.exp_im]\n      <;>\n      norm_num\n      <;>\n      linarith [Real.pi_pos, Real.pi_gt_three]\n    -- Use the fact that the integrands are equal on [0, \u03c0] to conclude the integrals are equal\n    have h6 : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n      apply intervalIntegral.integral_congr\n      intro t ht\n      have h7 : t \u2208 Set.Icc (0 : \u211d) Real.pi := by\n        constructor <;>\n        (try norm_num at ht \u22a2) <;>\n        (try linarith [Real.pi_pos, Real.pi_gt_three]) <;>\n        (try\n          {\n            cases' ht with ht1 ht2\n            <;>\n            (try simp_all [Set.Icc, le_of_lt])\n            <;>\n            (try linarith [Real.pi_pos, Real.pi_gt_three])\n          })\n      have h8 : f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := h4 t h7\n      exact h8\n    exact h6\n  exact h3", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 34, "column": 47, "endLine": 45, "endColumn": 12, "data": "unsolved goals\ncase left\nC : \u211d \u2192 \u2102\nf : \u2102 \u2192 \u2102\nhC : \u2200 t \u2208 Set.Icc 0 \u03c0, C t = Complex.exp (Complex.I * \u2191t)\nhf : f = fun z => z ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, deriv C t = Complex.I * Complex.exp (Complex.I * \u2191t)\nl2 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (C t) = Complex.exp (2 * Complex.I * \u2191t)\ndef_2 : \u2200 (g : \u211d \u2192 \u2102) (a b : \u211d), \u222b (t : \u211d) in a..b, g t = \u222b (t : \u211d) in a..b, g t\nh4 :\n  \u2200 t \u2208 Set.Icc 0 \u03c0,\n    f (C t) * (Complex.I * Complex.exp (Complex.I * \u2191t)) =\n      Complex.exp (2 * Complex.I * \u2191t) * (Complex.I * Complex.exp (Complex.I * \u2191t))\nt : \u211d\nht : t \u2208 Set.uIcc 0 \u03c0\n\u22a2 0 \u2264 t\n\ncase right\nC : \u211d \u2192 \u2102\nf : \u2102 \u2192 \u2102\nhC : \u2200 t \u2208 Set.Icc 0 \u03c0, C t = Complex.exp (Complex.I * \u2191t)\nhf : f = fun z => z ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, deriv C t = Complex.I * Complex.exp (Complex.I * \u2191t)\nl2 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (C t) = Complex.exp (2 * Complex.I * \u2191t)\ndef_2 : \u2200 (g : \u211d \u2192 \u2102) (a b : \u211d), \u222b (t : \u211d) in a..b, g t = \u222b (t : \u211d) in a..b, g t\nh4 :\n  \u2200 t \u2208 Set.Icc 0 \u03c0,\n    f (C t) * (Complex.I * Complex.exp (Complex.I * \u2191t)) =\n      Complex.exp (2 * Complex.I * \u2191t) * (Complex.I * Complex.exp (Complex.I * \u2191t))\nt : \u211d\nht : t \u2208 Set.uIcc 0 \u03c0\n\u22a2 t \u2264 \u03c0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The parameterization of path C is correctly formalized with the proper domain and complex exponential form.", "The function f(z) = z^2 is directly and accurately translated to Lean.", "The derivative condition l1 correctly captures z'(t) = i * e^{it} using Lean's deriv function.", "The composition f(z(t)) = e^{2it} is properly formalized as f (C t) = Complex.exp (2 * Complex.I * t).", "The contour integral definition def_2 is trivial (integral equals itself) and fails to capture the actual relationship between contour integrals and parameterized integrals mentioned in the natural language.", "The theorem statement captures the algebraic substitution correctly but doesn't fully represent the complete contour integral conclusion. It shows an intermediate step rather than the full integral evaluation, though the mathematical content is consistent.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The parameterization of path C is correctly formalized with the proper domain and complex exponential form.', 'The function f(z) = z^2 is directly and accurately translated to Lean.', \"The derivative condition l1 correctly captures z'(t) = i * e^{it} using Lean's deriv function.\", 'The composition f(z(t)) = e^{2it} is properly formalized as f (C t) = Complex.exp (2 * Complex.I * t).', 'The contour integral definition def_2 is trivial (integral equals itself) and fails to capture the actual relationship between contour integrals and parameterized integrals mentioned in the natural language.', \"The theorem statement captures the algebraic substitution correctly but doesn't fully represent the complete contour integral conclusion. It shows an intermediate step rather than the full integral evaluation, though the mathematical content is consistent.\"]"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Evaluating this integral gives \u222b_0^\u03c0 ie^{3it} dt = [e^{3it}/3]_0^\u03c0 = 1/3(e^{3i\u03c0} - e^0) = 1/3(-1 - 1) = -2/3.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1]\n\u2022 The function to be integrated is f(z) = z^2 [tc_2]\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [def_1]\n\u2022 The derivative of the parameterization z(t) is z'(t) = i * e^{it} [l1]\n\u2022 Along the path C, f(z(t)) = e^{2it} [l2]\n\u2022 The contour integral is defined by the formula \u222b_C f(z) dz = \u222b_a^b f(z(t)) z'(t) dt [def_2]\n\u2022 The contour integral is given by \u222b_C f(z) dz = \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt [l3]\nTherefore, we conclude:\n\u2022 \u222b_C f(z) dz = -2/3 [ts_1].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (C : \u211d \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (f : \u2102 \u2192 \u2102)\n  (hf : f = fun z => z^2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))\n  (l2 : \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t))\n  (l3 : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \n        \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t))) :\n  \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (C : \u211d \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (f : \u2102 \u2192 \u2102)\n  (hf : f = fun z => z^2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))\n  (l2 : \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t))\n  (l3 : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \n        \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t))) :\n  \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n  have h\u2080 : \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n    have h\u2081 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) : \u2102) = (-2 : \u2102) / 3 := by\n      have h\u2082 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) : \u2102) = \u222b t in (0 : \u211d)..Real.pi, (Complex.I * (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t)) : \u2102) := by\n        congr\n        ext t\n        ring_nf\n      rw [h\u2082]\n      have h\u2083 : \u222b t in (0 : \u211d)..Real.pi, (Complex.I * (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t)) : \u2102) = Complex.I * \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t) : \u2102) := by\n        simp [intervalIntegral.integral_comp_mul_left (fun t => (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t) : \u2102))]\n        <;>\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        ring_nf\n        <;>\n        norm_num\n        <;>\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        linarith\n      rw [h\u2083]\n      have h\u2084 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t) : \u2102) = \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) := by\n        congr\n        ext t\n        have h\u2085 : (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t) : \u2102) = Complex.exp (3 * Complex.I * t) := by\n          calc\n            (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t) : \u2102) = Complex.exp (2 * Complex.I * t + Complex.I * t) := by\n              rw [Complex.exp_add]\n            _ = Complex.exp (3 * Complex.I * t) := by\n              ring_nf\n              <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n              <;> norm_num\n              <;> ring_nf\n              <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n              <;> norm_num\n              <;> linarith\n        rw [h\u2085]\n      rw [h\u2084]\n      have h\u2085 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) = (Complex.exp (3 * Complex.I * Real.pi) - 1) / (3 * Complex.I) := by\n        have h\u2085\u2081 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) = (Complex.exp (3 * Complex.I * Real.pi) - Complex.exp (3 * Complex.I * (0 : \u211d))) / (3 * Complex.I) := by\n          have h\u2085\u2082 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) = (Complex.exp (3 * Complex.I * Real.pi) - Complex.exp (3 * Complex.I * (0 : \u211d))) / (3 * Complex.I) := by\n            -- Use the fundamental theorem of calculus for complex exponentials\n            have h\u2085\u2083 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) = (Complex.exp (3 * Complex.I * Real.pi) - Complex.exp (3 * Complex.I * (0 : \u211d))) / (3 * Complex.I) := by\n              -- Compute the integral using the antiderivative of the complex exponential\n              have h\u2085\u2084 : \u222b t in (0 : \u211d)..Real.pi, (Complex.exp (3 * Complex.I * t) : \u2102) = (Complex.exp (3 * Complex.I * Real.pi) - Complex.exp (3 * Complex.I * (0 : \u211d))) / (3 * Complex.I) := by\n                -- Use the fundamental theorem of calculus for complex exponentials\n                simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, mul_comm]\n                <;>\n                norm_num <;>\n                simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, mul_comm] <;>\n                field_simp [Real.pi_pos.le] <;>\n                ring_nf <;>\n                norm_num <;>\n                simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, mul_comm] <;>\n                linarith [Real.pi_pos]\n              rw [h\u2085\u2084]\n            rw [h\u2085\u2083]\n          rw [h\u2085\u2082]\n        rw [h\u2085\u2081]\n        <;> simp [Complex.exp_zero]\n        <;> ring_nf\n        <;> field_simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> norm_num\n        <;> linarith\n      rw [h\u2085]\n      have h\u2086 : (Complex.exp (3 * Complex.I * Real.pi) - 1 : \u2102) / (3 * Complex.I) = (-2 : \u2102) / 3 / Complex.I := by\n        have h\u2086\u2081 : Complex.exp (3 * Complex.I * Real.pi) = -1 := by\n          have h\u2086\u2082 : Complex.exp (3 * Complex.I * Real.pi) = Complex.exp (Complex.I * (3 * Real.pi)) := by ring_nf\n          rw [h\u2086\u2082]\n          have h\u2086\u2083 : Complex.exp (Complex.I * (3 * Real.pi)) = -1 := by\n            have h\u2086\u2084 : Complex.exp (Complex.I * (3 * Real.pi)) = Complex.exp (Complex.I * (Real.pi + 2 * Real.pi)) := by ring_nf\n            rw [h\u2086\u2084]\n            have h\u2086\u2085 : Complex.exp (Complex.I * (Real.pi + 2 * Real.pi)) = Complex.exp (Complex.I * Real.pi) * Complex.exp (Complex.I * (2 * Real.pi)) := by\n              rw [\u2190 Complex.exp_add]\n              <;> ring_nf\n            rw [h\u2086\u2085]\n            have h\u2086\u2086 : Complex.exp (Complex.I * Real.pi) = -1 := by\n              rw [Complex.exp_eq_exp_re_mul_sin_add_cos]\n              simp [Complex.ext_iff, Real.exp_zero, Real.cos_pi, Real.sin_pi]\n              <;> norm_num\n            have h\u2086\u2087 : Complex.exp (Complex.I * (2 * Real.pi)) = 1 := by\n              rw [Complex.exp_eq_exp_re_mul_sin_add_cos]\n              simp [Complex.ext_iff, Real.exp_zero, Real.cos_two_pi, Real.sin_two_pi]\n              <;> norm_num\n            rw [h\u2086\u2086, h\u2086\u2087]\n            <;> ring_nf\n            <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n            <;> norm_num\n          rw [h\u2086\u2083]\n          <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n          <;> norm_num\n        rw [h\u2086\u2081]\n        field_simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> norm_num\n        <;> linarith\n      rw [h\u2086]\n      have h\u2087 : Complex.I * ((-2 : \u2102) / 3 / Complex.I) = (-2 : \u2102) / 3 := by\n        field_simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;> norm_num\n      rw [h\u2087]\n    exact h\u2081\n  \n  have h\u2081 : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n    calc\n      \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n        rw [l3]\n      _ = (-2 : \u2102) / 3 := by\n        rw [h\u2080]\n  \n  exact h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 63, "column": 16, "endLine": 63, "endColumn": 43, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The parameterization of the upper semi-circular path C and the domain [0, \u03c0] are correctly captured in the Lean hypothesis hC.", "The function f(z) = z^2 is perfectly represented in the Lean hypothesis hf.", "The derivative z'(t) = i * e^{it} is correctly formalized in hypothesis l1.", "The composition f(z(t)) = e^{2it} is accurately represented in hypothesis l2.", "The general contour integral formula (def_2) is not explicitly stated in Lean, though its specific application (l3) is present. The Lean formalization assumes this relationship rather than stating it as a premise.", "The final conclusion \u222b_C f(z) dz = -2/3 is correctly stated as the theorem goal.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.83 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (C : \u211d \u2192 \u2102)\n  (hC : \u2200 t \u2208 Set.Icc 0 Real.pi, C t = Complex.exp (Complex.I * t))\n  (f : \u2102 \u2192 \u2102)\n  (hf : f = fun z => z^2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 Real.pi, deriv C t = Complex.I * Complex.exp (Complex.I * t))\n  (l2 : \u2200 t \u2208 Set.Icc 0 Real.pi, f (C t) = Complex.exp (2 * Complex.I * t))\n  (l3 : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \n        \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t))) :\n  \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n  have h_main : \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n    have h\u2080 : \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n      have h\u2081 : (\u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t))) = (\u222b t in (0 : \u211d)..Real.pi, Complex.I * Complex.exp (3 * Complex.I * t)) := by\n        -- Prove that the integrands are equal\n        congr\n        ext t\n        have h\u2082 : Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) = Complex.I * Complex.exp (3 * Complex.I * t) := by\n          calc\n            Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) = Complex.I * (Complex.exp (2 * Complex.I * t) * Complex.exp (Complex.I * t)) := by ring_nf <;> simp [Complex.ext_iff, Complex.I_mul_I] <;> norm_num\n            _ = Complex.I * Complex.exp (2 * Complex.I * t + Complex.I * t) := by\n              rw [\u2190 Complex.exp_add]\n              <;> ring_nf\n              <;> simp [Complex.ext_iff, Complex.I_mul_I]\n              <;> norm_num\n            _ = Complex.I * Complex.exp (3 * Complex.I * t) := by\n              have h\u2083 : (2 * Complex.I * t + Complex.I * t : \u2102) = 3 * Complex.I * t := by\n                ring_nf\n                <;> simp [Complex.ext_iff, Complex.I_mul_I]\n                <;> norm_num\n              rw [h\u2083]\n              <;> simp [Complex.ext_iff, Complex.I_mul_I]\n              <;> norm_num\n        rw [h\u2082]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n      rw [h\u2081]\n      -- Use the fundamental theorem of calculus to evaluate the integral\n      have h\u2082 : (\u222b t in (0 : \u211d)..Real.pi, Complex.I * Complex.exp (3 * Complex.I * t)) = (-2 : \u2102) / 3 := by\n        have h\u2083 : (\u222b t in (0 : \u211d)..Real.pi, Complex.I * Complex.exp (3 * Complex.I * t)) = (Complex.exp (3 * Complex.I * Real.pi) / 3 - Complex.exp (3 * Complex.I * (0 : \u211d)) / 3) * Complex.I := by\n          -- Use the fundamental theorem of calculus\n          have h\u2084 : (\u222b t in (0 : \u211d)..Real.pi, Complex.I * Complex.exp (3 * Complex.I * t)) = (Complex.exp (3 * Complex.I * Real.pi) / 3 - Complex.exp (3 * Complex.I * (0 : \u211d)) / 3) * Complex.I := by\n            -- Use the fundamental theorem of calculus\n            simp [intervalIntegral.integral_comp_mul_left (fun t => Complex.exp (Complex.I * t)), Complex.exp_ne_zero]\n            <;> field_simp [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Complex.ofReal_add, Complex.ofReal_mul, Complex.ofReal_ofNat]\n            <;> ring_nf\n            <;> norm_num\n            <;> simp_all [Complex.ext_iff, Complex.I_mul_I, Complex.exp_re, Complex.exp_im, Complex.ofReal_add, Complex.ofReal_mul, Complex.ofReal_ofNat]\n            <;> norm_num\n            <;> linarith [Real.pi_pos]\n          rw [h\u2084]\n        rw [h\u2083]\n        -- Simplify the expression\n        have h\u2084 : Complex.exp (3 * Complex.I * Real.pi) = -1 := by\n          have h\u2085 : Complex.exp (3 * Complex.I * Real.pi) = Complex.exp (Complex.I * Real.pi + 2 * Complex.I * Real.pi) := by\n            ring_nf\n            <;> simp [Complex.ext_iff, Complex.I_mul_I]\n            <;> norm_num\n          rw [h\u2085]\n          have h\u2086 : Complex.exp (Complex.I * Real.pi + 2 * Complex.I * Real.pi) = Complex.exp (Complex.I * Real.pi) := by\n            rw [show (Complex.I * Real.pi + 2 * Complex.I * Real.pi : \u2102) = Complex.I * Real.pi + 2 * Complex.I * Real.pi by rfl]\n            rw [Complex.exp_eq_exp_iff_exists_int]\n            use 1\n            <;> ring_nf\n            <;> simp [Complex.ext_iff, Complex.I_mul_I]\n            <;> norm_num\n            <;> linarith [Real.pi_pos]\n          rw [h\u2086]\n          have h\u2087 : Complex.exp (Complex.I * Real.pi) = -1 := by\n            have h\u2088 : Complex.exp (Complex.I * Real.pi) = -1 := by\n              rw [Complex.exp_eq_exp_re_mul_sin_add_cos]\n              simp [Complex.ext_iff, Complex.I_mul_I]\n              <;> norm_num\n              <;> field_simp [Real.pi_pos.le]\n              <;> ring_nf\n              <;> norm_num\n              <;> linarith [Real.pi_pos]\n            rw [h\u2088]\n          rw [h\u2087]\n        have h\u2085 : Complex.exp (3 * Complex.I * (0 : \u211d)) = 1 := by\n          simp [Complex.exp_zero]\n        rw [h\u2084, h\u2085]\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> field_simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n      rw [h\u2082]\n    exact h\u2080\n  \n  have h_goal : \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = (-2 : \u2102) / 3 := by\n    calc\n      \u222b t in (0 : \u211d)..Real.pi, f (C t) * (Complex.I * Complex.exp (Complex.I * t)) = \u222b t in (0 : \u211d)..Real.pi, Complex.exp (2 * Complex.I * t) * (Complex.I * Complex.exp (Complex.I * t)) := by\n        rw [l3]\n      _ = (-2 : \u2102) / 3 := by\n        rw [h_main]\n  \n  apply h_goal"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

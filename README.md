@@ -75,8 +75,8 @@ lean_server = LeanServer(api_url="http://localhost:14457")  # Remote server
 graph_model = LLMManager(
     model_info={
         "api_key": "your-api-key",
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "google/gemini-2.5-pro",
+        "base_url": "your-base-url",
+        "model": "your-model-name",
     },
     system_prompt_path="prompts/proof_graph.md",
 )
@@ -84,8 +84,8 @@ graph_model = LLMManager(
 formalize_model = LLMManager(
     model_info={
         "api_key": "your-api-key",
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "google/gemini-2.5-flash",
+        "base_url": "your-base-url",
+        "model": "your-model-name",
     },
     system_prompt_path="prompts/lemma_formalizer.md",
 )
@@ -93,8 +93,8 @@ formalize_model = LLMManager(
 solver_model = LLMManager(
     model_info={
         "api_key": "your-api-key",
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "google/gemini-2.5-flash",
+        "base_url": "your-base-url",
+        "model": "your-model-name",
     },
     system_prompt_path="prompts/lemma_prover.md",
 )
@@ -165,8 +165,8 @@ lean_server = LeanServer(api_url="http://your-lean-server:port")
 score_model = LLMManager(
     model_info={
         "api_key": "your-api-key",
-        "base_url": "https://openrouter.ai/api/v1",
-        "model": "anthropic/claude-sonnet-4",
+        "base_url": "your-base-url",
+        "model": "your-model-name",
     },
     system_prompt_path=None,
 )
@@ -230,18 +230,5 @@ AutoFormalize tracks detailed performance metrics:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📚 Citation
-
-If you use ProofFlow in your research, please cite our paper:
-
-```bibtex
-@article{proofflow2024,
-  title={ProofFlow: A Dependency Graph Approach to Faithful Proof Autoformalization},
-  author={Your Name and Co-authors},
-  journal={Conference/Journal Name},
-  year={2024}
-}
-```
 
 **ProofFlow** - Bridging the gap between informal mathematics and formal verification.

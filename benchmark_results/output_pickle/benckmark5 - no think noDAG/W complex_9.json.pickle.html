@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $C$ be the upper semi-circular path in the complex plane from $z=1$ to $z=-1$, and let the function to be integrated be $f(z) = z^2$. Then the contour integral $\int_C f(z) dz$ is equal to $-2/3$.
+
+Proof: The path $C$ can be parameterized by $z(t) = e^{it}$ for $t \in [0, \pi]$. The derivative of the parameterization is $z'(t) = ie^{it}$. The function $f(z) = z^2$ becomes $f(z(t)) = (e^{it})^2 = e^{2it}$ along the path. Substituting these into the definition of the contour integral, $\int_C f(z) dz = \int_0^{\pi} f(z(t)) z'(t) dt$, we get the expression $\int_0^{\pi} e^{2it} (ie^{it}) dt$. Evaluating this integral gives $\int_0^{\pi} ie^{3it} dt = [\frac{e^{3it}}{3}]_0^{\pi} = \frac{1}{3}(e^{3i\pi} - e^0) = \frac{1}{3}(-1 - 1) = -2/3$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $C$ be the upper semi-circular path in the complex plane from $z=1$ to $z=-1$", "statement": "Premise:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (C : Path (Complex \u211d))\n  (tc_1 : C = Path.mk (fun t : \u211d => Complex.exp (t * Complex.I)) (by continuity) 0 \u03c0)", "lean_pass": false, "error_msg": [{"line": 6, "column": 13, "endLine": 6, "endColumn": 22, "data": "function expected at\n  \u2102\nterm has type\n  Type"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "let the function to be integrated be $f(z) = z^2$.", "statement": "Premise:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u211d \u2192 \u2102)\n  (t : Set \u211d)\n  (tc_1 :\n    ContinuousOn z t \u2227\n    z 0 = 1 \u2227\n    z \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z s).im \u2265 0) \u2227\n    t = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the upper semi-circular path. It specifies: continuity (ContinuousOn z t), correct endpoints (z 0 = 1, z \u03c0 = -1), unit circle constraint (\u2016z s\u2016 = 1), upper half-plane constraint ((z s).im \u2265 0), and proper parameterization domain (t = Set.Icc 0 \u03c0). All these conditions together precisely define an upper semi-circular path from 1 to -1.", "The Lean formalization perfectly matches the natural language. Both define f as the function that maps any complex number to its square: f(z) = z^2 in math notation and f = fun z_var => z_var ^ 2 in Lean."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "The path $C$ can be parameterized by $z(t) = e^{it}$ for $t \\in [0, \\pi]$.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2].\nTherefore, we conclude:\n\u2022 The path C can be parameterized by z(t) = e^{it} for t in the interval [0, \u03c0] [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2) :\n  \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2) :\n  \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)) := by\n  intro t ht\n  have h0 : z_path 0 = Complex.exp (0 * Complex.I) := by\n    rw [zero_mul, Complex.exp_zero, tc_1.2.1]\n  have h\u03c0 : z_path \u03c0 = Complex.exp (\u03c0 * Complex.I) := by\n    rw [Complex.exp_pi_mul_I, tc_1.2.2.1]\n  cases' ht with ht0 ht\u03c0\n  have h1 : \u2200 t \u2208 Set.Ioo 0 \u03c0, z_path t = Complex.exp (t * Complex.I) := by\n    intro t' ht'\n    have hnorm : \u2016z_path t'\u2016 = 1 := tc_1.2.2.2.1 t' ht'\n    have him : (z_path t').im \u2265 0 := tc_1.2.2.2.2 t' ht'\n    have h_exp : \u2016Complex.exp (t' * Complex.I)\u2016 = 1 := by\n      rw [Complex.norm_eq_abs, Complex.abs_exp_ofReal_mul_I]\n      simp\n    have h_im : (Complex.exp (t' * Complex.I)).im = Real.sin t' := by\n      rw [Complex.exp_ofReal_mul_I_im]\n    apply Complex.ext\n    \u00b7 rw [\u2190 Complex.norm_eq_abs, hnorm, h_exp]\n    \u00b7 rw [h_im]\n      have : (z_path t').im = Real.sin t' := by\n        have h1 := him\n        have h2 := sin_nonneg_of_mem_Icc \u27e8ht'.1.le, ht'.2.le\u27e9\n        exact le_antisymm (le_of_eq rfl) h1\n      exact this\n  by_cases ht0 : t = 0\n  \u00b7 rw [ht0]; exact h0\n  \u00b7 by_cases ht\u03c0 : t = \u03c0\n    \u00b7 rw [ht\u03c0]; exact h\u03c0\n    \u00b7 have h : t \u2208 Set.Ioo 0 \u03c0 := \u27e8lt_of_le_of_ne ht0 (Ne.symm ht0), lt_of_le_of_ne ht\u03c0 (Ne.symm ht\u03c0)\u27e9\n      exact h1 t h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 27, "column": 37, "endLine": 27, "endColumn": 56, "data": "function expected at\n  tc_1.right.right.right.right\nterm has type\n  (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0"}, {"line": 30, "column": 6, "endLine": 30, "endColumn": 10, "data": "no goals to be solved"}, {"line": 34, "column": 10, "endLine": 34, "endColumn": 31, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  Complex.abs ?z\ncase a\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nt : \u211d\nh0 : z_path 0 = Complex.exp (0 * Complex.I)\nh\u03c0 : z_path \u03c0 = Complex.exp (\u2191\u03c0 * Complex.I)\nht0 : 0 \u2264 t\nht\u03c0 : t \u2264 \u03c0\nt' : \u211d\nht' : t' \u2208 Set.Ioo 0 \u03c0\nhnorm : \u2016z_path t'\u2016 = 1\nhim : (z_path t').im \u2265 0\nh_exp : \u2016Complex.exp (\u2191t' * Complex.I)\u2016 = 1\nh_im : (Complex.exp (\u2191t' * Complex.I)).im = sin t'\n\u22a2 (z_path t').re = (Complex.exp (\u2191t' * Complex.I)).re"}, {"line": 39, "column": 41, "endLine": 39, "endColumn": 43, "data": "application type mismatch\n  le_antisymm (le_of_eq ?m.3146) h1\nargument\n  h1\nhas type\n  (z_path t').im \u2265 0 : Prop\nbut is expected to have type\n  sin t' \u2264 (z_path t').im : Prop"}, {"line": 39, "column": 36, "endLine": 39, "endColumn": 39, "data": "application type mismatch\n  le_of_eq rfl\nargument\n  rfl\nhas type\n  ?m.3105 = ?m.3105 : Prop\nbut is expected to have type\n  (z_path t').im = sin t' : Prop"}, {"line": 45, "column": 50, "endLine": 45, "endColumn": 53, "data": "application type mismatch\n  lt_of_le_of_ne ht0\nargument\n  ht0\nhas type\n  \u00act = 0 : Prop\nbut is expected to have type\n  0 \u2264 t : Prop"}, {"line": 45, "column": 84, "endLine": 45, "endColumn": 87, "data": "application type mismatch\n  lt_of_le_of_ne ht\u03c0\nargument\n  ht\u03c0\nhas type\n  \u00act = \u03c0 : Prop\nbut is expected to have type\n  t \u2264 \u03c0 : Prop"}, {"line": 45, "column": 97, "endLine": 45, "endColumn": 100, "data": "application type mismatch\n  Ne.symm ht\u03c0\nargument\n  ht\u03c0\nhas type\n  \u00act = \u03c0 : Prop\nbut is expected to have type\n  \u03c0 \u2260 t : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The path definition in tc_1 correctly captures the upper semi-circular path through geometric constraints (unit radius, upper half-plane, endpoints from 1 to -1). Additional technical details like continuity are mathematically appropriate.", "The function definition f(z) = z^2 is exactly captured by the Lean formalization tc_2.", "The parameterization conclusion z(t) = e^{it} for t \u2208 [0,\u03c0] is correctly formalized as the goal to be proven, with appropriate Lean notation for complex exponential.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l1_neg\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2) :\n  \u00ac \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)) := by\n  intro h\n  have h\u03c0 : \u03c0 > 0 := by simp\n  have hmid := h (\u03c0/2) (by simp [h\u03c0])\n  have hnorm := tc_1.2.2.1\n  have h\u03c04 := h (\u03c0/4) (by simp [h\u03c0])\n  have h7 : \u2016z_path (\u03c0/4)\u2016 = 1 := by\n    apply hnorm (\u03c0/4)\n    simp [h\u03c0]\n  rw [h\u03c04] at h7\n  simp at h7\n  have h8 : (Complex.exp (\u03c0/4 * Complex.I)).im = Real.sin (\u03c0/4) := by simp\n  have h9 : Real.sin (\u03c0/4) = Real.sqrt 2 / 2 := by simp\n  have h10 : (Complex.exp (\u03c0/4 * Complex.I)).im = Real.sqrt 2 / 2 := by rw [h8, h9]\n  have h11 : (Complex.exp (\u03c0/4 * Complex.I)).re = Real.cos (\u03c0/4) := by simp\n  have h12 : Real.cos (\u03c0/4) = Real.sqrt 2 / 2 := by simp\n  have h13 : (Complex.exp (\u03c0/4 * Complex.I)).re = Real.sqrt 2 / 2 := by rw [h11, h12]\n  have h14 : \u2016Complex.exp (\u03c0/4 * Complex.I)\u2016 = Real.sqrt ((Real.sqrt 2 / 2)^2 + (Real.sqrt 2 / 2)^2) := by\n    simp [norm_eq_abs, abs_apply, normSq_eq_def']\n    rw [h13, h10]\n  have h15 : Real.sqrt ((Real.sqrt 2 / 2)^2 + (Real.sqrt 2 / 2)^2) = Real.sqrt (1/2 + 1/2) := by\n    congr\n    simp [pow_two]\n    ring\n  have h16 : Real.sqrt (1/2 + 1/2) = 1 := by simp\n  rw [h15, h16] at h14\n  contradiction"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "The derivative of the parameterization is $z'(t) = ie^{it}$.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2];\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [l1].\nTherefore, we conclude:\n\u2022 The derivative of the parameterization is z'(t) = i * e^{it} [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I))) :\n  \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I))) :\n  \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)) := by\n  intro t ht\n  have h_diff : DifferentiableAt \u211d z_path t := by\n    rw [DifferentiableAt]\n    refine \u27e8_, ?_\u27e9\n    have := Complex.differentiableAt_exp (t * Complex.I)\n    simp [DifferentiableAt] at this\n    exact this.hasFDerivAt.comp t (hasDerivAt_id' t)\n  rw [deriv]\n  simp [l1 t (Set.Ioo_subset_Icc_self ht)]\n  have : HasDerivAt (fun t => Complex.exp (t * Complex.I)) (Complex.I * Complex.exp (t * Complex.I)) t := by\n    convert Complex.hasDerivAt_exp (t * Complex.I) using 1\n    simp [mul_comm]\n  simp [this]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 22, "column": 12, "endLine": 22, "endColumn": 13, "data": "don't know how to synthesize placeholder for argument 'w'\ncontext:\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (\u2191t * Complex.I)\nt : \u211d\nht : t \u2208 Set.Ioo 0 \u03c0\n\u22a2 \u211d \u2192L[\u211d] \u2102"}, {"line": 30, "column": 4, "endLine": 30, "endColumn": 19, "data": "simp made no progress"}, {"line": 31, "column": 2, "endLine": 31, "endColumn": 13, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The path definition in tc_1 correctly captures the upper semi-circular path from 1 to -1 with appropriate mathematical conditions including continuity, endpoints, unit circle constraint, and upper half-plane restriction.", "The function definition tc_2 perfectly matches the natural language specification of f(z) = z^2.", "The parameterization l1 correctly formalizes z(t) = e^{it} for t \u2208 [0,\u03c0] using Lean's complex exponential notation.", "The derivative conclusion is mathematically correct but restricts the domain to the open interval (0,\u03c0) rather than the full [0,\u03c0] as suggested in natural language. This is a minor structural difference for mathematical rigor, as derivatives at interval endpoints require special treatment.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.75 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l2\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I))) :\n  \u2203 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t \u2260 Complex.I * (Complex.exp (t * Complex.I)) := by\n  let t := \u03c0/2\n  have ht : t \u2208 Set.Ioo 0 \u03c0 := by simp [t, pi_pos]\n  use t, ht\n  have hz : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (t * Complex.I) := l1\n  have hz' : \u2200 t \u2208 Set.Ioo 0 \u03c0, z_path t = Complex.exp (t * Complex.I) :=\n    fun t ht => hz t (Set.Ioo_subset_Icc_self ht)\n  simp [hz', tc_2]\n  have : deriv (fun t : \u211d => Complex.exp (t * Complex.I)) t = Complex.I * Complex.exp (t * Complex.I) := by\n    simp [Complex.hasDerivAt_exp]\n    exact Complex.hasDerivAt_exp (t * Complex.I)\n  rw [this]\n  simp"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The function $f(z) = z^2$ becomes $f(z(t)) = (e^{it})^2 = e^{2it}$ along the path.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2];\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [l1];\n\u2022 The derivative of the parameterization is z'(t) = i * e^{it} [l2].\nTherefore, we conclude:\n\u2022 Along the path C, f(z(t)) = (e^{it})^2 = e^{2it} [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I))) :\n  \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I))) :\n  \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2 := by\n  intro t ht\n  rw [tc_2, l1 t ht]\n  simp only [Complex.exp_nat_mul]\n  rfl", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 22, "column": 2, "endLine": 22, "endColumn": 33, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The path definition correctly captures all properties of an upper semi-circular path from 1 to -1, including continuity, endpoints, unit norm, and upper half-plane constraints.", "The function definition f(z) = z^2 is perfectly translated to Lean syntax.", "The parameterization z(t) = e^{it} for t \u2208 [0,\u03c0] is correctly formalized with proper interval notation.", "The derivative z'(t) = i * e^{it} is correctly formalized. The use of open interval (0,\u03c0) is mathematically appropriate for derivatives.", "The conclusion captures f(z(t)) = (e^{it})^2 correctly, but the natural language also mentions the simplification to e^{2it} which is not shown in the Lean formalization. However, this is a minor omission as the mathematical content is equivalent.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.8 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I))) :\n  \u00ac \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2 := by\n  intro h\n  have h0 := h 0 (by simp [pi_pos.le])\n  simp [tc_2, l1] at h0\n  have : (Complex.exp (0 * Complex.I)) ^ 2 = 1 := by simp\n  rw [this] at h0\n  have : z_path 0 = 1 := tc_1.2.1\n  rw [this, tc_2] at h0\n  simp at h0\n  exact h0"}, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Substituting these into the definition of the contour integral, $\\int_C f(z) dz = \\int_0^{\\pi} f(z(t)) z'(t) dt$", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2];\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [l1];\n\u2022 The derivative of the parameterization is z'(t) = i * e^{it} [l2];\n\u2022 Along the path C, f(z(t)) = e^{2it} [l3].\nDefinition:\n\u2022 The contour integral is defined as \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) * z'(t) dt [def_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 :\n    ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n    z_path \u03c0 = -1 \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227\n    (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227\n    t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization captures all aspects of the upper semi-circular path: continuity, correct endpoints, unit circle constraint, upper half-plane constraint, and proper domain. The additional mathematical rigor is appropriate.", "Direct correspondence between natural language f(z) = z^2 and Lean f = fun z_var => z_var ^ 2", "Perfect match between z(t) = e^{it} for t in [0, \u03c0] and the Lean formalization with Complex.exp and proper domain", "The natural language specifies the derivative for t in [0, \u03c0] while Lean uses Set.Ioo 0 \u03c0 (open interval excluding endpoints). This is a minor difference as derivatives at endpoints are often not needed for integration purposes", "Perfect correspondence between the natural language statement and Lean formalization of f(z(t)) = e^{2it}", "The Lean formalization references an undefined variable 'C' in the contour integral notation '\u222b z_c in C', which doesn't correspond to any defined path in the Lean code. The path should reference z_path or the parameterized curve, not an undefined C"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization captures all aspects of the upper semi-circular path: continuity, correct endpoints, unit circle constraint, upper half-plane constraint, and proper domain. The additional mathematical rigor is appropriate.', 'Direct correspondence between natural language f(z) = z^2 and Lean f = fun z_var => z_var ^ 2', 'Perfect match between z(t) = e^{it} for t in [0, \u03c0] and the Lean formalization with Complex.exp and proper domain', 'The natural language specifies the derivative for t in [0, \u03c0] while Lean uses Set.Ioo 0 \u03c0 (open interval excluding endpoints). This is a minor difference as derivatives at endpoints are often not needed for integration purposes', 'Perfect correspondence between the natural language statement and Lean formalization of f(z(t)) = e^{2it}', \"The Lean formalization references an undefined variable 'C' in the contour integral notation '\u222b z_c in C', which doesn't correspond to any defined path in the Lean code. The path should reference z_path or the parameterized curve, not an undefined C\"]"}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "we get the expression $\\int_0^{\\pi} e^{2it} (ie^{it}) dt$.", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2];\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [l1];\n\u2022 The derivative of the parameterization is z'(t) = i * e^{it} [l2];\n\u2022 Along the path C, f(z(t)) = e^{2it} [l3];\n\u2022 The contour integral is defined as \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) * z'(t) dt [def_1].\nTherefore, we conclude:\n\u2022 \u222b_C f(z) dz = \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int) :\n  \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int) :\n  \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) := by\n  rw [def_1]\n  apply intervalIntegral.integral_congr\n  intro t_int ht_int\n  have ht1 : t_int \u2208 Set.Icc 0 \u03c0 := by\n    simp only [Set.uIcc_of_le Real.pi_pos.le] at ht_int\n    exact ht_int\n  have ht2 : t_int \u2208 Set.Ioo 0 \u03c0 := by\n    simp only [Set.uIcc_of_le Real.pi_pos.le] at ht_int\n    exact \u27e8ht_int.1.lt_of_ne (by rintro rfl; simp at ht_int), ht_int.2.lt_of_ne (by rintro rfl; simp at ht_int)\u27e9\n  simp_rw [l3 t_int ht1, l2 t_int ht2]\n  simp only [mul_assoc]\n  congr 1\n  rw [\u2190 Complex.exp_add, \u2190 mul_add]\n  simp only [mul_one, add_left_inj]\n  ring\n  simp only [Complex.exp_mul_I, pow_two, mul_assoc]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 24, "column": 30, "endLine": 24, "endColumn": 59, "data": "unsolved goals\nC : Set \u2102\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (\u2191t * Complex.I)\nl2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, deriv z_path t = Complex.I * Complex.exp (\u2191t * Complex.I)\nl3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = Complex.exp (\u2191t * Complex.I) ^ 2\ndef_1 : \u222b (z_c : \u2102) in C, f z_c = \u222b (t_int : \u211d) in 0 ..\u03c0, f (z_path t_int) * deriv z_path t_int\nht1 : 0 \u2208 Set.Icc 0 \u03c0\nht_int : 0 \u2264 \u03c0\n\u22a2 False"}, {"line": 24, "column": 81, "endLine": 24, "endColumn": 110, "data": "unsolved goals\nC : Set \u2102\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (\u2191t * Complex.I)\nl2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, deriv z_path t = Complex.I * Complex.exp (\u2191t * Complex.I)\nl3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = Complex.exp (\u2191t * Complex.I) ^ 2\ndef_1 : \u222b (z_c : \u2102) in C, f z_c = \u222b (t_int : \u211d) in 0 ..\u03c0, f (z_path t_int) * deriv z_path t_int\nht1 : \u03c0 \u2208 Set.Icc 0 \u03c0\nht_int : 0 \u2264 \u03c0\n\u22a2 False"}, {"line": 28, "column": 6, "endLine": 28, "endColumn": 23, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  Complex.exp ?x * Complex.exp ?y\ncase h.e_a\nC : Set \u2102\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (\u2191t * Complex.I)\nl2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, deriv z_path t = Complex.I * Complex.exp (\u2191t * Complex.I)\nl3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = Complex.exp (\u2191t * Complex.I) ^ 2\ndef_1 : \u222b (z_c : \u2102) in C, f z_c = \u222b (t_int : \u211d) in 0 ..\u03c0, f (z_path t_int) * deriv z_path t_int\nt_int : \u211d\nht_int : t_int \u2208 Set.uIcc 0 \u03c0\nht1 : t_int \u2208 Set.Icc 0 \u03c0\nht2 : t_int \u2208 Set.Ioo 0 \u03c0\n\u22a2 Complex.exp (\u2191t_int * Complex.I) ^ 2 = Complex.exp (2 * (\u2191t_int * Complex.I))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1 correctly captures the upper semi-circular path with all necessary mathematical properties including endpoints, unit circle constraint, and upper half-plane condition", "tc_2 perfectly represents the function f(z) = z^2", "l1 correctly formalizes the parameterization z(t) = e^{it} for t \u2208 [0,\u03c0]", "l2 accurately represents the derivative z'(t) = i * e^{it}", "l3 correctly shows f(z(t)) = e^{2it} using the fact that (e^{it})^2 = e^{2it}", "def_1 properly formalizes the contour integral definition as a parameter integral", "l4 correctly combines the previous results to show the final integral expression, with proper substitution of f(z(t)) and z'(t)", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma neg_l4\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = exp (t * I))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, deriv z_path t = I * exp (t * I))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = exp (t * I) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * deriv z_path t_int) :\n  \u00ac (\u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, exp (2 * t_int * I) * (I * exp (t_int * I))) := by\n  simp [tc_2, l1, l2, l3, def_1]\n  intro h\n  have : \u222b t in (0)..\u03c0, I * exp (3 * t * I) = (exp (3 * \u03c0 * I) - exp (0 * I)) / 3 := by\n    rw [intervalIntegral.integral_deriv_eq_sub']\n    \u00b7 simp\n      ring_nf\n      exact DifferentiableAt.cexp (DifferentiableAt.const_mul differentiableAt_id' 3)\n    \u00b7 exact ContinuousOn.const_mul continuousOn_exp (ContinuousOn.mul continuousOn_const continuousOn_id)\n  simp at this\n  have h1 : exp (3 * \u03c0 * I) = -1 := by\n    simp [exp_eq_exp_\u2102]\n    rw [Complex.cos_pi, Complex.sin_pi]\n    simp\n  rw [h1, Complex.exp_zero] at this\n  simp at this\n  rw [this] at h\n  norm_num at h\n  contradiction"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Evaluating this integral gives $\\int_0^{\\pi} ie^{3it} dt$", "statement": "We assume:\n\u2022 C is the upper semi-circular path in the complex plane from z=1 to z=-1 [tc_1];\n\u2022 The function to be integrated is f(z) = z^2 [tc_2];\n\u2022 The path C is parameterized by z(t) = e^{it} for t in [0, \u03c0] [l1];\n\u2022 The derivative of the parameterization is z'(t) = i * e^{it} [l2];\n\u2022 Along the path C, f(z(t)) = e^{2it} [l3];\n\u2022 The contour integral is defined as \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) * z'(t) dt [def_1];\n\u2022 \u222b_C f(z) dz = \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt [l4].\nTherefore, we conclude:\n\u2022 The integral \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt is equal to \u222b_0^\u03c0 i * e^{3it} dt [l5].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "def_1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I)))) :\n  \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I)))) :\n  \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I)) := by\n  simp_rw [mul_assoc]\n  congr; ext t_int\n  rw [\u2190 Complex.exp_add]\n  congr 1\n  ring_nf\n  simp [mul_comm, mul_assoc]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 19, "column": 6, "endLine": 19, "endColumn": 23, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  Complex.exp ?x * Complex.exp ?y\ncase e_f.h\nC : Set \u2102\nz_path : \u211d \u2192 \u2102\nt_set : Set \u211d\ntc_1 :\n  ContinuousOn z_path t_set \u2227\n    z_path 0 = 1 \u2227\n      z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0\nf : \u2102 \u2192 \u2102\ntc_2 : f = fun z_var => z_var ^ 2\nl1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = Complex.exp (\u2191t * Complex.I)\nl2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, deriv z_path t = Complex.I * Complex.exp (\u2191t * Complex.I)\nl3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = Complex.exp (\u2191t * Complex.I) ^ 2\ndef_1 : \u222b (z_c : \u2102) in C, f z_c = \u222b (t_int : \u211d) in 0 ..\u03c0, f (z_path t_int) * deriv z_path t_int\nl4 :\n  \u222b (z_c : \u2102) in C, f z_c =\n    \u222b (t_int : \u211d) in 0 ..\u03c0, Complex.exp (2 * \u2191t_int * Complex.I) * (Complex.I * Complex.exp (\u2191t_int * Complex.I))\nt_int : \u211d\n\u22a2 Complex.exp (2 * (\u2191t_int * Complex.I)) * (Complex.I * Complex.exp (\u2191t_int * Complex.I)) =\n    Complex.I * Complex.exp (3 * (\u2191t_int * Complex.I))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The path definition correctly captures the upper semi-circular path with appropriate mathematical constraints including continuity, endpoints, unit circle property, and upper half-plane restriction.", "The function definition f(z) = z\u00b2 is correctly formalized.", "The parameterization z(t) = e^{it} for t \u2208 [0,\u03c0] is accurately represented.", "The derivative z'(t) = i * e^{it} is correctly formalized with appropriate domain restriction.", "The composition f(z(t)) = e^{2it} is properly expressed, correctly handling the exponentiation.", "The contour integral definition using parameterization is accurately formalized.", "The substituted integral expression correctly incorporates the specific functions.", "The conclusion correctly expresses the algebraic simplification from e^{2it} * (i * e^{it}) to i * e^{3it}.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma neg_l5\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (exp (t * I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = I * (exp (t * I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (exp (t * I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (exp (2 * t_int * I)) * (I * (exp (t_int * I)))) :\n  \u00ac (\u222b t_int in (0)..\u03c0, (exp (2 * t_int * I)) * (I * (exp (t_int * I))) = \u222b t_int in (0)..\u03c0, I * (exp (3 * t_int * I))) := by\n  simp only [Complex.exp_add, mul_assoc]\n  intro h\n  have : \u2200 t \u2208 Set.Icc 0 \u03c0, HasDerivAt (fun t => (1/3) * exp (3 * t * I)) (I * exp (3 * t * I)) t := by\n    intro t ht\n    apply HasDerivAt.const_mul\n    simp [mul_comm]\n    apply HasDerivAt.cexp\n    apply HasDerivAt.mul_const\n    apply hasDerivAt_id\n  rw [intervalIntegral.integral_eq_sub_of_hasDerivAt this (Continuous.continuousOn (by continuity))] at h\n  simp at h\n  have h1 : exp (3 * \u03c0 * I) = exp (0 * I) := by\n    rw [\u2190 sub_eq_zero, \u2190 h]\n    ring\n  have h2 : exp (3 * \u03c0 * I) = -1 := by\n    simp [exp_mul_I]\n  have h3 : exp (0 * I) = 1 := by simp\n  rw [h2, h3] at h1\n  norm_num at h1"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "$\\int_0^{\\pi} ie^{3it} dt = [\\frac{e^{3it}}{3}]_0^{\\pi}$", "statement": "We assume:\n\u2022 The integral to evaluate is \u222b_0^\u03c0 i * e^{3it} dt [l5].\nTherefore, we conclude:\n\u2022 The result of the definite integral \u222b_0^\u03c0 i * e^{3it} dt is given by evaluating [e^{3it} / 3] at the bounds 0 and \u03c0 [l6].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "def_1", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))))\n  (l5 : \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I))) :\n  \u222b (t : \u211d) in (0)..\u03c0, Complex.I * (Complex.exp (3 * t * Complex.I)) = (Complex.exp (3 * \u03c0 * Complex.I)) / 3 - (Complex.exp (3 * 0 * Complex.I)) / 3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))))\n  (l5 : \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I))) :\n  \u222b (t : \u211d) in (0)..\u03c0, Complex.I * (Complex.exp (3 * t * Complex.I)) = (Complex.exp (3 * \u03c0 * Complex.I)) / 3 - (Complex.exp (3 * 0 * Complex.I)) / 3 := by\n  simp_rw [\u2190 Complex.exp_add]\n  rw [integral_mul_left]\n  simp_rw [mul_assoc]\n  have : (3 : \u2102) \u2260 0 := by norm_num\n  rw [integral_exp_mul_complex _ this]\n  simp only [mul_div_assoc]\n  rw [sub_zero]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 11, "endLine": 18, "endColumn": 28, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The integral expression \u222b\u2080^\u03c0 i * e^{3it} dt is correctly represented in the Lean formalization using Complex.I * (Complex.exp (3 * t * Complex.I)).", "The evaluation of the definite integral has a major mathematical error. The natural language describes evaluating [e^{3it} / 3] at the bounds, but the antiderivative of i * e^{3it} should be e^{3it}/3, not e^{3it}/3. The Lean conclusion is missing the factor of i that should appear in the final result. The correct result should be i * (e^{3i\u03c0}/3 - 1/3), not (e^{3i\u03c0}/3 - 1/3).", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The integral expression \u222b\u2080^\u03c0 i * e^{3it} dt is correctly represented in the Lean formalization using Complex.I * (Complex.exp (3 * t * Complex.I)).', 'The evaluation of the definite integral has a major mathematical error. The natural language describes evaluating [e^{3it} / 3] at the bounds, but the antiderivative of i * e^{3it} should be e^{3it}/3, not e^{3it}/3. The Lean conclusion is missing the factor of i that should appear in the final result. The correct result should be i * (e^{3i\u03c0}/3 - 1/3), not (e^{3i\u03c0}/3 - 1/3).']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "$[\\frac{e^{3it}}{3}]_0^{\\pi} = \\frac{1}{3}(e^{3i\\pi} - e^0) = \\frac{1}{3}(-1 - 1) = -2/3$.", "statement": "We assume:\n\u2022 C is the upper semi-circular path from z=1 to z=-1 [tc_1];\n\u2022 The function is f(z) = z^2 [tc_2];\n\u2022 The path is z(t) = e^{it} for t in [0, \u03c0] [l1];\n\u2022 The derivative is z'(t) = i * e^{it} [l2];\n\u2022 On the path, f(z(t)) = e^{2it} [l3];\n\u2022 The integral formula is \u222b_C f(z) dz = \u222b_0^\u03c0 f(z(t)) * z'(t) dt [def_1];\n\u2022 \u222b_C f(z) dz = \u222b_0^\u03c0 e^{2it} * (i * e^{it}) dt [l4];\n\u2022 The integral is equivalent to \u222b_0^\u03c0 i * e^{3it} dt [l5];\n\u2022 The evaluated integral is [e^{3it} / 3]_0^\u03c0 [l6].\nTherefore, we conclude:\n\u2022 \u222b_C f(z) dz = -2/3 [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "def_1", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int)\n  (l4 : \u222b z_c in C, f z_c = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))))\n  (l5 : \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I)))\n  (l6 : \u222b (t : \u211d) in (0)..\u03c0, Complex.I * (Complex.exp (3 * t * Complex.I)) = (Complex.exp (3 * \u03c0 * Complex.I)) / 3 - (Complex.exp (3 * 0 * Complex.I)) / 3) :\n  \u222b z_c in C, f z_c = -2/3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z_path : \u211d \u2192 \u2102)\n  (t_set : Set \u211d)\n  (tc_1 : ContinuousOn z_path t_set \u2227 z_path 0 = 1 \u2227 z_path \u03c0 = -1 \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, \u2016z_path s\u2016 = 1) \u2227 (\u2200 s \u2208 Set.Ioo 0 \u03c0, (z_path s).im \u2265 0) \u2227 t_set = Set.Icc 0 \u03c0)\n  (f : \u2102 \u2192 \u2102)\n  (tc_2 : f = fun z_var => z_var ^ 2)\n  (l1 : \u2200 t \u2208 Set.Icc 0 \u03c0, z_path t = (Complex.exp (t * Complex.I)))\n  (l2 : \u2200 t \u2208 Set.Ioo 0 \u03c0, (deriv z_path) t = Complex.I * (Complex.exp (t * Complex.I)))\n  (l3 : \u2200 t \u2208 Set.Icc 0 \u03c0, f (z_path t) = (Complex.exp (t * Complex.I)) ^ 2)\n  (def_1 : \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int = \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))))\n  (l5 : \u222b t_int in (0)..\u03c0, (Complex.exp (2 * t_int * Complex.I)) * (Complex.I * (Complex.exp (t_int * Complex.I))) = \u222b t_int in (0)..\u03c0, Complex.I * (Complex.exp (3 * t_int * Complex.I)))\n  (l6 : \u222b (t : \u211d) in (0)..\u03c0, Complex.I * (Complex.exp (3 * t * Complex.I)) = (Complex.exp (3 * \u03c0 * Complex.I)) / 3 - (Complex.exp (3 * 0 * Complex.I)) / 3) :\n  \u222b t_int in (0)..\u03c0, f (z_path t_int) * (deriv z_path) t_int = -2/3 := by\n  rw [def_1, l5, l6]\n  simp only [Complex.exp_zero, Complex.exp_pi_mul_I, mul_zero, sub_neg_eq_add, add_zero]\n  have : Complex.exp (3 * \u03c0 * Complex.I) = Complex.exp (\u03c0 * Complex.I) ^ 3 := by\n    rw [\u2190 Complex.exp_nat_mul]\n    simp\n    ring_nf\n  rw [this, Complex.exp_pi_mul_I]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0.67, "semantic_feedback": ["tc_1: The natural language simply states 'C is the upper semi-circular path from z=1 to z=-1' but the Lean formalization adds detailed mathematical constraints (continuity, unit norm, positive imaginary part) that, while mathematically correct for a semi-circular path, are not explicitly mentioned in the natural language.", "tc_2: Perfect match - both define f(z) = z^2", "l1: Perfect match - both specify the parametric path z(t) = e^{it} for t \u2208 [0,\u03c0]", "l2: Perfect match - both give the derivative z'(t) = i * e^{it}", "l3: The natural language states f(z(t)) = e^{2it} while Lean has f(z_path t) = (Complex.exp (t * Complex.I))^2. These are mathematically equivalent since (e^{it})^2 = e^{2it}, but the structural representation differs slightly.", "def_1: Perfect match - both express the line integral formula for complex integration", "l4: Perfect match - both show the substitution of the parametric form into the integral", "l5: Perfect match - both demonstrate the algebraic simplification to i * e^{3it}", "l6 and conclusion: The natural language mentions '[e^{3it}/3]_0^\u03c0' and concludes the result is -2/3, while Lean shows the antiderivative evaluation but doesn't complete the final arithmetic step to show this equals -2/3. The mathematical content is equivalent but the presentation differs."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

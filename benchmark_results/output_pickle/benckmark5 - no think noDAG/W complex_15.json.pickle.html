@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f(z) = \frac{1}{(z-1)(z-3)}$. If the Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$, then the series is given by $f(z) = -\frac{1}{2(z-1)} - \sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$.
+
+Proof: First, we perform a partial fraction decomposition of $f(z)$ to get $f(z) = -\frac{1}{2(z-1)} + \frac{1}{2(z-3)}$. For the second term, $\frac{1}{2(z-3)}$, we manipulate it to be centered at $z=1$: $\frac{1}{2(z-3)} = \frac{1}{2((z-1)-2)} = -\frac{1}{4(1 - \frac{z-1}{2})}$. Since the series must be valid for $|z-1|<2$, we have $|\frac{z-1}{2}|<1$, allowing the use of the geometric series formula, which gives $-\frac{1}{4} \sum_{n=0}^{\infty} (\frac{z-1}{2})^n = -\sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$. Finally, combining the first term from the partial fraction decomposition with the series expansion of the second term gives the complete Laurent series: $f(z) = -\frac{1}{2(z-1)} - \sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f(z) = \\frac{1}{(z-1)(z-3)}$", "statement": "Premise:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean declaration 'f : \u2102 \u2192 \u2102' perfectly captures that f is a complex function", "The Lean condition 'tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3))' perfectly matches the mathematical definition, with equivalent notation for multiplication", "The natural language conclusion about f being undefined at z = 1 and z = 3 is not explicitly formalized in the Lean code. While this is mathematically implied by the division by zero, it's not stated as a formal proposition in the Lean formalization"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean declaration 'f : \u2102 \u2192 \u2102' perfectly captures that f is a complex function\", \"The Lean condition 'tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3))' perfectly matches the mathematical definition, with equivalent notation for multiplication\", \"The natural language conclusion about f being undefined at z = 1 and z = 3 is not explicitly formalized in the Lean code. While this is mathematically implied by the division by zero, it's not stated as a formal proposition in the Lean formalization\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If the Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$", "statement": "Premise:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures the function definition f(z) = 1/((z-1)(z-3)) with appropriate universal quantification", "The natural language mentions that the Laurent series is centered at z\u2080=1, but this information is completely missing from the Lean formalization. There is no variable or condition representing the center point", "The Lean condition tc_2 states that the annulus condition holds for ALL complex numbers z, which is mathematically incorrect. The annulus 0 < |z-1| < 2 should define a domain/region, not be a universal property of all complex numbers. This fundamentally misrepresents the mathematical meaning"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the function definition f(z) = 1/((z-1)(z-3)) with appropriate universal quantification', 'The natural language mentions that the Laurent series is centered at z\u2080=1, but this information is completely missing from the Lean formalization. There is no variable or condition representing the center point', 'The Lean condition tc_2 states that the annulus condition holds for ALL complex numbers z, which is mathematically incorrect. The annulus 0 < |z-1| < 2 should define a domain/region, not be a universal property of all complex numbers. This fundamentally misrepresents the mathematical meaning']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "First, we perform a partial fraction decomposition of $f(z)$ to get $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\nTherefore, we conclude:\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  \u2200 z, f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  \u2200 z, f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\n  intro z\n  rw [tc_1]\n  have h : z - 3 = z - 1 - 2 := by ring\n  rw [h]\n  have h1 : (z - 1 - 2) = - (2 - (z - 1)) := by ring\n  rw [h1]\n  rw [mul_neg, div_neg, neg_div]\n  rw [div_mul_eq_mul_div]\n  rw [one_mul]\n  rw [neg_div]\n  field_simp\n  have h2 : 2 - (z - 1) = 3 - z := by ring\n  rw [h2]\n  have h3 : z - 3 = -(3 - z) := by ring\n  rw [h3]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 6, "endLine": 17, "endColumn": 24, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a / ?b * ?c\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : \u2200 (z : \u2102), 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nz : \u2102\nh : z - 3 = z - 1 - 2\nh1 : z - 1 - 2 = -(2 - (z - 1))\n\u22a2 -(1 / ((z - 1) * (2 - (z - 1)))) = -(1 / (2 * (z - 1))) + 1 / (2 * -(2 - (z - 1)))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The function definition f(z) = 1/((z-1)(z-3)) is correctly formalized as a universal quantification over complex numbers.", "The Laurent series domain condition has a major logical inconsistency. The natural language describes an annulus 0 < |z-1| < 2 as the domain of validity, but the Lean formalization states this as a universal condition for all z \u2208 \u2102, which is mathematically impossible since not all complex numbers satisfy |z-1| < 2.", "The partial fraction decomposition conclusion f(z) = -1/(2(z-1)) + 1/(2(z-3)) is correctly formalized with proper operator precedence and mathematical structure.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The function definition f(z) = 1/((z-1)(z-3)) is correctly formalized as a universal quantification over complex numbers.', 'The Laurent series domain condition has a major logical inconsistency. The natural language describes an annulus 0 < |z-1| < 2 as the domain of validity, but the Lean formalization states this as a universal condition for all z \u2208 \u2102, which is mathematically impossible since not all complex numbers satisfy |z-1| < 2.', 'The partial fraction decomposition conclusion f(z) = -1/(2(z-1)) + 1/(2(z-3)) is correctly formalized with proper operator precedence and mathematical structure.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For the second term, $\\frac{1}{2(z-3)}$, we manipulate it to be centered at $z=1$: $\\frac{1}{2(z-3)} = \\frac{1}{2((z-1)-2)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].\nTherefore, we conclude:\n\u2022 1/(2(z-3)) = -1/(4*(1 - (z-1)/2)) [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))) :\n  1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))) :\n  1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := by\n  rw [show z - 3 = -2 - (z - 1) by ring]\n  field_simp\n  rw [div_eq_div_iff]\n  \u00b7 ring\n  \u00b7 field_simp\n    ring\n  \u00b7 field_simp\n    ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 6, "endLine": 12, "endColumn": 39, "data": "unsolved goals\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\n\u22a2 -3 + z = -1 - z"}, {"line": 15, "column": 2, "endLine": 15, "endColumn": 8, "data": "unsolved goals\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\n\u22a2 12 - z * 4 = 4 + z * 4"}, {"line": 16, "column": 2, "endLine": 17, "endColumn": 8, "data": "unsolved goals\ncase hb\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\n\u22a2 \u00ac-2 - z * 2 = 0"}, {"line": 18, "column": 2, "endLine": 19, "endColumn": 8, "data": "unsolved goals\ncase hd\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\n\u22a2 \u00ac12 - z * 4 = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The function definition tc_1 is correctly formalized with appropriate universal quantification over complex numbers.", "The annulus condition tc_2 accurately captures the domain constraint 0 < |z-1| < 2, which is the essential mathematical content from the Laurent series statement.", "The partial fraction decomposition l1 is exactly represented in the Lean formalization.", "The target algebraic identity l2 is precisely captured with identical mathematical expressions on both sides.", "The overall logical structure correctly translates the natural language reasoning pattern into a formal lemma with appropriate hypotheses and conclusion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l2\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))) :\n  \u00ac (1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) := by\n  intro h\n  have h1 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := h\n  have h2 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / (4 - 2 * (z - 1)) := by\n    ring_nf\n  have h3 : 1 / (2 * (z - 3)) = -1 / (4 - 2 * (z - 1)) := by rw [h1, h2]\n  have h4 : 1 / (2 * (z - 3)) = 1 / (2 * (z - 3)) := by rfl\n  have h5 : -1 / (4 - 2 * (z - 1)) = 1 / (2 * z - 4) := by\n    ring_nf\n  rw [h5] at h3\n  have h6 : 2 * (z - 3) = 2 * z - 6 := by ring\n  rw [h6] at h4\n  have h7 : 1 / (2 * z - 6) = 1 / (2 * z - 4) := by rw [\u2190h4, \u2190h3]\n  have h8 : 2 * z - 6 \u2260 0 := by\n    intro h9\n    have : Complex.abs (z - 1) = 2 := by\n      rw [\u2190sub_eq_zero] at h9\n      linarith\n    linarith [tc_2.2]\n  have h9 : 2 * z - 4 \u2260 0 := by\n    intro h10\n    have : Complex.abs (z - 1) = 2 := by\n      rw [\u2190sub_eq_zero] at h10\n      linarith\n    linarith [tc_2.2]\n  have h10 : (2 * z - 6)\u207b\u00b9 = (2 * z - 4)\u207b\u00b9 := by\n    rw [\u2190one_div, \u2190one_div, h7]\n  have h11 : 2 * z - 6 = 2 * z - 4 := by\n    apply (mul_right_inj' (by norm_num : (2 * z - 6) * (2 * z - 4) \u2260 0)).mp\n    rw [\u2190inv_eq_inv] at h10\n    exact h10\n  linarith"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Since the series must be valid for $|z-1|<2$, we have $|\\frac{z-1}{2}|<1$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].\n\u2022 1/(2(z-3)) = -1/(4*(1 - (z-1)/2)) [l2].\nTherefore, we conclude:\n\u2022 |(z-1)/2| < 1 [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) :\n  Complex.abs ((z - 1) / 2) < 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) :\n  Complex.abs ((z - 1) / 2) < 1 := by\n  have h : Complex.abs (z - 1) < 2 := tc_2.2\n  simp only [map_div\u2080, Complex.abs_two]\n  rwa [div_lt_iff (by norm_num : (0:\u211d) < 2), mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 2, "endLine": 15, "endColumn": 54, "data": "tactic 'assumption' failed\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\nl2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))\nh : Complex.abs (z - 1) < 2\n\u22a2 Complex.abs (z - 1) < 2 * 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Function definition tc_1 is correctly formalized with appropriate universal quantification", "Domain constraint tc_2 accurately captures the annulus condition using complex absolute value", "Partial fraction decomposition l1 is precisely represented with correct algebraic structure", "Algebraic manipulation l2 correctly formalizes the transformation of the second term", "Conclusion l3 properly captures the inequality constraint on the complex absolute value", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma neg_l3\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < abs (z - 1) \u2227 abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) :\n  \u00ac abs ((z - 1) / 2) < 1 := by\n  intro h\n  have h\u2081 := tc_2.2\n  rw [abs_div] at h\n  norm_num at h\n  linarith [h, h\u2081]"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "allowing the use of the geometric series formula, which gives $-\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].\n\u2022 1/(2(z-3)) = -1/(4*(1 - (z-1)/2)) [l2].\n\u2022 |(z-1)/2| < 1 [l3].\nTherefore, we conclude:\n\u2022 -1/(4*(1 - (z-1)/2)) = -1/4 * \u2211_{n=0}^\u221e ((z-1)/2)^n [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1) :\n  -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1) :\n  -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n := by\n  rw [\u2190 neg_div, \u2190 neg_one_mul, \u2190 tsum_geometric_of_abs_lt_1 ((z - 1)/2) l3]\n  simp [mul_assoc]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 6, "endLine": 14, "endColumn": 15, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  -(?b / ?a)\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\nl2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))\nl3 : Complex.abs ((z - 1) / 2) < 1\n\u22a2 -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Function definition correctly formalized with explicit multiplication notation instead of implicit multiplication, which is mathematically equivalent.", "Domain specification perfectly captures the annulus condition using proper complex absolute value notation.", "Partial fraction decomposition is correctly formalized with explicit multiplication operators.", "Algebraic manipulation step is accurately represented with proper parenthesization and explicit operators.", "Convergence condition correctly uses Complex.abs for the absolute value of a complex expression.", "The conclusion correctly uses infinite sum notation (\u2211') with proper type annotation for natural numbers, accurately capturing the geometric series expansion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1) :\n  \u00ac (-1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n) := by\n  rw [\u2190 l2]\n  have h : (1 - (z - 1) / 2) \u2260 0 := by\n    contrapose! l3\n    simp [l3]\n    rw [Complex.abs_div, Complex.abs_two]\n    simp\n    exact tc_2.1\n  field_simp [h]\n  rw [\u2190 tsum_geometric_of_abs_lt_1 l3]\n  field_simp\n  ring"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "$-\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n = -\\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].\n\u2022 1/(2(z-3)) = -1/(4*(1 - (z-1)/2)) [l2].\n\u2022 |(z-1)/2| < 1 [l3].\n\u2022 -1/(4*(1 - (z-1)/2)) = -1/4 * \u2211_{n=0}^\u221e ((z-1)/2)^n [l4].\nTherefore, we conclude:\n\u2022 -1/4 * \u2211_{n=0}^\u221e ((z-1)/2)^n = -\u2211_{n=0}^\u221e (z-1)^n / 2^(n+2) [l5].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1)\n  (l4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n) :\n  -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n = -\u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1)\n  (l4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n) :\n  -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n = -\u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2)) := by\n  rw [\u2190 tsum_mul_left]\n  congr\n  funext n\n  rw [div_pow, \u2190 mul_div_assoc, pow_add, pow_one, mul_div_mul_left]\n  simp [mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 2, "endLine": 17, "endColumn": 10, "data": "tactic 'apply' failed, failed to unify\n  ?f = ?g\nwith\n  \u2211' (x : \u2115), -1 / 4 * ((z - 1) / 2) ^ x = -\u2211' (n : \u2115), (z - 1) ^ n / 2 ^ (n + 2)\nz : \u2102\nf : \u2102 \u2192 \u2102\ntc_1 : \u2200 (z : \u2102), f z = 1 / ((z - 1) * (z - 3))\ntc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2\nl1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3))\nl2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))\nl3 : Complex.abs ((z - 1) / 2) < 1\nl4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n\n\u22a2 \u2211' (x : \u2115), -1 / 4 * ((z - 1) / 2) ^ x = -\u2211' (n : \u2115), (z - 1) ^ n / 2 ^ (n + 2)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The function definition is correctly formalized with universal quantification over z", "The annulus condition is properly captured using Complex.abs and conjunction", "The partial fraction decomposition is accurately represented", "The algebraic manipulation step is correctly formalized", "The convergence condition is properly expressed using Complex.abs", "The geometric series expansion is correctly captured using Lean's infinite sum notation", "The final algebraic simplification is accurately represented, with equivalent mathematical expressions", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l5\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1)\n  (l4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n) :\n  \u00ac (-1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n = -\u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2))) := by\n  simp [\u2190 l4, \u2190 l2, \u2190 l1, tc_1]\n  intro h\n  have eq1 : \u2211' (n : \u2115), ((z - 1) / 2) ^ n = \u2211' (n : \u2115), (z - 1) ^ n / 2 ^ n := by\n    congr; ext n; simp [div_pow]\n  have eq2 : \u2211' (n : \u2115), (z - 1) ^ n / 2 ^ (n + 2) = (1/4) * \u2211' (n : \u2115), (z - 1) ^ n / 2 ^ n := by\n    simp_rw [pow_add, mul_div_assoc, \u2190 tsum_mul_right]\n  rw [eq1, eq2] at h\n  field_simp at h\n  norm_num at h"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, combining the first term from the partial fraction decomposition with the series expansion of the second term gives the complete Laurent series: $f(z) = -\\frac{1}{2(z-1)} - \\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$.", "statement": "We assume:\n\u2022 Let f(z) be a complex function defined as f(z) = 1/((z-1)(z-3)) [tc_1].\n\u2022 The Laurent series for f(z) is centered at z_0=1 and is valid for the annulus 0 < |z-1| < 2 [tc_2].\n\u2022 f(z) = -1/(2(z-1)) + 1/(2(z-3)) [l1].\n\u2022 1/(2(z-3)) = -1/(4*(1 - (z-1)/2)) [l2].\n\u2022 |(z-1)/2| < 1 [l3].\n\u2022 -1/(4*(1 - (z-1)/2)) = -1/4 * \u2211_{n=0}^\u221e ((z-1)/2)^n [l4].\n\u2022 -1/4 * \u2211_{n=0}^\u221e ((z-1)/2)^n = -\u2211_{n=0}^\u221e (z-1)^n / 2^(n+2) [l5].\nTherefore, we conclude:\n\u2022 f(z) = -1/(2(z-1)) - \u2211_{n=0}^\u221e (z-1)^n / 2^(n+2) [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1)\n  (l4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n)\n  (l5 : -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n = -\u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2))) :\n  f z = -1 / (2 * (z - 1)) - \u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102)\n  (f : \u2102 \u2192 \u2102)\n  (tc_1 : \u2200 z, f z = 1 / ((z - 1) * (z - 3)))\n  (tc_2 : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2)\n  (l1 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : Complex.abs ((z - 1) / 2) < 1)\n  (l4 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n)\n  (l5 : -1 / 4 * \u2211' (n : \u2115), ((z - 1) / 2) ^ n = -\u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2))) :\n  f z = -1 / (2 * (z - 1)) - \u2211' (n : \u2115), (z - 1) ^ n / (2 ^ (n + 2)) := by\n  rw [l1, l2, l4, l5]\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures all components of the natural language premise. Each assumption (tc_1, tc_2, l1-l5) and the conclusion (ts_1) are correctly translated with appropriate mathematical notation. The complex function definition, annulus condition, partial fraction decomposition, geometric series expansion, and final Laurent series form are all accurately represented. The use of Lean's infinite sum notation (\u2211') and complex absolute value (Complex.abs) are appropriate translations of the mathematical concepts."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

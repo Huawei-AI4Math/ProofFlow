@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence defined by $a_1=1$ and the recurrence relation $a_{n+1} = \sqrt{2a_n+3}$. Prove that for all integers $n \geq 1$, the inequality $a_n < 3$ holds.
+
+Proof: We will prove this by mathematical induction on $n$. First, for the base case $n=1$, we are given $a_1=1$. Since $1 < 3$, the inequality holds. Now, for the inductive step, we assume the statement is true for some integer $k \geq 1$, which means $a_k < 3$. We want to show that the statement is true for $k+1$, i.e., $a_{k+1} < 3$. We have the recurrence relation $a_{k+1} = \sqrt{2a_k+3}$. From the inductive hypothesis, we know that $a_k < 3$. We can multiply this inequality by 2 to get $2a_k < 6$. Adding 3 to both sides gives $2a_k+3 < 9$. Taking the square root of both sides gives $\sqrt{2a_k+3} < \sqrt{9}$. This simplifies to $a_{k+1} < 3$. Since the statement is true for $k+1$, by the principle of mathematical induction, the inequality $a_n < 3$ holds for all integers $n \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "a_1=1", "statement": "Premise:\n\u2022 Let (a_n) be a sequence of real numbers with a\u2081 = 1 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem condition : \n  \u2200 (a : \u2115 \u2192 \u211d), \n    a 1 = 1 \u2192 \n    (\u2200 n : \u2115, n \u2265 1 \u2192 a (n + 1) = Real.sqrt (2 * a n + 3)) \u2192\n    (\u2200 n : \u2115, n \u2265 1 \u2192 a n < 3) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that (a_n) is a sequence of real numbers through '\u2200 (a : \u2115 \u2192 \u211d)'", "The Lean condition 'a 1 = 1' perfectly matches the natural language condition 'a\u2081 = 1'", "The Lean theorem introduces a recursive formula 'a (n + 1) = Real.sqrt (2 * a n + 3)' and a conclusion 'a n < 3' that are completely absent from the natural language premise, which only establishes initial conditions without any recursive relationship or bounds"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization correctly captures that (a_n) is a sequence of real numbers through '\u2200 (a : \u2115 \u2192 \u211d)'\", \"The Lean condition 'a 1 = 1' perfectly matches the natural language condition 'a\u2081 = 1'\", \"The Lean theorem introduces a recursive formula 'a (n + 1) = Real.sqrt (2 * a n + 3)' and a conclusion 'a n < 3' that are completely absent from the natural language premise, which only establishes initial conditions without any recursive relationship or bounds\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "the recurrence relation $a_{n+1} = \\sqrt{2a_n+3}$", "statement": "Premise:\n\u2022 Let (a_n) be a sequence of real numbers defined by the recurrence relation a_{n+1} = sqrt(2*a_n + 3) for all integers n \u2265 1 [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_2 : \u2200 n : \u2115, n \u2265 1 \u2192 a (n + 1) = Real.sqrt (2 * a n + 3))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'a : \u2115 \u2192 \u211d' correctly represents a sequence of real numbers indexed by natural numbers", "The Lean formalization 'a (n + 1) = Real.sqrt (2 * a n + 3)' perfectly captures the recurrence relation a_{n+1} = \u221a(2*a_n + 3)", "The Lean condition '\u2200 n : \u2115, n \u2265 1 \u2192' correctly specifies that the relation holds for all natural numbers n \u2265 1, which matches 'all integers n \u2265 1' in the context of sequence indexing", "The Lean formalization establishes the sequence with the exact recursive formula specified in the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "First, for the base case $n=1$, we are given $a_1=1$. Since $1 < 3$, the inequality holds.", "statement": "We assume:\n\u2022 Let (a_n) be a sequence of real numbers with a\u2081 = 1 [tc_1].\nTherefore, we conclude:\n\u2022 a\u2081 < 3 [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a : \u2115 \u2192 \u211d) \n  (h1 : a 1 = 1) :\n  a 1 < 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a : \u2115 \u2192 \u211d) \n  (h1 : a 1 = 1) :\n  a 1 < 3 := by\n  have h2 : a 1 < 3 := by\n    rw [h1]\n    norm_num\n  exact h2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition and initial condition are correctly formalized with appropriate types and hypothesis", "The conclusion a\u2081 < 3 is accurately represented in Lean notation", "The logical structure properly captures the implication from the given condition to the conclusion"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "we assume the statement is true for some integer $k \\geq 1$, which means $a_k < 3$.", "statement": "Definition:\n\u2022 For the inductive step, we assume that for some integer k \u2265 1, the inequality a_k < 3 holds [def_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\nvariable (k : \u2115)\nvariable (hk : k \u2265 1)\nvariable (hk_pos : a k < 3)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The natural language specifies k as an integer, but Lean uses \u2115 (natural numbers). Since k \u2265 1, natural numbers are sufficient and mathematically equivalent for this context, but it's not a direct type translation.", "The Lean formalization correctly captures k \u2265 1 as specified in the natural language.", "The Lean formalization correctly captures the assumption a_k < 3 as specified in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l2": {"id": "l2", "natural_language": "We can multiply this inequality by 2 to get $2a_k < 6$.", "statement": "We assume:\n\u2022 For some integer k \u2265 1, a_k < 3 [def_1].\nTherefore, we conclude:\n\u2022 2*a_k < 6 [l2].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (hk_def1 : a k < 3) :\n  2 * a k < 6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (hk_def1 : a k < 3) :\n  2 * a k < 6 := by\n  have h_main : 2 * a k < 6 := by\n    have h1 : 2 * a k < 2 * (3 : \u211d) := by\n      -- Multiply both sides of the inequality `a k < 3` by 2, which is positive, so the inequality direction remains the same.\n      have h2 : a k < (3 : \u211d) := by exact_mod_cast hk_def1\n      -- Use the property that multiplying both sides of an inequality by a positive number preserves the inequality.\n      nlinarith\n    -- Simplify the right-hand side of the inequality `2 * a k < 2 * 3` to get `2 * a k < 6`.\n    norm_num at h1 \u22a2\n    <;> linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the logical and mathematical content from the natural language. The use of natural numbers instead of integers is actually more precise given the constraint k \u2265 1. The function notation a k is equivalent to the subscript notation a_k. The premise-conclusion structure is perfectly preserved, and the mathematical inequality relationships are identical in both representations."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Adding 3 to both sides gives $2a_k+3 < 9$.", "statement": "We assume:\n\u2022 For some integer k \u2265 1, 2*a_k < 6 [l2].\nTherefore, we conclude:\n\u2022 2*a_k + 3 < 9 [l3].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (hk_def1 : a k < 3) :\n  2 * a k < 6 := by sorry\n\ntheorem l3\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (h_l2 : 2 * a k < 6) :\n  2 * a k + 3 < 9 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (hk_def1 : a k < 3) :\n  2 * a k < 6 := by\n  have h : 2 * a k < 6 := by\n    have h\u2081 : a k < 3 := hk_def1\n    -- Multiply both sides of the inequality by 2 to get 2 * a k < 6\n    have h\u2082 : 2 * a k < 2 * (3 : \u211d) := by\n      -- Use the fact that multiplying both sides of an inequality by a positive number preserves the inequality\n      linarith\n    -- Simplify the right-hand side to 6\n    norm_num at h\u2082 \u22a2\n    <;> linarith\n  exact h\n\ntheorem l3\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (h_l2 : 2 * a k < 6) :\n  2 * a k + 3 < 9 := by\n  have h : 2 * a k + 3 < 9 := by\n    have h\u2081 : 2 * a k < 6 := h_l2\n    -- Add 3 to both sides of the inequality to get 2 * a k + 3 < 9\n    have h\u2082 : 2 * a k + 3 < 6 + 3 := by\n      linarith\n    -- Simplify the right-hand side to 9\n    norm_num at h\u2082 \u22a2\n    <;> linarith\n  exact h", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language presents '2*a_k < 6' as an assumption, but the Lean formalization treats it as a theorem to be proved from an unstated condition 'a k < 3'. This fundamentally changes the logical structure from assumption-based reasoning to theorem-proof reasoning.", "The natural language specifies k as an integer while Lean uses natural numbers (\u2115). Though functionally equivalent given k \u2265 1, this represents a minor type inconsistency.", "The conclusion structure and mathematical relationship (deriving 2*a_k + 3 < 9 from 2*a_k < 6) is correctly captured in the Lean formalization, maintaining the proper logical flow."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language presents '2*a_k < 6' as an assumption, but the Lean formalization treats it as a theorem to be proved from an unstated condition 'a k < 3'. This fundamentally changes the logical structure from assumption-based reasoning to theorem-proof reasoning.\", 'The natural language specifies k as an integer while Lean uses natural numbers (\u2115). Though functionally equivalent given k \u2265 1, this represents a minor type inconsistency.', 'The conclusion structure and mathematical relationship (deriving 2*a_k + 3 < 9 from 2*a_k < 6) is correctly captured in the Lean formalization, maintaining the proper logical flow.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Taking the square root of both sides gives $\\sqrt{2a_k+3} < \\sqrt{9}$.", "statement": "We assume:\n\u2022 For some integer k \u2265 1, 2*a_k + 3 < 9 [l3].\nTherefore, we conclude:\n\u2022 sqrt(2*a_k + 3) < sqrt(9) [l4].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (h_l3 : 2 * a k + 3 < 9) :\n  Real.sqrt (2 * a k + 3) < 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1) (h_l3 : 2 * a k + 3 < 9) :\n  Real.sqrt (2 * a k + 3) < 3 := by\n  have h_main : Real.sqrt (2 * a k + 3) < 3 := by\n    by_cases h : (2 * a k + 3 : \u211d) \u2265 0\n    \u00b7 -- Case: 2 * a k + 3 \u2265 0\n      have h\u2081 : Real.sqrt (2 * a k + 3) < 3 := by\n        -- Use the property of square roots for non-negative numbers\n        have h\u2082 : (2 * a k + 3 : \u211d) < 9 := by exact_mod_cast h_l3\n        have h\u2083 : Real.sqrt (2 * a k + 3) < 3 := by\n          rw [Real.sqrt_lt (by positivity)] <;> norm_num at h\u2082 \u22a2 <;> linarith\n        exact h\u2083\n      exact h\u2081\n    \u00b7 -- Case: 2 * a k + 3 < 0\n      have h\u2081 : Real.sqrt (2 * a k + 3) = 0 := by\n        -- Square root of a negative number is 0 in Lean\n        rw [Real.sqrt_eq_zero_of_nonpos] <;> linarith\n      rw [h\u2081]\n      norm_num\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.75, "semantic_feedback": ["Variable declarations appropriately capture the natural language description, with natural numbers being a reasonable interpretation of 'integer k \u2265 1'", "The premise condition '2*a_k + 3 < 9' is exactly represented in the Lean formalization", "The conclusion simplifies 'sqrt(9)' to '3' rather than preserving the original form 'sqrt(2*a_k + 3) < sqrt(9)'. While mathematically equivalent, this changes the structural representation", "The overall logical flow from premise to conclusion is correctly maintained"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "This simplifies to $a_{k+1} < 3$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_{k+1} = sqrt(2*a_k + 3) for n=k [tc_2].\n\u2022 For some integer k \u2265 1, sqrt(2*a_k + 3) < sqrt(9) [l4].\nTherefore, we conclude:\n\u2022 a_{k+1} < 3 [l5].", "dependencies": ["tc_2", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1)\n  (tc_2 : a (k + 1) = Real.sqrt (2 * a k + 3))\n  (l4 : Real.sqrt (2 * a k + 3) < Real.sqrt 9) :\n  a (k + 1) < 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a : \u2115 \u2192 \u211d) (k : \u2115) (hk : k \u2265 1)\n  (tc_2 : a (k + 1) = Real.sqrt (2 * a k + 3))\n  (l4 : Real.sqrt (2 * a k + 3) < Real.sqrt 9) :\n  a (k + 1) < 3 := by\n  have h_sqrt_9 : Real.sqrt 9 = 3 := by\n    rw [Real.sqrt_eq_iff_sq_eq] <;> norm_num\n    <;>\n    linarith [Real.sqrt_nonneg 9]\n  \n  have h_main : Real.sqrt (2 * a k + 3) < 3 := by\n    have h\u2081 : Real.sqrt (2 * a k + 3) < Real.sqrt 9 := l4\n    have h\u2082 : Real.sqrt 9 = (3 : \u211d) := h_sqrt_9\n    rw [h\u2082] at h\u2081\n    exact h\u2081\n  \n  have h_final : a (k + 1) < 3 := by\n    have h\u2081 : a (k + 1) = Real.sqrt (2 * a k + 3) := tc_2\n    rw [h\u2081]\n    exact h_main\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition tc_2 correctly captures the recurrence relation a_{k+1} = sqrt(2*a_k + 3)", "The constraint k \u2265 1 and inequality condition l4 are accurately formalized with proper variable types", "The conclusion a_{k+1} < 3 is correctly stated as the theorem goal", "The logical flow from assumptions to conclusion is mathematically sound and complete"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Since the statement is true for $k+1$, by the principle of mathematical induction, the inequality $a_n < 3$ holds for all integers $n \\geq 1$.", "statement": "We assume:\n\u2022 The base case holds: a\u2081 < 3 [l1].\n\u2022 The inductive step holds: for any integer k \u2265 1, assuming a_k < 3 [def_1] implies a_{k+1} < 3 [l5].\nTherefore, we conclude:\n\u2022 By the principle of mathematical induction, the inequality a_n < 3 holds for all integers n \u2265 1 [ts_1].", "dependencies": ["l1", "def_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a : \u2115 \u2192 \u211d) \n  (h1 : a 1 = 1) \n  (h_rec : \u2200 n : \u2115, n \u2265 1 \u2192 a (n + 1) = Real.sqrt (2 * a n + 3))\n  (l1 : a 1 < 3)\n  (l5 : \u2200 k : \u2115, k \u2265 1 \u2192 a k < 3 \u2192 a (k + 1) < 3) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n < 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a : \u2115 \u2192 \u211d) \n  (h1 : a 1 = 1) \n  (h_rec : \u2200 n : \u2115, n \u2265 1 \u2192 a (n + 1) = Real.sqrt (2 * a n + 3))\n  (l1 : a 1 < 3)\n  (l5 : \u2200 k : \u2115, k \u2265 1 \u2192 a k < 3 \u2192 a (k + 1) < 3) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n < 3 := by\n  have h_base : a 1 < 3 := by\n    rw [h1]\n    norm_num\n    <;> linarith\n  \n  have h_inductive_step : \u2200 (k : \u2115), k \u2265 1 \u2192 a k < 3 \u2192 a (k + 1) < 3 := by\n    intro k hk h_akk\n    have h\u2082 : a (k + 1) < 3 := l5 k hk h_akk\n    exact h\u2082\n  \n  have h_main : \u2200 (n : \u2115), n \u2265 1 \u2192 a n < 3 := by\n    intro n hn\n    induction' hn with n hn IH\n    \u00b7 -- Base case: n = 1\n      exact h_base\n    \u00b7 -- Inductive step: assume the statement holds for n, prove for n + 1\n      exact h_inductive_step n hn IH\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The base case a\u2081 < 3 is correctly captured as (l1 : a 1 < 3)", "The inductive step is properly formalized as (l5 : \u2200 k : \u2115, k \u2265 1 \u2192 a k < 3 \u2192 a (k + 1) < 3), correctly capturing the logical structure of the implication", "The conclusion by mathematical induction is accurately represented as \u2200 n : \u2115, n \u2265 1 \u2192 a n < 3. The Lean formalization includes additional context (sequence definition, initial value, recurrence relation) that provides complete mathematical background while preserving all logical components from the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

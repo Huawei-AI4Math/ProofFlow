@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(\Omega, \mathcal{F}, \mu)$ be a measure space. Let $A_1, A_2 \in \mathcal{F}$ be two disjoint sets with measures $\mu(A_1) = 5$ and $\mu(A_2) = 3$. Let $f: \Omega 	o \mathbb{R}$ be a function defined by $f = 4 \cdot \mathbf{1}_{A_1} + 7 \cdot \mathbf{1}_{A_2}$. Then the Lebesgue integral of $f$ is $\int_\Omega f \, d\mu = 41$.
+
+Proof: By linearity of the Lebesgue integral, we can decompose the integral of $f$ as $\int_\Omega f \, d\mu = \int_\Omega 4 \cdot \mathbf{1}_{A_1} \, d\mu + \int_\Omega 7 \cdot \mathbf{1}_{A_2} \, d\mu$. Based on the definition of the integral for a scaled indicator function, the first term evaluates to $\int_\Omega 4 \cdot \mathbf{1}_{A_1} \, d\mu = 4 \cdot \mu(A_1)$. Similarly, the second term evaluates to $\int_\Omega 7 \cdot \mathbf{1}_{A_2} \, d\mu = 7 \cdot \mu(A_2)$. Substituting these results into the sum gives the expression $\int_\Omega f \, d\mu = 4 \cdot \mu(A_1) + 7 \cdot \mu(A_2)$. Using the given measures $\mu(A_1) = 5$ and $\mu(A_2) = 3$, we calculate the final value as $\int_\Omega f \, d\mu = 4 \cdot 5 + 7 \cdot 3 = 41$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(\\Omega, \\mathcal{F}, \\mu)$ be a measure space.", "statement": "Premise:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9)\n  (hA\u2081_measurable : MeasurableSet A\u2081)\n  (hA\u2082_measurable : MeasurableSet A\u2082)\n  (h_disjoint : A\u2081 \u2229 A\u2082 = \u2205)\n  (hA\u2081_measure : \u03bc A\u2081 = 5)\n  (hA\u2082_measure : \u03bc A\u2082 = 3) :\n  \u222b x in A\u2081, 4 \u2202\u03bc + \u222b x in A\u2082, 7 \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 15, "column": 2, "endLine": 15, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 20, "endLine": 15, "endColumn": 35, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 7, "endLine": 8, "endColumn": 16, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Let $A_1, A_2 \\in \\mathcal{F}$ be two disjoint sets.", "statement": "Premise:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (A\u2081 A\u2082 : Set \u03a9) \n  (hA\u2081 : MeasurableSet A\u2081) \n  (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5)\n  (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d)\n  (hf : \u2200 x, f x = 4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) :\n  \u222b x, f x = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 17, "column": 24, "endLine": 17, "endColumn": 47, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 56, "endLine": 17, "endColumn": 79, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 18, "column": 2, "endLine": 18, "endColumn": 10, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "with measures $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$.", "statement": "Premise:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly establishes a measure space with \u03a9 as the underlying type, MeasurableSpace \u03a9 providing the \u03c3-algebra structure (equivalent to \u2131), and \u03bc as the measure. This perfectly captures the mathematical concept of (\u03a9, \u2131, \u03bc) being a measure space.", "The Lean code declares A\u2081 and A\u2082 as sets in \u03a9 with explicit measurability conditions (hA\u2081 : MeasurableSet A\u2081, hA\u2082 : MeasurableSet A\u2082), which is equivalent to A\u2081, A\u2082 \u2208 \u2131. The disjointness is explicitly stated with (hdisjoint : Disjoint A\u2081 A\u2082). This perfectly matches the natural language condition.", "The measure conditions \u03bc(A\u2081) = 5 and \u03bc(A\u2082) = 3 are directly translated as (h\u03bc\u2081 : \u03bc A\u2081 = 5) and (h\u03bc\u2082 : \u03bc A\u2082 = 3) in Lean. This is a perfect match."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_4": {"id": "tc_4", "natural_language": "Let $f: \\Omega \\to \\mathbb{R}$ be a function defined by $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$.", "statement": "Premise:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f$ is a function $f: \\Omega \\to \\mathbb{R}$ defined as $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : f = 4 * (fun \u03c9 => if \u03c9 \u2208 A\u2081 then 1 else 0) + 7 * (fun \u03c9 => if \u03c9 \u2208 A\u2082 then 1 else 0))", "lean_pass": false, "error_msg": [{"line": 11, "column": 38, "endLine": 11, "endColumn": 61, "data": "failed to synthesize\n  Decidable (\u03c9 \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 79, "endLine": 11, "endColumn": 102, "data": "failed to synthesize\n  Decidable (\u03c9 \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "By linearity of the Lebesgue integral, we can decompose the integral of $f$ as $\\int_\\Omega f \\, d\\mu = \\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu + \\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f$ is a function $f: \\Omega \\to \\mathbb{R}$ defined as $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \n  \u222b x, 4 * (1 : \u211d) \u2202\u03bc + \u222b x, 7 * (1 : \u211d) \u2202\u03bc := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \n  \u222b x, 4 * (1 : \u211d) \u2202\u03bc + \u222b x, 7 * (1 : \u211d) \u2202\u03bc := by\n  have h_main : \u222b x : \u03a9, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \u222b x : \u03a9, 4 * (1 : \u211d) \u2202\u03bc + \u222b x : \u03a9, 7 * (1 : \u211d) \u2202\u03bc := by\n    have h\u2081 : Integrable (fun x : \u03a9 => (4 : \u211d)) \u03bc := by\n      -- Prove that the constant function 4 is integrable\n      have h\u2082 : Integrable (fun x : \u03a9 => (1 : \u211d)) \u03bc := by\n        -- Prove that the constant function 1 is integrable\n        have h\u2083 : \u03bc (Set.univ : Set \u03a9) < \u221e := by\n          -- Prove that the measure of the space is finite\n          have h\u2084 : \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := by\n            apply MeasureTheory.measure_mono\n            intro x hx\n            simp only [Set.mem_union] at hx \u22a2\n            tauto\n          have h\u2085 : \u03bc (A\u2081 \u222a A\u2082) = \u03bc A\u2081 + \u03bc A\u2082 := by\n            rw [MeasureTheory.measure_union] <;> simp_all [hA\u2081, hA\u2082, hdisjoint]\n            <;> norm_num\n          have h\u2086 : \u03bc A\u2081 + \u03bc A\u2082 < \u221e := by\n            rw [h\u03bc\u2081, h\u03bc\u2082]\n            norm_num\n            <;>\n            simp [ENNReal.ofReal_lt_top]\n            <;>\n            norm_num\n          have h\u2087 : \u03bc (Set.univ : Set \u03a9) < \u221e := by\n            by_contra h\n            have h\u2088 : \u03bc (Set.univ : Set \u03a9) = \u221e := by\n              simp_all [lt_top_iff_ne_top]\n            have h\u2089 : \u03bc (A\u2081 \u222a A\u2082) < \u221e := by\n              have h\u2081\u2080 : \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := h\u2084\n              have h\u2081\u2081 : \u03bc (A\u2081 \u222a A\u2082) < \u221e := by\n                calc\n                  \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := h\u2081\u2080\n                  _ = \u221e := by simp_all [lt_top_iff_ne_top]\n                  _ < \u221e := by simp\n              exact h\u2081\u2081\n            simp_all [lt_top_iff_ne_top]\n          exact h\u2087\n        -- Use the fact that the measure of the space is finite to prove integrability of 1\n        simpa using MeasureTheory.integrable_one_iff.mpr h\u2083\n      -- Use the fact that the constant function 1 is integrable to prove integrability of 4\n      have h\u2083 : Integrable (fun x : \u03a9 => (4 : \u211d)) \u03bc := by\n        convert MeasureTheory.integrable_const_mul (1 : \u211d) h\u2082 using 1 <;> simp [mul_comm]\n        <;> ring_nf\n        <;> norm_num\n      exact h\u2083\n    have h\u2082 : Integrable (fun x : \u03a9 => (7 : \u211d)) \u03bc := by\n      -- Prove that the constant function 7 is integrable\n      have h\u2083 : Integrable (fun x : \u03a9 => (1 : \u211d)) \u03bc := by\n        -- Prove that the constant function 1 is integrable\n        have h\u2084 : \u03bc (Set.univ : Set \u03a9) < \u221e := by\n          -- Prove that the measure of the space is finite\n          have h\u2085 : \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := by\n            apply MeasureTheory.measure_mono\n            intro x hx\n            simp only [Set.mem_union] at hx \u22a2\n            tauto\n          have h\u2086 : \u03bc (A\u2081 \u222a A\u2082) = \u03bc A\u2081 + \u03bc A\u2082 := by\n            rw [MeasureTheory.measure_union] <;> simp_all [hA\u2081, hA\u2082, hdisjoint]\n            <;> norm_num\n          have h\u2087 : \u03bc A\u2081 + \u03bc A\u2082 < \u221e := by\n            rw [h\u03bc\u2081, h\u03bc\u2082]\n            norm_num\n            <;>\n            simp [ENNReal.ofReal_lt_top]\n            <;>\n            norm_num\n          have h\u2088 : \u03bc (Set.univ : Set \u03a9) < \u221e := by\n            by_contra h\n            have h\u2089 : \u03bc (Set.univ : Set \u03a9) = \u221e := by\n              simp_all [lt_top_iff_ne_top]\n            have h\u2081\u2080 : \u03bc (A\u2081 \u222a A\u2082) < \u221e := by\n              have h\u2081\u2081 : \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := h\u2085\n              have h\u2081\u2082 : \u03bc (A\u2081 \u222a A\u2082) < \u221e := by\n                calc\n                  \u03bc (A\u2081 \u222a A\u2082) \u2264 \u03bc (Set.univ : Set \u03a9) := h\u2081\u2081\n                  _ = \u221e := by simp_all [lt_top_iff_ne_top]\n                  _ < \u221e := by simp\n              exact h\u2081\u2082\n            simp_all [lt_top_iff_ne_top]\n          exact h\u2088\n        -- Use the fact that the measure of the space is finite to prove integrability of 1\n        simpa using MeasureTheory.integrable_one_iff.mpr h\u2084\n      -- Use the fact that the constant function 1 is integrable to prove integrability of 7\n      have h\u2084 : Integrable (fun x : \u03a9 => (7 : \u211d)) \u03bc := by\n        convert MeasureTheory.integrable_const_mul (1 : \u211d) h\u2083 using 1 <;> simp [mul_comm]\n        <;> ring_nf\n        <;> norm_num\n      exact h\u2084\n    -- Use the linearity of the integral to split the integral of the sum into the sum of integrals\n    have h\u2083 : \u222b x : \u03a9, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \u222b x : \u03a9, (4 : \u211d) \u2202\u03bc + \u222b x : \u03a9, (7 : \u211d) \u2202\u03bc := by\n      have h\u2084 : \u222b x : \u03a9, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \u222b x : \u03a9, ((4 : \u211d) + (7 : \u211d)) \u2202\u03bc := by\n        congr\n        ext x\n        ring_nf\n      rw [h\u2084]\n      have h\u2085 : \u222b x : \u03a9, ((4 : \u211d) + (7 : \u211d)) \u2202\u03bc = \u222b x : \u03a9, (4 : \u211d) \u2202\u03bc + \u222b x : \u03a9, (7 : \u211d) \u2202\u03bc := by\n        apply MeasureTheory.integral_add\n        \u00b7 -- Prove that the function (4 : \u211d) is integrable\n          exact h\u2081\n        \u00b7 -- Prove that the function (7 : \u211d) is integrable\n          exact h\u2082\n      rw [h\u2085]\n      <;> simp [mul_comm]\n      <;> ring_nf\n      <;> norm_num\n    -- Relate the integrals of the constant functions to the original problem\n    have h\u2084 : \u222b x : \u03a9, (4 : \u211d) \u2202\u03bc = \u222b x : \u03a9, 4 * (1 : \u211d) \u2202\u03bc := by\n      congr\n      ext x\n      <;> ring_nf\n      <;> norm_num\n    have h\u2085 : \u222b x : \u03a9, (7 : \u211d) \u2202\u03bc = \u222b x : \u03a9, 7 * (1 : \u211d) \u2202\u03bc := by\n      congr\n      ext x\n      <;> ring_nf\n      <;> norm_num\n    -- Combine all the results to get the final statement\n    calc\n      \u222b x : \u03a9, (4 * (1 : \u211d) + 7 * (1 : \u211d)) \u2202\u03bc = \u222b x : \u03a9, (4 : \u211d) \u2202\u03bc + \u222b x : \u03a9, (7 : \u211d) \u2202\u03bc := h\u2083\n      _ = \u222b x : \u03a9, 4 * (1 : \u211d) \u2202\u03bc + \u222b x : \u03a9, 7 * (1 : \u211d) \u2202\u03bc := by\n        rw [h\u2084, h\u2085]\n        <;> simp [mul_comm]\n        <;> ring_nf\n        <;> norm_num\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The measure space setup is correctly formalized with appropriate types and structures.", "The disjoint measurable sets are properly captured with explicit measurability and disjointness conditions.", "The measure values are correctly stated as hypotheses.", "The function definition completely misses the indicator functions. The natural language defines f as 4\u00b7\ud835\udfd9_{A\u2081} + 7\u00b7\ud835\udfd9_{A\u2082}, but the Lean code treats it as the constant function 4+7=11.", "The integral equality statement is fundamentally different from the natural language. It should involve integrals of indicator functions over specific sets, but instead formalizes integrals of constant functions, making it a trivial algebraic identity rather than a meaningful measure theory statement.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The measure space setup is correctly formalized with appropriate types and structures.', 'The disjoint measurable sets are properly captured with explicit measurability and disjointness conditions.', 'The measure values are correctly stated as hypotheses.', 'The function definition completely misses the indicator functions. The natural language defines f as 4\u00b7\ud835\udfd9_{A\u2081} + 7\u00b7\ud835\udfd9_{A\u2082}, but the Lean code treats it as the constant function 4+7=11.', 'The integral equality statement is fundamentally different from the natural language. It should involve integrals of indicator functions over specific sets, but instead formalizes integrals of constant functions, making it a trivial algebraic identity rather than a meaningful measure theory statement.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Based on the definition of the integral for a scaled indicator function, the first term evaluates to $\\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu = 4 \\cdot \\mu(A_1)$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc = 4 * \u03bc A\u2081 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 12, "endLine": 12, "endColumn": 35, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 2, "endLine": 12, "endColumn": 39, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc = 4 * \u03bc A\u2081 := by\n  have h\u2081 : (\u222b x : \u03a9, (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) \u2202\u03bc) = 20 := by sorry\n  have h\u2082 : (\u222b x : \u03a9, (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) \u2202\u03bc : \u211d) = (20 : \u211d) := by sorry\n  have h\u2083 : (\u222b x : \u03a9, (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) \u2202\u03bc : ENNReal) = 4 * \u03bc A\u2081 := by sorry\n  have h\u2084 : \u222b x : \u03a9, (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) \u2202\u03bc = 4 * \u03bc A\u2081 := by sorry\n  sorry", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 12, "endLine": 9, "endColumn": 35, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 2, "endLine": 9, "endColumn": 39, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 33, "endLine": 10, "endColumn": 62, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 33, "endLine": 11, "endColumn": 62, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 33, "endLine": 12, "endColumn": 62, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 13, "endLine": 12, "endColumn": 66, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 32, "endLine": 13, "endColumn": 61, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 68, "endLine": 13, "endColumn": 76, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 54, "endLine": 14, "endColumn": 7, "data": "unsolved goals\ncase refine_2\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nh\u2081 h\u2082 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 20\nh\u2083 : sorry = 4 * \u03bc A\u2081\nh\u2084 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\n\u22a2 \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081"}], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Similarly, the second term evaluates to $\\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu = 7 \\cdot \\mu(A_2)$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].\n\u2022 $\\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu = 7 \\cdot \\mu(A_2)$ [l3].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 2, "endLine": 12, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082 := by\n  have h_main : \u222b x in A\u2082, (7 : ENNReal) \u2202\u03bc = 7 * \u03bc A\u2082 := by\n    have h\u2081 : \u222b x in A\u2082, (7 : ENNReal) \u2202\u03bc = (7 : ENNReal) * \u03bc A\u2082 := by\n      -- Use the property of integral of a constant function\n      rw [MeasureTheory.integral_const]\n      <;> simp [hA\u2082]\n      <;> norm_num\n      <;> aesop\n    -- Simplify the expression to match the target form\n    simpa [mul_comm] using h\u2081\n  \n  have h_final : \u222b x in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082 := by\n    -- Use the fact that the integral of 7 as a real number is the same as the integral of 7 as an extended non-negative real number\n    have h\u2081 : \u222b x in A\u2082, (7 : \u211d) \u2202\u03bc = (\u222b x in A\u2082, (7 : ENNReal) \u2202\u03bc : \u211d) := by\n      -- The integral of 7 (as a real number) is equal to the integral of 7 (as an extended non-negative real number)\n      -- because Lean can automatically coerce between these types in this context.\n      simp [\u2190 ENNReal.coe_integral]\n      <;> simp_all [hA\u2082]\n      <;> norm_num\n      <;> aesop\n    -- Convert the integral of 7 (as an extended non-negative real number) to a real number\n    -- and use the previous result to equate it to 7 * \u03bc A\u2082.\n    have h\u2082 : (\u222b x in A\u2082, (7 : ENNReal) \u2202\u03bc : \u211d) = (7 * \u03bc A\u2082 : \u211d) := by\n      -- Use the fact that the integral of 7 (as an extended non-negative real number) is 7 * \u03bc A\u2082\n      -- and convert it to a real number.\n      norm_cast at h_main \u22a2\n      <;> simp_all [h\u03bc\u2082]\n      <;> norm_num\n      <;> aesop\n    -- Combine the results to show that the integral of 7 (as a real number) is equal to 7 * \u03bc A\u2082.\n    calc\n      \u222b x in A\u2082, 7 \u2202\u03bc = (\u222b x in A\u2082, (7 : \u211d) \u2202\u03bc : \u211d) := by simp\n      _ = (\u222b x in A\u2082, (7 : ENNReal) \u2202\u03bc : \u211d) := by rw [h\u2081]\n      _ = (7 * \u03bc A\u2082 : \u211d) := by rw [h\u2082]\n      _ = 7 * \u03bc A\u2082 := by\n        norm_cast\n        <;> simp_all [h\u03bc\u2082]\n        <;> norm_num\n        <;> aesop\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 2, "endLine": 9, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 16, "endLine": 10, "endColumn": 43, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 14, "endLine": 11, "endColumn": 41, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 10, "endLine": 13, "endColumn": 38, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u222b (x : ?m.4774), ?c \u2202?m.4780\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\n\u22a2 sorry = 7 * \u03bc A\u2082"}, {"line": 20, "column": 17, "endLine": 20, "endColumn": 32, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 22, "column": 39, "endLine": 22, "endColumn": 66, "data": "type mismatch\n  7\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 25, "column": 14, "endLine": 25, "endColumn": 34, "data": "unknown constant 'ENNReal.coe_integral'"}, {"line": 28, "column": 10, "endLine": 28, "endColumn": 15, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  \u03a9 : Type u_1\n  inst\u271d : MeasurableSpace \u03a9\n  \u03bc : MeasureTheory.Measure \u03a9\n  A\u2081 A\u2082 : Set \u03a9\n  hA\u2081 : MeasurableSet A\u2081\n  hA\u2082 : MeasurableSet A\u2082\n  hdisjoint : Disjoint A\u2081 A\u2082\n  h\u03bc\u2081 : \u03bc A\u2081 = 5\n  h\u03bc\u2082 : \u03bc A\u2082 = 3\n  h_main : sorry = 7 * 3\n  \u22a2 7 = sorry"}, {"line": 31, "column": 15, "endLine": 31, "endColumn": 42, "data": "type mismatch\n  7\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 31, "column": 51, "endLine": 31, "endColumn": 59, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 37, "column": 10, "endLine": 37, "endColumn": 15, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  \u03a9 : Type u_1\n  inst\u271d : MeasurableSpace \u03a9\n  \u03bc : MeasureTheory.Measure \u03a9\n  A\u2081 A\u2082 : Set \u03a9\n  hA\u2081 : MeasurableSet A\u2081\n  hA\u2082 : MeasurableSet A\u2082\n  hdisjoint : Disjoint A\u2081 A\u2082\n  h\u03bc\u2081 : \u03bc A\u2081 = 5\n  h\u03bc\u2082 : \u03bc A\u2082 = 3\n  h_main\u271d : sorry = 7 * \u03bc A\u2082\n  h\u2081\u271d : \u222b (x : \u03a9) in A\u2082, 7 \u2202\u03bc = \u222b (x : \u03a9) in A\u2082, sorry \u2202\u03bc\n  h_main : sorry = 7 * 3\n  h\u2081 : 7 = sorry\n  \u22a2 3 * sorry = 7 * 3"}, {"line": 41, "column": 11, "endLine": 41, "endColumn": 38, "data": "type mismatch\n  7\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 42, "column": 11, "endLine": 42, "endColumn": 19, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 43, "column": 10, "endLine": 43, "endColumn": 18, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 39, "column": 4, "endLine": 39, "endColumn": 8, "data": "'calc' expression has type\n  \u222b (x : \u03a9) in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082 : Prop\nbut is expected to have type\n  HMul \u2115 ENNReal \u211d : Type"}, {"line": 49, "column": 8, "endLine": 49, "endColumn": 15, "data": "unknown identifier 'h_final'"}, {"line": 42, "column": 35, "endLine": 42, "endColumn": 37, "data": "unknown identifier 'h\u2082'"}, {"line": 42, "column": 35, "endLine": 42, "endColumn": 37, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.31682\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nh_main : sorry = 7 * \u03bc A\u2082\nh\u2081 : \u222b (x : \u03a9) in A\u2082, 7 \u2202\u03bc = \u222b (x : \u03a9) in A\u2082, sorry \u2202\u03bc\n\u22a2 \u222b (x : \u03a9) in A\u2082, sorry \u2202\u03bc = 7 * \u03bc A\u2082"}, {"line": 9, "column": 32, "endLine": 49, "endColumn": 15, "data": "unsolved goals\ncase refine_2\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nh_main : sorry = 7 * \u03bc A\u2082\n\u22a2 NormedSpace \u211d ENNReal\n\ncase refine_3\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nh_main : sorry = 7 * \u03bc A\u2082\nh_final : \u222b (x : \u03a9) in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 \u222b (x : \u03a9) in A\u2082, 7 \u2202\u03bc = 7 * \u03bc A\u2082"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Substituting these results into the sum gives the expression $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].\n\u2022 $\\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].\n\u2022 $\\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu = 7 \\cdot \\mu(A_2)$ [l3].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$ [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = 4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0))\n  (l1 : \u222b x, f \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc)\n  (l2 : \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc = 4 * \u03bc A\u2081)\n  (l3 : \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u03bc A\u2082) :\n  \u222b x, f \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 36, "endLine": 12, "endColumn": 59, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 68, "endLine": 12, "endColumn": 91, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 8, "endLine": 13, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 30, "endLine": 13, "endColumn": 53, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 70, "endLine": 13, "endColumn": 93, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 18, "endLine": 14, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 8, "endLine": 14, "endColumn": 45, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 18, "endLine": 15, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 8, "endLine": 15, "endColumn": 45, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 2, "endLine": 16, "endColumn": 11, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 20, "endLine": 13, "endColumn": 57, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 60, "endLine": 13, "endColumn": 97, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = 4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0))\n  (l1 : \u222b x, f \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc)\n  (l2 : \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc = 4 * \u03bc A\u2081)\n  (l3 : \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u03bc A\u2082) :\n  \u222b x, f \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082 := by\n  classical\n  have h_main : \u222b x, f \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082 := by\n    calc\n      \u222b x, f \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc := by rw [l1]\n      _ = 4 * \u03bc A\u2081 + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc := by rw [l2]\n      _ = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082 := by rw [l3]\n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 36, "endLine": 9, "endColumn": 59, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 68, "endLine": 9, "endColumn": 91, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 8, "endLine": 10, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 30, "endLine": 10, "endColumn": 53, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 70, "endLine": 10, "endColumn": 93, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 18, "endLine": 11, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 8, "endLine": 11, "endColumn": 45, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 18, "endLine": 12, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 8, "endLine": 12, "endColumn": 45, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 2, "endLine": 13, "endColumn": 11, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 20, "endLine": 10, "endColumn": 57, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 60, "endLine": 10, "endColumn": 97, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 16, "endLine": 15, "endColumn": 25, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 6, "endLine": 17, "endColumn": 15, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 18, "column": 21, "endLine": 18, "endColumn": 58, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 18, "endLine": 17, "endColumn": 55, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 58, "endLine": 17, "endColumn": 95, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 51, "endLine": 19, "endColumn": 43, "data": "unsolved goals\ncase calc_1\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedAddCommGroup ENNReal\n\ncase calc_2\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedSpace \u211d ENNReal\n\ncase calc_3\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedAddCommGroup ENNReal\n\ncase calc_4\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedSpace \u211d ENNReal\n\ncase calc_5\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedAddCommGroup ENNReal\n\ncase calc_6\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nhA\u2082 : MeasurableSet A\u2082\nhdisjoint : Disjoint A\u2081 A\u2082\nh\u03bc\u2081 : \u03bc A\u2081 = 5\nh\u03bc\u2082 : \u03bc A\u2082 = 3\nf : \u03a9 \u2192 \u211d\nhf : \u2200 (x : \u03a9), f x = 4 * sorry + 7 * sorry\nl1 : sorry = \u222b (x : \u03a9), 4 * sorry \u2202\u03bc + \u222b (x : \u03a9), 7 * sorry \u2202\u03bc\nl2 : \u222b (x : \u03a9), 4 * sorry \u2202\u03bc = 4 * \u03bc A\u2081\nl3 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u03bc A\u2082\n\u22a2 NormedSpace \u211d ENNReal"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Using the given measures $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$, we calculate the final value as $\\int_\\Omega f \\, d\\mu = 4 \\cdot 5 + 7 \\cdot 3 = 41$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are two disjoint sets [tc_2].\n\u2022 $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].\n\u2022 $\\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].\n\u2022 $\\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu = 7 \\cdot \\mu(A_2)$ [l3].\n\u2022 $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$ [l4].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = 41$ [ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = if x \u2208 A\u2081 then 4 else if x \u2208 A\u2082 then 7 else 0)\n  (l4 : \u222b x, f \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082) :\n  \u222b x, f \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 53, "endLine": 12, "endColumn": 76, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 31, "endLine": 12, "endColumn": 76, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 8, "endLine": 13, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 2, "endLine": 14, "endColumn": 11, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082)\n  (hdisjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = dite (x \u2208 A\u2081) (fun _ => (4 : \u211d)) (fun _ => dite (x \u2208 A\u2082) (fun _ => (7 : \u211d)) (fun _ => (0 : \u211d))))\n  (l4 : \u222b x, f \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082) :\n  \u222b x, f \u2202\u03bc = 41 := by\n  have h_main : \u222b x, f \u2202\u03bc = 41 := by\n    rw [l4]\n    rw [h\u03bc\u2081, h\u03bc\u2082]\n    <;> norm_num\n    <;>\n    (try norm_num) <;>\n    (try linarith) <;>\n    (try ring_nf) <;>\n    (try simp_all [MeasureTheory.integral_add, MeasureTheory.integral_smul, MeasureTheory.integral_one,\n      MeasureTheory.integral_zero, MeasureTheory.integral_ind]) <;>\n    (try norm_num) <;>\n    (try linarith)\n    <;>\n    (try ring_nf at * <;> simp_all [MeasureTheory.integral_add, MeasureTheory.integral_smul, MeasureTheory.integral_one,\n      MeasureTheory.integral_zero, MeasureTheory.integral_ind] <;> norm_num <;> linarith)\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 74, "endLine": 9, "endColumn": 125, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 31, "endLine": 9, "endColumn": 126, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 8, "endLine": 10, "endColumn": 17, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 2, "endLine": 11, "endColumn": 11, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 16, "endLine": 12, "endColumn": 25, "data": "failed to synthesize\n  NormedAddCommGroup (\u03a9 \u2192 \u211d)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_4", "label": "tc_4", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#fa2c07", "highlight": {"background": "#a3c2a8", "border": "#fa2c07"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

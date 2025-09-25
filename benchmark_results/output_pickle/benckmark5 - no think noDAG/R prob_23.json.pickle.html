@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1/2)^{k+1}$ for $k \in \{0, 1, 2, ...\}$. The characteristic function of $X$ is defined as $\phi_X(t) = E[e^{itX}]$, and it is given that the first moment can be found using the derivative of the characteristic function at zero, $\phi'_X(0) = iE[X]$. Prove that the characteristic function is $\phi_X(t) = \frac{1}{2 - e^{it}}$ and the expectation is $E[X] = 1$.
+
+Proof: First, we express the characteristic function using its definition for a discrete variable, which gives $\phi_X(t) = \sum_{k=0}^{\infty} e^{itk} P(X=k)$. Substituting the given PMF, we get $\phi_X(t) = \sum_{k=0}^{\infty} e^{itk} (1/2)^{k+1}$. We can rewrite this sum as $\phi_X(t) = \frac{1}{2} \sum_{k=0}^{\infty} (\frac{e^{it}}{2})^k$. By applying the formula for the sum of a geometric series, we find the closed-form expression $\phi_X(t) = \frac{1}{2} \left( \frac{1}{1 - \frac{e^{it}}{2}} \right) = \frac{1}{2 - e^{it}}$. To find the expectation, we first differentiate the characteristic function with respect to $t$, which yields $\phi'_X(t) = \frac{i e^{it}}{(2 - e^{it})^2}$. Evaluating this derivative at $t=0$ gives $\phi'_X(0) = \frac{i e^{0}}{(2 - e^{0})^2} = i$. Finally, using the given relation $\phi'_X(0) = iE[X]$, we solve for the expectation to get $E[X] = \frac{\phi'_X(0)}{i} = 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1/2)^{k+1}$ for $k \\in \\{0, 1, 2, ...\\}$.", "statement": "Premise:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (pmf_X : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization only defines a function pmf_X : \u2115 \u2192 \u211d but does not explicitly declare X as a discrete random variable. The random variable X itself is missing from the formalization.", "The Lean formalization implicitly uses \u2115 as the domain of pmf_X, which corresponds to {0, 1, 2, ...}, but there is no explicit declaration of the sample space S. The sample space is only implicit through the function type.", "The Lean formalization perfectly captures the probability mass function formula P(X=k) = (1/2)^(k+1) through the condition tc_1."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization only defines a function pmf_X : \u2115 \u2192 \u211d but does not explicitly declare X as a discrete random variable. The random variable X itself is missing from the formalization.', 'The Lean formalization implicitly uses \u2115 as the domain of pmf_X, which corresponds to {0, 1, 2, ...}, but there is no explicit declaration of the sample space S. The sample space is only implicit through the function type.', 'The Lean formalization perfectly captures the probability mass function formula P(X=k) = (1/2)^(k+1) through the condition tc_1.']"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "it is given that the first moment can be found using the derivative of the characteristic function at zero, $\\phi'_X(0) = iE[X]$.", "statement": "Premise:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (pmf_X : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The natural language states X is a discrete random variable with sample space S = {0, 1, 2, ...}, but the Lean formalization only provides pmf_X : \u2115 \u2192 \u211d without explicitly defining X as a random variable or formally establishing the sample space. The Lean captures the probability mass function but misses the formal random variable structure.", "The Lean condition tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1) perfectly matches the natural language condition P(X=k) = (1/2)^{k+1} for k \u2208 S, since \u2115 corresponds to the sample space {0, 1, 2, ...}.", "The Lean condition tc_2 includes DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X, which captures \u03c6'_X(0) = iE[X]. The differentiability condition is an additional technical requirement that's logically consistent and necessary for the derivative to exist."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2].\nDefinition:\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (pmf_X : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization captures the discrete random variable with sample space \u2115 = {0, 1, 2, ...} through pmf_X : \u2115 \u2192 \u211d, which represents the probability mass function over natural numbers", "The condition tc_1 exactly matches P(X=k) = (1/2)^{k+1} for all k \u2208 \u2115", "The condition tc_2 captures \u03c6'_X(0) = iE[X] through deriv char_fn_X 0 = Complex.I * E_X, with the additional differentiability requirement being a reasonable mathematical prerequisite", "The definition def_1 correctly formalizes \u03c6_X(t) = E[e^{itX}] as an infinite sum over the sample space, which is the standard way to express expectation for discrete random variables"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "First, we express the characteristic function using its definition for a discrete variable, which gives $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1].\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (E_X : \u211d) :\n  char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (E_X : \u211d) :\n  char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k) := by\n  exact def_1 t", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.75, "semantic_feedback": ["The probability mass function is correctly formalized with appropriate type annotations.", "The derivative relationship is properly captured, with the addition of necessary differentiability condition which is mathematically sound.", "The characteristic function definition is correctly expanded from expectation to infinite sum form for discrete random variables.", "The conclusion l1 is identical to the premise def_1, making it a tautology rather than a meaningful conclusion. The natural language suggests this should be derived from the other premises, but the Lean formalization makes it trivially true by assumption."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Substituting the given PMF, we get $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1].\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (E_X : \u211d)\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k)) :\n  char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l2\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (E_X : \u211d)\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k)) :\n  char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1) := by\n  rw [l1]\n  congr with k\n  rw [tc_1 k]\n  simp only [one_div, ofReal_inv, ofReal_pow, ofReal_ofNat, ofReal_add, ofReal_one]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0.8, "semantic_feedback": ["tc_1 correctly captures the probability mass function definition with appropriate type annotations", "tc_2 appropriately captures the first moment relation, with the added differentiability condition being a reasonable mathematical requirement", "def_1 gives the series expansion form rather than the expectation form E[e^{itX}] stated in natural language. While mathematically equivalent, this is a structural difference in representation", "l1 correctly matches the natural language series representation, though it's redundant with def_1", "l2 correctly represents the conclusion by substituting the PMF into the series, with appropriate type coercion from real to complex numbers"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "We can rewrite this sum as $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2].\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1)) :\n  char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1)) :\n  char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k := by\n  rw [l2]\n  simp_rw [\u2190 mul_assoc, \u2190 pow_add, pow_one]\n  congr\n  ext k\n  rw [\u2190 pow_mul, mul_comm (Complex.I * t), mul_assoc, Complex.exp_mul_I]\n  simp only [one_div, mul_div_assoc]\n  rw [\u2190 mul_div_assoc, \u2190 pow_add]\n  simp [pow_succ', mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 11, "endLine": 17, "endColumn": 22, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations appropriately capture the mathematical objects - pmf_X represents the probability mass function and char_fn_X represents the characteristic function with correct domain/codomain types.", "The probability mass function condition tc_1 exactly matches the natural language specification P(X=k) = (1/2)^{k+1}.", "The first moment relation tc_2 correctly captures \u03c6'_X(0) = iE[X] using Lean's derivative notation, with the additional differentiability condition being a reasonable mathematical requirement.", "The characteristic function definition def_1 provides the series representation rather than the expectation E[e^{itX}]. While mathematically equivalent for discrete random variables, this is not a direct translation of the given definition.", "Both l1 and l2 exactly match their corresponding natural language statements, correctly representing the series expansions.", "The conclusion l3 perfectly captures the factorization \u03c6_X(t) = (1/2) \u2211_{k=0}^\u221e (e^{it}/2)^k with appropriate complex number types and infinite sum notation.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.83 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1)) :\n  \u00ac (char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k) := by\n  intro h\n  have h1 := l2\n  rw [h] at h1\n  simp at h1\n  have : \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1) = \n    (1/2 : \u2102) * \u2211' (k : \u2115), (Complex.exp (Complex.I * t) / 2) ^ k := by\n    rw [\u2190 h]\n    exact l2\n  rw [this] at h1\n  simp at h1\n  have : Complex.exp (Complex.I * t * 0) * (1/2 : \u2102)^(0 + 1) = (1/2 : \u2102) := by simp\n  rw [\u2190 this] at h1\n  apply tsum_eq_zero_of_not_summable at h1\n  simp at h1\n  exact not_summable_iff.mp h1"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By applying the formula for the sum of a geometric series...", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2];\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3].\nTherefore, we conclude:\n\u2022 $\\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k = \\frac{1}{1 - \\frac{e^{it}}{2}}$ [l4].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (t : \u211d)\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k) :\n  \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l4\n  (t : \u211d)\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (exp (I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (exp (I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), exp (I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((exp (I * t)) / 2) ^ k) :\n  \u2211' (k : \u2115), ((exp (I * t)) / 2) ^ k = 1 / (1 - (exp (I * t)) / 2) := by\n  have h : abs (exp (I * t) / 2) < 1 := by\n    simp [abs_div, abs_two]\n    rw [div_lt_one (by norm_num)]\n    simp [abs_exp]\n    exact mul_le_one (abs_cos_le_one _) (abs_sin_le_one _) (by simp) (by simp)\n  simp_rw [\u2190 tsum_geometric_of_abs_lt_1 h]\n  simp [div_eq_mul_inv]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 20, "column": 10, "endLine": 20, "endColumn": 17, "data": "ambiguous, possible interpretations \n  Complex.abs_exp : \u2200 (z : \u2102), Complex.abs (cexp z) = rexp z.re\n  \n  Real.abs_exp : \u2200 (x : \u211d), |rexp x| = rexp x"}, {"line": 20, "column": 4, "endLine": 20, "endColumn": 18, "data": "simp made no progress"}, {"line": 22, "column": 13, "endLine": 22, "endColumn": 39, "data": "unknown identifier 'tsum_geometric_of_abs_lt_1'"}, {"line": 22, "column": 11, "endLine": 22, "endColumn": 41, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1 correctly captures the probability mass function definition with appropriate type annotations", "tc_2 has a structural difference - the natural language suggests \u03c6'_X(0) = iE[X] where E[X] could be complex, but Lean treats E_X as real and multiplies by Complex.I. Also missing the discrete random variable constraint from natural language", "def_1 correctly formalizes the characteristic function definition using infinite sum notation", "l1 perfectly matches the natural language statement", "l2 correctly substitutes the PMF values with proper complex number typing", "l3 correctly factors out 1/2 and represents the geometric series form", "l4 (the goal) correctly states the geometric series sum formula", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.86 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (t : \u211d)\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k) :\n  \u00ac (\u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2)) := by\n  intro h\n  have h_sum : Summable (fun k => ((Complex.exp (Complex.I * t)) / 2) ^ k) := by\n    apply summable_geometric_of_abs_lt_1\n    simp [Complex.norm_eq_abs, abs_div, abs_two, Complex.abs_exp]\n    exact div_lt_one (by norm_num)\n  have h_geom : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2) :=\n    tsum_geometric_of_norm_lt_1 (by simp [Complex.norm_eq_abs, abs_div, abs_two, Complex.abs_exp, div_lt_one (by norm_num)])\n  contradiction"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "...we find the closed-form expression $\\phi_X(t) = \\frac{1}{2} \\left( \\frac{1}{1 - \\frac{e^{it}}{2}} \\right) = \\frac{1}{2 - e^{it}}$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2];\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3];\n\u2022 $\\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k = \\frac{1}{1 - \\frac{e^{it}}{2}}$ [l4].\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2)) :\n  char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2)) :\n  char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)) := by\n  rw [l3, l4]\n  field_simp\n  rw [div_div, \u2190 one_div]\n  congr 1\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 20, "column": 6, "endLine": 20, "endColumn": 13, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition is correctly formalized with appropriate type annotations", "The relationship between derivative and expectation is properly captured with differentiability condition", "The characteristic function definition is correctly formalized as an infinite sum", "Restatement of def_1 for specific t value is consistent", "PMF substitution is correctly represented", "Factoring out 1/2 is properly formalized", "Geometric series formula is correctly stated", "The final conclusion matches the natural language goal perfectly", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2)) :\n  \u00ac (char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t))) := by\n  rw [l3, l4]\n  field_simp\n  rw [Complex.exp_mul_I]\n  sorry"}, "type": "solution"}, "l5": {"id": "l5", "natural_language": "To find the expectation, we first differentiate the characteristic function with respect to $t$, which yields $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2];\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3];\n\u2022 $\\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k = \\frac{1}{1 - \\frac{e^{it}}{2}}$ [l4];\n\u2022 $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1].\nTherefore, we conclude:\n\u2022 $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$ [l5].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "ts_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t))) :\n  deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t))) :\n  deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2 := by\n  have h : \u2200 t', char_fn_X t' = (2 - Complex.exp (Complex.I * t'))\u207b\u00b9 := by\n    intro t'\n    rw [ts_1]\n    simp [inv_eq_one_div]\n  have h_diff : Differentiable \u211d char_fn_X := by\n    intro t'\n    rw [h]\n    apply DifferentiableAt.inv\n    \u00b7 apply DifferentiableAt.const_sub\n      exact DifferentiableAt.const (2 : \u2102) (differentiableAt_id)\n      exact DifferentiableAt.cexp (DifferentiableAt.mul (DifferentiableAt.const _ (differentiableAt_id)) (differentiableAt_id))\n    \u00b7 simp only [sub_ne_zero]\n      intro h_eq\n      have : Complex.abs (Complex.exp (Complex.I * t')) \u2264 1 := by\n        simp [Complex.abs_exp_ofReal_mul_I]\n      linarith [this]\n  rw [h]\n  simp only [deriv_inv'' (differentiableAt_id) (DifferentiableAt.cexp (DifferentiableAt.mul (DifferentiableAt.const _ (differentiableAt_id)) (differentiableAt_id)))]\n  field_simp\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 21, "column": 8, "endLine": 21, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  char_fn_X t\npmf_X : \u2115 \u2192 \u211d\nchar_fn_X : \u211d \u2192 \u2102\nt E_X : \u211d\ntc_1 : \u2200 (k : \u2115), pmf_X k = (1 / 2) ^ (k + 1)\ntc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * \u2191E_X\ndef_1 : \u2200 (t' : \u211d), char_fn_X t' = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t' * \u2191k) * \u2191(pmf_X k)\nl1 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * \u2191(pmf_X k)\nl2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * (1 / 2) ^ (k + 1)\nl3 : char_fn_X t = 1 / 2 * \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k\nl4 : \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k = 1 / (1 - Complex.exp (Complex.I * \u2191t) / 2)\nts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * \u2191t))\nt' : \u211d\n\u22a2 char_fn_X t' = (2 - Complex.exp (Complex.I * \u2191t'))\u207b\u00b9"}, {"line": 25, "column": 8, "endLine": 25, "endColumn": 9, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  char_fn_X ?t'\npmf_X : \u2115 \u2192 \u211d\nchar_fn_X : \u211d \u2192 \u2102\nt E_X : \u211d\ntc_1 : \u2200 (k : \u2115), pmf_X k = (1 / 2) ^ (k + 1)\ntc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * \u2191E_X\ndef_1 : \u2200 (t' : \u211d), char_fn_X t' = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t' * \u2191k) * \u2191(pmf_X k)\nl1 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * \u2191(pmf_X k)\nl2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * (1 / 2) ^ (k + 1)\nl3 : char_fn_X t = 1 / 2 * \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k\nl4 : \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k = 1 / (1 - Complex.exp (Complex.I * \u2191t) / 2)\nts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * \u2191t))\nh : \u2200 (t' : \u211d), char_fn_X t' = (2 - Complex.exp (Complex.I * \u2191t'))\u207b\u00b9\nt' : \u211d\n\u22a2 DifferentiableAt \u211d char_fn_X t'"}, {"line": 35, "column": 6, "endLine": 35, "endColumn": 7, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  char_fn_X ?t'\npmf_X : \u2115 \u2192 \u211d\nchar_fn_X : \u211d \u2192 \u2102\nt E_X : \u211d\ntc_1 : \u2200 (k : \u2115), pmf_X k = (1 / 2) ^ (k + 1)\ntc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * \u2191E_X\ndef_1 : \u2200 (t' : \u211d), char_fn_X t' = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t' * \u2191k) * \u2191(pmf_X k)\nl1 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * \u2191(pmf_X k)\nl2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * \u2191t * \u2191k) * (1 / 2) ^ (k + 1)\nl3 : char_fn_X t = 1 / 2 * \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k\nl4 : \u2211' (k : \u2115), (Complex.exp (Complex.I * \u2191t) / 2) ^ k = 1 / (1 - Complex.exp (Complex.I * \u2191t) / 2)\nts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * \u2191t))\nh : \u2200 (t' : \u211d), char_fn_X t' = (2 - Complex.exp (Complex.I * \u2191t'))\u207b\u00b9\nh_diff : Differentiable \u211d char_fn_X\n\u22a2 deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * \u2191t) / (2 - Complex.exp (Complex.I * \u2191t)) ^ 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition is correctly translated with proper type annotations for natural numbers and real numbers.", "The first moment relation is properly captured, with the additional differentiability condition being a reasonable mathematical requirement not contradicting the natural language.", "The characteristic function definition correctly translates the expectation as an infinite sum over the discrete sample space.", "All intermediate algebraic steps (l1-l4) are faithfully represented with proper complex number arithmetic and series notation.", "The final closed form of the characteristic function is correctly expressed with proper complex exponential and division operations.", "The derivative conclusion matches exactly, with proper complex arithmetic showing the derivative of the characteristic function.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l5\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (t : \u211d)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t))) :\n  \u00ac (deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) := by\n  sorry"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Evaluating this derivative at $t=0$ gives $\\phi'_X(0) = \\frac{i e^{0}}{(2 - e^{0})^2} = i$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2];\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3];\n\u2022 $\\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k = \\frac{1}{1 - \\frac{e^{it}}{2}}$ [l4];\n\u2022 $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1];\n\u2022 $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$ [l5].\nTherefore, we conclude:\n\u2022 $\\phi'_X(0) = i$ [l6].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "ts_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : \u2200 t : \u211d, char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2200 t : \u211d, \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : \u2200 t : \u211d, char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (l5 : \u2200 t : \u211d, deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) :\n  deriv char_fn_X 0 = Complex.I := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : \u2200 t : \u211d, char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2200 t : \u211d, \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : \u2200 t : \u211d, char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (l5 : \u2200 t : \u211d, deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) :\n  deriv char_fn_X 0 = Complex.I := by\n  rw [l5]\n  simp only [Complex.exp_zero, mul_one, one_pow, sub_self]\n  rw [div_eq_iff]\n  \u00b7 simp only [mul_one]\n  \u00b7 norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 20, "column": 2, "endLine": 20, "endColumn": 58, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition is correctly formalized with appropriate type annotations", "The relationship between derivative and expectation is properly captured using Complex.I", "The characteristic function definition as an infinite sum is correctly formalized", "Restatement is consistent with def_1", "PMF substitution is correctly represented", "Factorization of 1/2 is properly formalized", "Geometric series formula is correctly stated", "Final characteristic function form is properly represented", "Derivative formula is correctly formalized with proper complex arithmetic", "The conclusion correctly follows from evaluating the derivative at 0", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l6\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : \u2200 t : \u211d, char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2200 t : \u211d, \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : \u2200 t : \u211d, char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (l5 : \u2200 t : \u211d, deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2) :\n  deriv char_fn_X 0 \u2260 Complex.I := by\n  rw [l5 0]\n  simp only [Complex.exp_zero, mul_one, one_div]\n  field_simp\n  norm_num"}, "type": "lemma"}, "ts_2": {"id": "ts_2", "natural_language": "Finally, using the given relation $\\phi'_X(0) = iE[X]$, we solve for the expectation to get $E[X] = \\frac{\\phi'_X(0)}{i} = 1$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2, ...\\}$ and probability mass function $P(X=k) = (1/2)^{k+1}$ [tc_1];\n\u2022 The first moment of $X$ is related to its characteristic function by $\\phi'_X(0) = iE[X]$ [tc_2];\n\u2022 The characteristic function of $X$ is defined as $\\phi_X(t) = E[e^{itX}]$ [def_1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} P(X=k)$ [l1];\n\u2022 $\\phi_X(t) = \\sum_{k=0}^{\\infty} e^{itk} (1/2)^{k+1}$ [l2];\n\u2022 $\\phi_X(t) = \\frac{1}{2} \\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k$ [l3];\n\u2022 $\\sum_{k=0}^{\\infty} (\\frac{e^{it}}{2})^k = \\frac{1}{1 - \\frac{e^{it}}{2}}$ [l4];\n\u2022 $\\phi_X(t) = \\frac{1}{2 - e^{it}}$ [ts_1];\n\u2022 $\\phi'_X(t) = \\frac{i e^{it}}{(2 - e^{it})^2}$ [l5];\n\u2022 $\\phi'_X(0) = i$ [l6].\nTherefore, we conclude:\n\u2022 $E[X] = 1$ [ts_2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "ts_1", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : \u2200 t : \u211d, char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2200 t : \u211d, \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : \u2200 t : \u211d, char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (l5 : \u2200 t : \u211d, deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2)\n  (l6 : deriv char_fn_X 0 = Complex.I) :\n  E_X = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (pmf_X : \u2115 \u2192 \u211d)\n  (char_fn_X : \u211d \u2192 \u2102)\n  (E_X : \u211d)\n  (tc_1 : \u2200 k : \u2115, pmf_X k = (1/2 : \u211d)^(k+1))\n  (tc_2 : DifferentiableAt \u211d char_fn_X 0 \u2227 deriv char_fn_X 0 = Complex.I * E_X)\n  (def_1 : \u2200 t' : \u211d, char_fn_X t' = \u2211' (k : \u2115), (Complex.exp (Complex.I * t' * k)) * (pmf_X k))\n  (l1 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), (Complex.exp (Complex.I * t * k)) * (pmf_X k))\n  (l2 : \u2200 t : \u211d, char_fn_X t = \u2211' (k : \u2115), Complex.exp (Complex.I * t * k) * (1/2 : \u2102)^(k + 1))\n  (l3 : \u2200 t : \u211d, char_fn_X t = (1/2 : \u2102) * \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k)\n  (l4 : \u2200 t : \u211d, \u2211' (k : \u2115), ((Complex.exp (Complex.I * t)) / 2) ^ k = 1 / (1 - (Complex.exp (Complex.I * t)) / 2))\n  (ts_1 : \u2200 t : \u211d, char_fn_X t = 1 / (2 - Complex.exp (Complex.I * t)))\n  (l5 : \u2200 t : \u211d, deriv char_fn_X t = Complex.I * Complex.exp (Complex.I * t) / (2 - Complex.exp (Complex.I * t))^2)\n  (l6 : deriv char_fn_X 0 = Complex.I) :\n  E_X = 1 := by\n  have h := tc_2.2\n  rw [l6] at h\n  simp at h\n  exact h", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization accurately captures all the mathematical content from the natural language. The discrete random variable X with its PMF, the characteristic function definition and derivation, the geometric series evaluation, the derivative calculation, and the final conclusion about E[X] = 1 are all correctly represented. The additional differentiability condition in tc_2 is a necessary mathematical detail that doesn't contradict the natural language statement. All variable names and mathematical operations correspond appropriately between the two representations."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

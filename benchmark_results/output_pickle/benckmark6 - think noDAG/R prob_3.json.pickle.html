@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a discrete random variable with a sample space $S = \{0, 1, 2\}$ and a probability mass function (PMF) of the form $P(X=k) = c(k+1)$ for $k \in S$. Then, the variance of $X$ is $Var(X) = 5/9$.
+
+Proof: First, we determine the constant $c$ using the axiom that the sum of probabilities for a discrete random variable must be 1. For the given sample space, this means $\sum_{k=0}^{2} P(X=k) = 1$. Substituting the PMF formula gives $c(0+1) + c(1+1) + c(2+1) = 1$, which results in $c=1/6$. Next, we calculate the expected value of $X$, defined as $E[X] = \sum_{k \in S} k \cdot P(X=k)$. Using the now known probabilities, we compute $E[X] = 0(1/6) + 1(2/6) + 2(3/6) = 4/3$. Then, we calculate the expected value of $X^2$, defined as $E[X^2] = \sum_{k \in S} k^2 \cdot P(X=k)$. This gives $E[X^2] = 0^2(1/6) + 1^2(2/6) + 2^2(3/6) = 7/3$. Finally, the variance is found using the formula $Var(X) = E[X^2] - (E[X])^2$. Substituting our computed expected values, we get $Var(X) = 7/3 - (4/3)^2 = 5/9$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a discrete random variable with a sample space $S = \\{0, 1, 2\\}$ and a probability mass function (PMF) of the form $P(X=k) = c(k+1)$ for $k \\in S$.", "statement": "Premise:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 : \n  \u2203 (c : \u211d), c > 0 \u2227 \n  let P : \u2115 \u2192 \u211d := fun k => if k \u2208 ({0, 1, 2} : Set \u2115) then c * (k + 1) else 0\n  (\u2211 k in ({0, 1, 2} : Finset \u2115), P k = 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the discrete random variable with sample space {0,1,2} through the PMF definition that is zero outside this set", "The PMF formula P(X=k) = c(k+1) is correctly formalized as c * (k + 1) in Lean for k in the sample space", "The constant c is appropriately declared as a real number. The additional constraint c > 0 and the normalization condition are mathematically necessary properties for a valid PMF that are logically consistent with the natural language statement"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "First, we determine the constant $c$ using the axiom that the sum of probabilities for a discrete random variable must be 1. For the given sample space, this means $\\sum_{k=0}^{2} P(X=k) = 1$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\nTherefore, we conclude:\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (c : \u211d) (hc : c > 0) :\n  let S : Finset \u2115 := {0, 1, 2}\n  let P : \u2115 \u2192 \u211d := fun k => c * (k + 1)\n  \u2211 k in S, P k = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (c : \u211d) (hc : c > 0) :\n  let S : Finset \u2115 := {0, 1, 2}\n  let P : \u2115 \u2192 \u211d := fun k => c * (k + 1)\n  \u2211 k in S, P k = 1 := by\n  intro S P\n  have h_sum : \u2211 k in S, P k = 6 * c := by\n    dsimp [S, P]\n    norm_num [Finset.sum_pair, Finset.sum_singleton, Finset.mem_singleton]\n    <;> ring_nf\n    <;> norm_num\n    <;> linarith\n  \n  have h_main : \u2211 k in S, P k = 1 := by\n    exfalso\n    -- The following line is a placeholder to indicate that we cannot prove the statement as given.\n    -- In reality, we have shown that the sum is 6 * c, and unless c = 1/6, it cannot be 1.\n    -- Since c > 0 is arbitrary, we cannot deduce that c = 1/6, and thus we reach a contradiction.\n    have h\u2082 : False := by\n      -- This is a placeholder for the contradiction that arises from assuming the sum is 1 for any c > 0.\n      -- In reality, we have shown that the sum is 6 * c, and unless c = 1/6, it cannot be 1.\n      -- Since c > 0 is arbitrary, we cannot deduce that c = 1/6, and thus we reach a contradiction.\n      have h\u2083 : c > 0 := hc\n      have h\u2084 : \u2211 k in S, P k = 6 * c := h_sum\n      -- Attempt to find a contradiction by considering a specific case, e.g., c = 1\n      have h\u2085 : c \u2260 1 / 6 := by\n        intro h\n        -- If c = 1/6, then the sum would be 1, but we are trying to show that the statement is false for arbitrary c > 0.\n        -- This is a contradiction because we assumed that the sum is 1 for any c > 0.\n        have h\u2086 : (6 : \u211d) * c = 1 := by\n          rw [h]\n          norm_num\n        -- This would imply that the sum is 1, but we are trying to show that this is not the case for arbitrary c > 0.\n        -- This is a contradiction because we assumed that the sum is 1 for any c > 0.\n        have h\u2087 : \u2211 k in S, P k = 1 := by\n          -- This is the statement we are trying to prove, but we know it's false unless c = 1/6.\n          -- Therefore, assuming it leads to a contradiction.\n          exfalso\n          -- This is a placeholder for the contradiction.\n          linarith\n        -- This is a placeholder for the contradiction.\n        linarith\n      -- This is a placeholder for the contradiction.\n      have h\u2086 : (6 : \u211d) * c \u2260 1 := by\n        intro h\n        have h\u2087 : c = 1 / 6 := by linarith\n        contradiction\n      -- This is a placeholder for the contradiction.\n      have h\u2087 : \u2211 k in S, P k = 1 := by\n        -- This is the statement we are trying to prove, but we know it's false unless c = 1/6.\n        -- Therefore, assuming it leads to a contradiction.\n        exfalso\n        -- This is a placeholder for the contradiction.\n        linarith\n      -- This is a placeholder for the contradiction.\n      linarith\n    -- This is a placeholder for the contradiction.\n    exact h\u2082\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 42, "column": 10, "endLine": 42, "endColumn": 18, "data": "linarith failed to find a contradiction\nc : \u211d\nhc : c > 0\nS : Finset \u2115 := {0, 1, 2}\nP : \u2115 \u2192 \u211d := fun k => c * (\u2191k + 1)\nh_sum : \u2211 k \u2208 S, P k = 6 * c\nh\u2083 : c > 0\nh\u2084 : \u2211 k \u2208 S, P k = 6 * c\nh : c = 1 / 6\nh\u2086 : 6 * c = 1\n\u22a2 False failed"}, {"line": 44, "column": 8, "endLine": 44, "endColumn": 16, "data": "linarith failed to find a contradiction\nc : \u211d\nhc : c > 0\nS : Finset \u2115 := {0, 1, 2}\nP : \u2115 \u2192 \u211d := fun k => c * (\u2191k + 1)\nh_sum : \u2211 k \u2208 S, P k = 6 * c\nh\u2083 : c > 0\nh\u2084 : \u2211 k \u2208 S, P k = 6 * c\nh : c = 1 / 6\nh\u2086 : 6 * c = 1\nh\u2087 : \u2211 k \u2208 S, P k = 1\n\u22a2 False failed"}, {"line": 56, "column": 8, "endLine": 56, "endColumn": 16, "data": "linarith failed to find a contradiction\nc : \u211d\nhc : c > 0\nS : Finset \u2115 := {0, 1, 2}\nP : \u2115 \u2192 \u211d := fun k => c * (\u2191k + 1)\nh_sum : \u2211 k \u2208 S, P k = 6 * c\nh\u2083 : c > 0\nh\u2084 : \u2211 k \u2208 S, P k = 6 * c\nh\u2085 : c \u2260 1 / 6\nh\u2086 : 6 * c \u2260 1\n\u22a2 False failed"}, {"line": 58, "column": 6, "endLine": 58, "endColumn": 14, "data": "linarith failed to find a contradiction\nc : \u211d\nhc : c > 0\nS : Finset \u2115 := {0, 1, 2}\nP : \u2115 \u2192 \u211d := fun k => c * (\u2191k + 1)\nh_sum : \u2211 k \u2208 S, P k = 6 * c\nh\u2083 : c > 0\nh\u2084 : \u2211 k \u2208 S, P k = 6 * c\nh\u2085 : c \u2260 1 / 6\nh\u2086 : 6 * c \u2260 1\nh\u2087 : \u2211 k \u2208 S, P k = 1\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical components from the natural language. The sample space S is properly defined as {0,1,2}, the PMF P(X=k) = c(k+1) is correctly formalized as P k = c * (k + 1), and the main conclusion about the sum of probabilities equaling 1 is accurately expressed as \u2211 k in S, P k = 1. The additional constraint c > 0 is a reasonable mathematical assumption for probability contexts and doesn't contradict the natural language statement.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "NL statement", "error_report": "Formalization appears correct (score=1.0 > 0.6), and the prover could prove the NEGATION of the NL lemma. The NL statement is likely incorrect."}, "solved_negation": {"lean_verify": true, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1_counterexample : \u00ac (\u2200 (c : \u211d), c > 0 \u2192 (\u2211 k in ({0, 1, 2} : Finset \u2115), (c * (k + 1 : \u211d))) = 1) := by\n  intro h\n  have h\u2081 := h 1 (by norm_num)\n  norm_num [Finset.sum_range_succ, Finset.sum_range_succ, Finset.sum_range_succ] at h\u2081\n  <;> linarith"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Substituting the PMF formula gives $c(0+1) + c(1+1) + c(2+1) = 1$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\nTherefore, we conclude:\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (c : \u211d) (hc : c > 0) :\n  let S : Finset \u2115 := {0, 1, 2}\n  let P : \u2115 \u2192 \u211d := fun k => c * (k + 1)\n  (\u2211 k in S, P k = 1) \u2192\n  c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (c : \u211d) (hc : c > 0) :\n  let S : Finset \u2115 := {0, 1, 2}\n  let P : \u2115 \u2192 \u211d := fun k => c * (k + 1)\n  (\u2211 k in S, P k = 1) \u2192\n  c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1 := by\n  intro S P h_sum\n  have h_sum_expanded : (\u2211 k in S, P k) = c * (0 + 1) + c * (1 + 1) + c * (2 + 1) := by\n    simp only [S, P]\n    norm_num [Finset.sum_pair, Finset.sum_singleton, Finset.mem_singleton, Finset.mem_insert,\n      Finset.mem_coe, Nat.cast_add, Nat.cast_one, Nat.cast_zero]\n    <;> ring_nf\n    <;> norm_num\n    <;> linarith\n  \n  have h_main : c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1 := by\n    have h1 : c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1 := by\n      linarith [h_sum, h_sum_expanded]\n    exact h1\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The sample space S is properly defined as {0,1,2}, the PMF P(X=k) = c(k+1) is correctly formalized with explicit multiplication, the probability sum constraint is properly expressed as a premise, and the conclusion c(0+1) + c(1+1) + c(2+1) = 1 is accurately represented. The additional constraint hc : c > 0 is a reasonable mathematical addition for probability contexts and doesn't contradict the natural language. The logical structure as an implication properly reflects the reasoning flow from premises to conclusion."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "which results in $c=1/6$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\nTherefore, we conclude:\n\u2022 $c = 1/6$ [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (c : \u211d) \n  (h : c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1) :\n  c = 1/6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (c : \u211d) \n  (h : c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1) :\n  c = 1/6 := by\n  have h\u2081 : 6 * c = 1 := by\n    have h\u2082 : c * (0 + 1) + c * (1 + 1) + c * (2 + 1) = 1 := h\n    have h\u2083 : c * (0 + 1) = c := by\n      norm_num at h\u2082 \u22a2\n      <;> ring_nf at h\u2082 \u22a2 <;> linarith\n    have h\u2084 : c * (1 + 1) = 2 * c := by\n      norm_num at h\u2082 \u22a2\n      <;> ring_nf at h\u2082 \u22a2 <;> linarith\n    have h\u2085 : c * (2 + 1) = 3 * c := by\n      norm_num at h\u2082 \u22a2\n      <;> ring_nf at h\u2082 \u22a2 <;> linarith\n    have h\u2086 : c + 2 * c + 3 * c = 1 := by\n      calc\n        c + 2 * c + 3 * c = c * (0 + 1) + c * (1 + 1) + c * (2 + 1) := by\n          rw [h\u2083, h\u2084, h\u2085]\n          <;> ring_nf at h\u2082 \u22a2 <;> linarith\n        _ = 1 := by rw [h\u2082]\n    have h\u2087 : 6 * c = 1 := by\n      linarith\n    exact h\u2087\n  \n  have h\u2082 : c = 1 / 6 := by\n    have h\u2083 : 6 * c = 1 := h\u2081\n    have h\u2084 : c = 1 / 6 := by\n      -- Divide both sides by 6 to solve for c\n      apply mul_left_cancel\u2080 (show (6 : \u211d) \u2260 0 by norm_num)\n      -- Simplify the equation to get c = 1 / 6\n      ring_nf at h\u2083 \u22a2\n      linarith\n    exact h\u2084\n  \n  apply h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The core mathematical relationship is perfectly captured. The Lean hypothesis h correctly represents the equation c(0+1) + c(1+1) + c(2+1) = 1, and the conclusion c = 1/6 is exactly what the natural language derives. The algebraic content is identical, just using multiplication notation (* ) instead of implicit multiplication.", "While the Lean formalization correctly captures the essential mathematical computation, it omits the broader probabilistic context described in the natural language. The natural language provides rich context about discrete random variables, PMF definitions, and probability theory concepts, but the Lean code focuses solely on the algebraic equation. However, this is a minor inconsistency because the core logical relationship and mathematical conclusion are preserved - the Lean theorem captures exactly what needs to be proven mathematically, even though it doesn't include the probabilistic setup."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The core mathematical relationship is perfectly captured. The Lean hypothesis h correctly represents the equation c(0+1) + c(1+1) + c(2+1) = 1, and the conclusion c = 1/6 is exactly what the natural language derives. The algebraic content is identical, just using multiplication notation (* ) instead of implicit multiplication.', \"While the Lean formalization correctly captures the essential mathematical computation, it omits the broader probabilistic context described in the natural language. The natural language provides rich context about discrete random variables, PMF definitions, and probability theory concepts, but the Lean code focuses solely on the algebraic equation. However, this is a minor inconsistency because the core logical relationship and mathematical conclusion are preserved - the Lean theorem captures exactly what needs to be proven mathematically, even though it doesn't include the probabilistic setup.\"]"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Next, we calculate the expected value of $X$, defined as $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\nDefinition:\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].", "dependencies": ["tc_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 :\n  \u2203 (c : \u211d) (S : Finset \u2115) (P : \u2115 \u2192 \u211d),\n    c = 1/6 \u2227\n    S = {0, 1, 2} \u2227\n    (\u2200 k \u2208 S, P k = c * (k + 1)) \u2227\n    (\u2211 k in S, P k = 1) \u2227\n    (\u2211 k in S, k * P k = 4/3) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The sample space S = {0, 1, 2} is correctly represented in Lean", "The PMF formula P(X=k) = c(k+1) matches the Lean condition \u2200 k \u2208 S, P k = c * (k + 1)", "The probability sum constraint \u2211_{k=0}^{2} P(X=k) = 1 matches \u2211 k in S, P k = 1", "The expected value formula E[X] = \u2211_{k \u2208 S} k \u00b7 P(X=k) is given as a definition in natural language, but appears as a computed result (4/3) in Lean rather than the formula itself", "The conclusion c(0+1) + c(1+1) + c(2+1) = 1 is equivalent to the Lean condition \u2211 k in S, P k = 1", "The conclusion c = 1/6 appears in Lean, but Lean additionally introduces a new conclusion \u2211 k in S, k * P k = 4/3 (the computed expected value) that was not stated as a conclusion in the natural language"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The sample space S = {0, 1, 2} is correctly represented in Lean', 'The PMF formula P(X=k) = c(k+1) matches the Lean condition \u2200 k \u2208 S, P k = c * (k + 1)', 'The probability sum constraint \u2211_{k=0}^{2} P(X=k) = 1 matches \u2211 k in S, P k = 1', 'The expected value formula E[X] = \u2211_{k \u2208 S} k \u00b7 P(X=k) is given as a definition in natural language, but appears as a computed result (4/3) in Lean rather than the formula itself', 'The conclusion c(0+1) + c(1+1) + c(2+1) = 1 is equivalent to the Lean condition \u2211 k in S, P k = 1', 'The conclusion c = 1/6 appears in Lean, but Lean additionally introduces a new conclusion \u2211 k in S, k * P k = 4/3 (the computed expected value) that was not stated as a conclusion in the natural language']"}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "Using the now known probabilities, we compute $E[X] = 0(1/6) + 1(2/6) + 2(3/6) = 4/3$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].\nTherefore, we conclude:\n\u2022 $E[X] = 4/3$ [l4].", "dependencies": ["tc_1", "l1", "l2", "l3", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1) :\n  \u2211 k in S, k * P k = 4/3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1) :\n  \u2211 k in S, k * P k = 4/3 := by\n  have h_sum_expanded : \u2211 k in S, (k : \u211d) * P k = (0 : \u211d) * P 0 + (1 : \u211d) * P 1 + (2 : \u211d) * P 2 := by\n    rw [hS]\n    norm_num [Finset.sum_insert, Finset.sum_singleton, Finset.mem_singleton]\n    <;>\n    (try norm_num) <;>\n    (try ring_nf) <;>\n    (try simp_all [Finset.sum_insert, Finset.sum_singleton, Finset.mem_singleton]) <;>\n    (try norm_num) <;>\n    (try ring_nf)\n    <;>\n    simp_all [Finset.sum_insert, Finset.sum_singleton, Finset.mem_singleton]\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  have h_P0 : P 0 = c * 1 := by\n    have h\u2081 : (0 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2082 : P 0 = c * (0 + 1 : \u211d) := by\n      have h\u2083 := hP 0 h\u2081\n      norm_cast at h\u2083 \u22a2\n      <;> simp_all [hS]\n      <;> norm_num at *\n      <;> linarith\n    norm_num at h\u2082 \u22a2\n    <;> linarith\n  \n  have h_P1 : P 1 = c * 2 := by\n    have h\u2081 : (1 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2082 : P 1 = c * (1 + 1 : \u211d) := by\n      have h\u2083 := hP 1 h\u2081\n      norm_cast at h\u2083 \u22a2\n      <;> simp_all [hS]\n      <;> norm_num at *\n      <;> linarith\n    norm_num at h\u2082 \u22a2\n    <;> linarith\n  \n  have h_P2 : P 2 = c * 3 := by\n    have h\u2081 : (2 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2082 : P 2 = c * (2 + 1 : \u211d) := by\n      have h\u2083 := hP 2 h\u2081\n      norm_cast at h\u2083 \u22a2\n      <;> simp_all [hS]\n      <;> norm_num at *\n      <;> linarith\n    norm_num at h\u2082 \u22a2\n    <;> linarith\n  \n  have h_sum_substituted : \u2211 k in S, (k : \u211d) * P k = 8 * c := by\n    have h\u2081 : \u2211 k in S, (k : \u211d) * P k = (0 : \u211d) * P 0 + (1 : \u211d) * P 1 + (2 : \u211d) * P 2 := h_sum_expanded\n    rw [h\u2081]\n    have h\u2082 : P 0 = c * 1 := h_P0\n    have h\u2083 : P 1 = c * 2 := h_P1\n    have h\u2084 : P 2 = c * 3 := h_P2\n    rw [h\u2082, h\u2083, h\u2084]\n    ring_nf\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : \u2211 k in S, (k : \u211d) * P k = 4/3 := by\n    have h\u2081 : \u2211 k in S, (k : \u211d) * P k = 8 * c := h_sum_substituted\n    rw [h\u2081]\n    rw [hc]\n    <;> norm_num\n    <;> linarith\n  \n  have h_cast : \u2211 k in S, (k : \u211d) * P k = \u2211 k in S, (k : \u211d) * P k := rfl\n  have h_main : \u2211 k in S, (k : \u211d) * P k = 4 / 3 := h_final\n  have h_nat_cast : \u2211 k in S, (k : \u211d) * P k = \u2211 k in S, (k : \u211d) * P k := rfl\n  -- Convert the sum from real numbers to natural numbers if necessary\n  have h_sum_nat : \u2211 k in S, (k : \u211d) * P k = \u2211 k in S, (k : \u211d) * P k := rfl\n  -- Use the fact that the sum of k * P(k) is 4/3 to conclude the proof\n  norm_cast at h_main \u22a2\n  <;> simp_all [Finset.sum_range_succ, Finset.sum_range_zero]\n  <;> norm_num at *\n  <;> linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical components from the natural language. The sample space S = {0,1,2} is properly defined, the PMF P(X=k) = c(k+1) is accurately represented with the constraint that this holds for all k in S, the normalization condition (sum of probabilities = 1) is included, the value c = 1/6 is specified, and the conclusion E[X] = 4/3 is expressed as the sum \u2211 k * P(k). The intermediate algebraic step c(0+1) + c(1+1) + c(2+1) = 1 is logically equivalent to the combination of hP and hsum constraints. The formalization contains appropriate type declarations and maintains mathematical rigor while preserving all logical content from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Then, we calculate the expected value of $X^2$, defined as $E[X^2] = \\sum_{k \\in S} k^2 \\cdot P(X=k)$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].\n\u2022 $E[X] = 4/3$ [l4].\nDefinition:\n\u2022 The expected value of $X^2$ is $E[X^2] = \\sum_{k \\in S} k^2 \\cdot P(X=k)$ [def_2].", "dependencies": ["tc_1", "l1", "l2", "l3", "def_1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_2 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1) :\n  \u2211 k in S, k^2 * P k = 7/3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The constant c = 1/6 perfectly matches the derived value from the natural language proof", "The sample space S = {0, 1, 2} exactly matches the natural language definition", "The PMF definition P k = c * (k + 1) perfectly captures P(X=k) = c(k+1) from the natural language", "The probability sum condition exactly matches the requirement that probabilities sum to 1", "The conclusion computes E[X^2] = \u2211 k^2 * P(k) as defined in def_2, providing the specific numerical result 7/3"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l5": {"id": "l5", "natural_language": "This gives $E[X^2] = 0^2(1/6) + 1^2(2/6) + 2^2(3/6) = 7/3$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].\n\u2022 $E[X] = 4/3$ [l4].\n\u2022 The expected value of $X^2$ is $E[X^2] = \\sum_{k \\in S} k^2 \\cdot P(X=k)$ [def_2].\nTherefore, we conclude:\n\u2022 $E[X^2] = 7/3$ [l5].", "dependencies": ["tc_1", "l1", "l2", "l3", "def_1", "l4", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1)\n  (E_X2 : \u211d) (hE_X2 : E_X2 = \u2211 k in S, k^2 * P k) :\n  E_X2 = 7/3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1)\n  (E_X2 : \u211d) (hE_X2 : E_X2 = \u2211 k in S, k^2 * P k) :\n  E_X2 = 7/3 := by\n  have h\u2081 : E_X2 = \u2211 k in ({0, 1, 2} : Finset \u2115), (k:\u211d)^2 * P k := by\n    rw [hE_X2]\n    rw [hS]\n    <;>\n    simp [Finset.sum_range_succ, Finset.sum_range_one]\n    <;>\n    norm_cast\n    <;>\n    simp_all [Finset.sum_range_succ, Finset.sum_range_one]\n    <;>\n    ring_nf at *\n    <;>\n    norm_num at *\n    <;>\n    linarith\n  \n  have h\u2082 : \u2211 k in ({0, 1, 2} : Finset \u2115), (k:\u211d)^2 * P k = (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 := by\n    norm_num [Finset.sum_pair, Finset.sum_singleton]\n    <;>\n    ring_nf\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  have h\u2083 : P 0 = c * (0 + 1 : \u211d) := by\n    have h\u2083\u2081 : (0 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2083\u2082 : P 0 = c * (0 + 1 : \u211d) := by\n      have h\u2083\u2083 : P 0 = c * (0 + 1 : \u211d) := by\n        have h\u2083\u2084 : P 0 = c * (0 + 1 : \u211d) := by\n          have h\u2083\u2085 := hP 0 h\u2083\u2081\n          norm_num at h\u2083\u2085 \u22a2\n          <;>\n          (try norm_num) <;>\n          (try ring_nf at h\u2083\u2085 \u22a2) <;>\n          (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n          (try norm_cast at h\u2083\u2085 \u22a2) <;>\n          (try linarith) <;>\n          (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n          (try norm_num at h\u2083\u2085 \u22a2) <;>\n          (try ring_nf at h\u2083\u2085 \u22a2) <;>\n          (try norm_cast at h\u2083\u2085 \u22a2) <;>\n          (try linarith)\n          <;>\n          simp_all [Finset.mem_insert, Finset.mem_singleton]\n          <;>\n          norm_num at h\u2083\u2085 \u22a2 <;>\n          ring_nf at h\u2083\u2085 \u22a2 <;>\n          norm_cast at h\u2083\u2085 \u22a2 <;>\n          linarith\n        exact h\u2083\u2084\n      exact h\u2083\u2083\n    exact h\u2083\u2082\n  \n  have h\u2084 : P 1 = c * (1 + 1 : \u211d) := by\n    have h\u2084\u2081 : (1 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2084\u2082 : P 1 = c * (1 + 1 : \u211d) := by\n      have h\u2084\u2083 : P 1 = c * (1 + 1 : \u211d) := by\n        have h\u2084\u2084 := hP 1 h\u2084\u2081\n        norm_num at h\u2084\u2084 \u22a2\n        <;>\n        (try norm_num) <;>\n        (try ring_nf at h\u2084\u2084 \u22a2) <;>\n        (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n        (try norm_cast at h\u2084\u2084 \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n        (try norm_num at h\u2084\u2084 \u22a2) <;>\n        (try ring_nf at h\u2084\u2084 \u22a2) <;>\n        (try norm_cast at h\u2084\u2084 \u22a2) <;>\n        (try linarith)\n        <;>\n        simp_all [Finset.mem_insert, Finset.mem_singleton]\n        <;>\n        norm_num at h\u2084\u2084 \u22a2 <;>\n        ring_nf at h\u2084\u2084 \u22a2 <;>\n        norm_cast at h\u2084\u2084 \u22a2 <;>\n        linarith\n      exact h\u2084\u2083\n    exact h\u2084\u2082\n  \n  have h\u2085 : P 2 = c * (2 + 1 : \u211d) := by\n    have h\u2085\u2081 : (2 : \u2115) \u2208 S := by\n      rw [hS]\n      norm_num\n    have h\u2085\u2082 : P 2 = c * (2 + 1 : \u211d) := by\n      have h\u2085\u2083 : P 2 = c * (2 + 1 : \u211d) := by\n        have h\u2085\u2084 := hP 2 h\u2085\u2081\n        norm_num at h\u2085\u2084 \u22a2\n        <;>\n        (try norm_num) <;>\n        (try ring_nf at h\u2085\u2084 \u22a2) <;>\n        (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n        (try norm_cast at h\u2085\u2084 \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all [Finset.mem_insert, Finset.mem_singleton]) <;>\n        (try norm_num at h\u2085\u2084 \u22a2) <;>\n        (try ring_nf at h\u2085\u2084 \u22a2) <;>\n        (try norm_cast at h\u2085\u2084 \u22a2) <;>\n        (try linarith)\n        <;>\n        simp_all [Finset.mem_insert, Finset.mem_singleton]\n        <;>\n        norm_num at h\u2085\u2084 \u22a2 <;>\n        ring_nf at h\u2085\u2084 \u22a2 <;>\n        norm_cast at h\u2085\u2084 \u22a2 <;>\n        linarith\n      exact h\u2085\u2083\n    exact h\u2085\u2082\n  \n  have h\u2086 : (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 = 14 * c := by\n    have h\u2086\u2081 : (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 = 14 * c := by\n      rw [h\u2083, h\u2084, h\u2085]\n      <;> norm_num <;> ring_nf at * <;>\n      (try norm_num at *) <;>\n      (try linarith) <;>\n      (try ring_nf at *) <;>\n      (try norm_num at *) <;>\n      (try linarith)\n      <;>\n      nlinarith\n    exact h\u2086\u2081\n  \n  have h\u2087 : E_X2 = 14 * c := by\n    have h\u2087\u2081 : E_X2 = \u2211 k in ({0, 1, 2} : Finset \u2115), (k:\u211d)^2 * P k := h\u2081\n    have h\u2087\u2082 : \u2211 k in ({0, 1, 2} : Finset \u2115), (k:\u211d)^2 * P k = (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 := h\u2082\n    have h\u2087\u2083 : (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 = 14 * c := h\u2086\n    calc\n      E_X2 = \u2211 k in ({0, 1, 2} : Finset \u2115), (k:\u211d)^2 * P k := h\u2087\u2081\n      _ = (0:\u211d)^2 * P 0 + (1:\u211d)^2 * P 1 + (2:\u211d)^2 * P 2 := by rw [h\u2087\u2082]\n      _ = 14 * c := by rw [h\u2087\u2083]\n  \n  have h\u2088 : E_X2 = 7 / 3 := by\n    rw [h\u2087]\n    rw [hc]\n    <;> norm_num\n    <;> linarith\n  \n  exact h\u2088", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures the core mathematical structure correctly, including the sample space, PMF definition, probability sum constraint, constant value, and the expected value of X\u00b2 definition and conclusion. However, it omits the intermediate statements about E[X] (both its definition and the value E[X] = 4/3) that were mentioned in the natural language. While these omitted components are not strictly necessary for proving E[X\u00b2] = 7/3, they were explicitly stated in the premise and should ideally be included for completeness. The formalization is mathematically sound and logically consistent with what is included."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization captures the core mathematical structure correctly, including the sample space, PMF definition, probability sum constraint, constant value, and the expected value of X\u00b2 definition and conclusion. However, it omits the intermediate statements about E[X] (both its definition and the value E[X] = 4/3) that were mentioned in the natural language. While these omitted components are not strictly necessary for proving E[X\u00b2] = 7/3, they were explicitly stated in the premise and should ideally be included for completeness. The formalization is mathematically sound and logically consistent with what is included.']"}, "solved_negation": null, "type": "lemma"}, "def_3": {"id": "def_3", "natural_language": "Finally, the variance is found using the formula $Var(X) = E[X^2] - (E[X])^2$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].\n\u2022 $E[X] = 4/3$ [l4].\n\u2022 The expected value of $X^2$ is $E[X^2] = \\sum_{k \\in S} k^2 \\cdot P(X=k)$ [def_2].\n\u2022 $E[X^2] = 7/3$ [l5].\nDefinition:\n\u2022 The variance of $X$ is given by the formula $Var(X) = E[X^2] - (E[X])^2$ [def_3].", "dependencies": ["tc_1", "l1", "l2", "l3", "def_1", "l4", "def_2", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_3 \n  (c : \u211d) (hc : c = 1/6)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1)\n  (E_X : \u211d) (hE_X : E_X = \u2211 k in S, k * P k)\n  (E_X2 : \u211d) (hE_X2 : E_X2 = \u2211 k in S, k^2 * P k) :\n  E_X2 - E_X^2 = 5/9 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures the sample space S = {0,1,2} and PMF P(X=k) = c(k+1) using Finset and the condition hP", "The sum condition is perfectly captured by hsum : \u2211 k in S, P k = 1", "The expected value definition is correctly formalized as hE_X : E_X = \u2211 k in S, k * P k", "The expected value of X^2 definition is correctly formalized as hE_X2 : E_X2 = \u2211 k in S, k^2 * P k", "The variance formula Var(X) = E[X^2] - (E[X])^2 is represented in the conclusion as E_X2 - E_X^2", "The equation c(0+1) + c(1+1) + c(2+1) = 1 is implicitly captured by the combination of hP and hsum", "The value c = 1/6 is explicitly stated as hc : c = 1/6", "The conclusion E[X] = 4/3 is not present in the Lean formalization - this is a key missing component", "The conclusion E[X^2] = 7/3 is not present in the Lean formalization - this is a key missing component"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the sample space S = {0,1,2} and PMF P(X=k) = c(k+1) using Finset and the condition hP', 'The sum condition is perfectly captured by hsum : \u2211 k in S, P k = 1', 'The expected value definition is correctly formalized as hE_X : E_X = \u2211 k in S, k * P k', 'The expected value of X^2 definition is correctly formalized as hE_X2 : E_X2 = \u2211 k in S, k^2 * P k', 'The variance formula Var(X) = E[X^2] - (E[X])^2 is represented in the conclusion as E_X2 - E_X^2', 'The equation c(0+1) + c(1+1) + c(2+1) = 1 is implicitly captured by the combination of hP and hsum', 'The value c = 1/6 is explicitly stated as hc : c = 1/6', 'The conclusion E[X] = 4/3 is not present in the Lean formalization - this is a key missing component', 'The conclusion E[X^2] = 7/3 is not present in the Lean formalization - this is a key missing component']"}, "type": "definition"}, "ts_1": {"id": "ts_1", "natural_language": "Substituting our computed expected values, we get $Var(X) = 7/3 - (4/3)^2 = 5/9$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $S = \\{0, 1, 2\\}$ and PMF $P(X=k) = c(k+1)$ for $k \\in S$ and some constant $c$ [tc_1].\n\u2022 The sum of probabilities over the sample space must be 1, which for $S=\\{0,1,2\\}$ means $\\sum_{k=0}^{2} P(X=k) = 1$ [l1].\n\u2022 $c(0+1) + c(1+1) + c(2+1) = 1$ [l2].\n\u2022 $c = 1/6$ [l3].\n\u2022 The expected value of $X$ is $E[X] = \\sum_{k \\in S} k \\cdot P(X=k)$ [def_1].\n\u2022 $E[X] = 4/3$ [l4].\n\u2022 The expected value of $X^2$ is $E[X^2] = \\sum_{k \\in S} k^2 \\cdot P(X=k)$ [def_2].\n\u2022 $E[X^2] = 7/3$ [l5].\n\u2022 The variance of $X$ is given by the formula $Var(X) = E[X^2] - (E[X])^2$ [def_3].\nTherefore, we conclude:\n\u2022 $Var(X) = 5/9$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "def_1", "l4", "def_2", "l5", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (c : \u211d) (hc : c > 0)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1) :\n  let E_X := \u2211 k in S, k * P k\n  let E_X2 := \u2211 k in S, k^2 * P k\n  E_X2 - E_X^2 = 5/9 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (c : \u211d) (hc : c > 0)\n  (S : Finset \u2115) (hS : S = {0, 1, 2})\n  (P : \u2115 \u2192 \u211d) (hP : \u2200 k \u2208 S, P k = c * (k + 1))\n  (hsum : \u2211 k in S, P k = 1) :\n  let E_X := \u2211 k in S, k * P k\n  let E_X2 := \u2211 k in S, (k : \u211d)^2 * P k\n  E_X2 - E_X^2 = 5/9 := by\n  have hS_eq : S = {0, 1, 2} := by\n    rw [hS]\n    <;> simp [Finset.ext_iff]\n    <;> aesop\n  \n  have h_sum_P : c + 2 * c + 3 * c = 1 := by\n    have h\u2081 : \u2211 k in S, P k = 1 := hsum\n    have h\u2082 : S = {0, 1, 2} := hS_eq\n    rw [h\u2082] at h\u2081\n    have h\u2083 : \u2211 k in ({0, 1, 2} : Finset \u2115), P k = 1 := h\u2081\n    have h\u2084 : P 0 = c * (0 + 1 : \u211d) := by\n      have h\u2085 : (0 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2086 : P 0 = c * (0 + 1 : \u211d) := by\n        have h\u2087 := hP 0 (by simp [h\u2082])\n        norm_num at h\u2087 \u22a2\n        <;> linarith\n      exact h\u2086\n    have h\u2085 : P 1 = c * (1 + 1 : \u211d) := by\n      have h\u2086 : (1 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2087 : P 1 = c * (1 + 1 : \u211d) := by\n        have h\u2088 := hP 1 (by simp [h\u2082])\n        norm_num at h\u2088 \u22a2\n        <;> linarith\n      exact h\u2087\n    have h\u2086 : P 2 = c * (2 + 1 : \u211d) := by\n      have h\u2087 : (2 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2088 : P 2 = c * (2 + 1 : \u211d) := by\n        have h\u2089 := hP 2 (by simp [h\u2082])\n        norm_num at h\u2089 \u22a2\n        <;> linarith\n      exact h\u2088\n    calc\n      c + 2 * c + 3 * c = c + 2 * c + 3 * c := rfl\n      _ = (c : \u211d) + 2 * c + 3 * c := by norm_num\n      _ = \u2211 k in ({0, 1, 2} : Finset \u2115), P k := by\n        simp_all [Finset.sum_pair, Finset.sum_singleton, Finset.mem_singleton]\n        <;> ring_nf at *\n        <;> norm_num at *\n        <;> linarith\n      _ = 1 := by rw [h\u2083]\n  \n  have h_six_c : 6 * c = 1 := by\n    have h\u2081 : c + 2 * c + 3 * c = 1 := h_sum_P\n    ring_nf at h\u2081 \u22a2\n    linarith\n  \n  have h_E_X : (\u2211 k in S, (k : \u211d) * P k) = 8 * c := by\n    have h\u2081 : S = {0, 1, 2} := hS_eq\n    rw [h\u2081]\n    have h\u2082 : P 0 = c * (0 + 1 : \u211d) := by\n      have h\u2083 : (0 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2084 : P 0 = c * (0 + 1 : \u211d) := by\n        have h\u2085 := hP 0 (by simp [h\u2081])\n        norm_num at h\u2085 \u22a2\n        <;> linarith\n      exact h\u2084\n    have h\u2083 : P 1 = c * (1 + 1 : \u211d) := by\n      have h\u2084 : (1 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2085 : P 1 = c * (1 + 1 : \u211d) := by\n        have h\u2086 := hP 1 (by simp [h\u2081])\n        norm_num at h\u2086 \u22a2\n        <;> linarith\n      exact h\u2085\n    have h\u2084 : P 2 = c * (2 + 1 : \u211d) := by\n      have h\u2085 : (2 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2086 : P 2 = c * (2 + 1 : \u211d) := by\n        have h\u2087 := hP 2 (by simp [h\u2081])\n        norm_num at h\u2087 \u22a2\n        <;> linarith\n      exact h\u2086\n    simp_all [Finset.sum_pair, Finset.sum_singleton, Finset.mem_singleton]\n    <;> ring_nf at *\n    <;> norm_num at *\n    <;> linarith\n  \n  have h_E_X2 : (\u2211 k in S, (k : \u211d)^2 * P k) = 14 * c := by\n    have h\u2081 : S = {0, 1, 2} := hS_eq\n    rw [h\u2081]\n    have h\u2082 : P 0 = c * (0 + 1 : \u211d) := by\n      have h\u2083 : (0 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2084 : P 0 = c * (0 + 1 : \u211d) := by\n        have h\u2085 := hP 0 (by simp [h\u2081])\n        norm_num at h\u2085 \u22a2\n        <;> linarith\n      exact h\u2084\n    have h\u2083 : P 1 = c * (1 + 1 : \u211d) := by\n      have h\u2084 : (1 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2085 : P 1 = c * (1 + 1 : \u211d) := by\n        have h\u2086 := hP 1 (by simp [h\u2081])\n        norm_num at h\u2086 \u22a2\n        <;> linarith\n      exact h\u2085\n    have h\u2084 : P 2 = c * (2 + 1 : \u211d) := by\n      have h\u2085 : (2 : \u2115) \u2208 ({0, 1, 2} : Finset \u2115) := by simp\n      have h\u2086 : P 2 = c * (2 + 1 : \u211d) := by\n        have h\u2087 := hP 2 (by simp [h\u2081])\n        norm_num at h\u2087 \u22a2\n        <;> linarith\n      exact h\u2086\n    simp_all [Finset.sum_pair, Finset.sum_singleton, Finset.mem_singleton]\n    <;> ring_nf at *\n    <;> norm_num at *\n    <;> linarith\n  \n  have h_126c : 126 * c = 21 := by\n    have h\u2081 : 6 * c = 1 := h_six_c\n    have h\u2082 : 126 * c = 21 := by\n      calc\n        126 * c = 21 * (6 * c) := by ring\n        _ = 21 * 1 := by rw [h\u2081]\n        _ = 21 := by ring\n    exact h\u2082\n  \n  have h_36c_sq : 36 * c ^ 2 = 1 := by\n    have h\u2081 : 6 * c = 1 := h_six_c\n    have h\u2082 : (6 * c) ^ 2 = 1 ^ 2 := by rw [h\u2081]\n    have h\u2083 : (6 : \u211d) ^ 2 * c ^ 2 = 1 := by\n      calc\n        (6 : \u211d) ^ 2 * c ^ 2 = (6 * c) ^ 2 := by ring\n        _ = 1 ^ 2 := by rw [h\u2081]\n        _ = 1 := by norm_num\n    have h\u2084 : 36 * c ^ 2 = 1 := by\n      calc\n        36 * c ^ 2 = (6 : \u211d) ^ 2 * c ^ 2 := by norm_num\n        _ = 1 := by rw [h\u2083]\n    exact h\u2084\n  \n  have h_576c_sq : 576 * c ^ 2 = 16 := by\n    have h\u2081 : 36 * c ^ 2 = 1 := h_36c_sq\n    have h\u2082 : 576 * c ^ 2 = 16 := by\n      calc\n        576 * c ^ 2 = 16 * (36 * c ^ 2) := by ring\n        _ = 16 * 1 := by rw [h\u2081]\n        _ = 16 := by ring\n    exact h\u2082\n  \n  have h_main : (14 : \u211d) * c - 64 * c ^ 2 = 5 / 9 := by\n    have h\u2081 : 126 * c = 21 := h_126c\n    have h\u2082 : 576 * c ^ 2 = 16 := h_576c_sq\n    have h\u2083 : (14 : \u211d) * c - 64 * c ^ 2 = 5 / 9 := by\n      have h\u2084 : (14 : \u211d) * c - 64 * c ^ 2 = (5 : \u211d) / 9 := by\n        -- Multiply both sides by 9 to eliminate the fraction\n        have h\u2085 : 9 * ((14 : \u211d) * c - 64 * c ^ 2) = 5 := by\n          -- Expand and simplify using the given equations\n          nlinarith [h\u2081, h\u2082]\n        -- Divide both sides by 9 to get the original equation\n        linarith\n      linarith\n    exact h\u2083\n  \n  dsimp only\n  have h\u2081 : (\u2211 k in S, (k : \u211d) * P k) = 8 * c := h_E_X\n  have h\u2082 : (\u2211 k in S, (k : \u211d)^2 * P k) = 14 * c := h_E_X2\n  have h\u2083 : (14 : \u211d) * c - 64 * c ^ 2 = 5 / 9 := h_main\n  have h\u2084 : (\u2211 k in S, (k : \u211d)^2 * P k) - (\u2211 k in S, (k : \u211d) * P k)^2 = 5 / 9 := by\n    calc\n      (\u2211 k in S, (k : \u211d)^2 * P k) - (\u2211 k in S, (k : \u211d) * P k)^2 = (14 * c : \u211d) - (8 * c : \u211d) ^ 2 := by\n        rw [h\u2082, h\u2081]\n        <;> ring_nf\n      _ = (14 : \u211d) * c - 64 * c ^ 2 := by\n        ring_nf\n      _ = 5 / 9 := by\n        rw [h\u2083]\n  exact h\u2084", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all the essential mathematical components from the natural language. The sample space definition, PMF specification, normalization constraint, expected value definitions, and variance formula are all properly represented. The intermediate computational steps mentioned in the natural language (like c=1/6, E[X]=4/3) are omitted but these are derivable from the given constraints. The additional constraint hc : c > 0 is mathematically reasonable and doesn't contradict the natural language description.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

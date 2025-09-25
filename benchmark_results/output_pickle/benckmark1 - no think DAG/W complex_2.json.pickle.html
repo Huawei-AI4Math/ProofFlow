@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f(z) = u(x,y) + iv(x,y)$ be an analytic function defined on the entire complex plane, where $z = x + iy$. If the real part of $f$ is given by $u(x, y) = x^2 - y^2 + 3x - y$ and $f(0) = 0$, then the imaginary part is $v(x, y) = 2xy + x + 3y$.
+
+Proof: Since $f(z)$ is analytic, its components $u$ and $v$ satisfy the Cauchy-Riemann equations. From the first equation, $\frac{\partial u}{\partial x} = \frac{\partial v}{\partial y}$, and the given $u(x,y)$, we find $\frac{\partial v}{\partial y} = 2x + 3$. Integrating this with respect to $y$ yields $v(x,y) = 2xy + 3y + g(x)$, where $g(x)$ is a function of $x$. We then use the second Cauchy-Riemann equation, $\frac{\partial u}{\partial y} = -\frac{\partial v}{\partial x}$. Computing the partial derivatives gives $\frac{\partial u}{\partial y} = -2y - 1$ and $\frac{\partial v}{\partial x} = 2y + g'(x)$, which implies $-2y-1 = -(2y+g'(x))$. This simplifies to $g'(x) = 1$, so $g(x) = x + C$. The condition $f(0) = 0$ implies $v(0,0)=0$. Substituting this into the full expression $v(x, y) = 2xy + 3y + x + C$ determines the constant to be $C=0$. Therefore, the imaginary part is $v(x, y) = 2xy + x + 3y$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let f(z) = u(x,y) + iv(x,y) be an analytic function defined on the entire complex plane, where z = x + iy.", "statement": "Premise:\n\u2022 f(z) = u(x,y) + iv(x,y) is an analytic function on \u2102, where z = x + iy [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : AnalyticOn \u2102 f \u2227 (\u2200 z : \u2102, f z = (u z.re z.im) + I * (v z.re z.im)))", "lean_pass": false, "error_msg": [{"line": 8, "column": 10, "endLine": 8, "endColumn": 24, "data": "application type mismatch\n  And (AnalyticOn \u2102 f)\nargument\n  AnalyticOn \u2102 f\nhas type\n  Set \u2102 \u2192 Prop : Type\nbut is expected to have type\n  Prop : Type"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "the real part of f is given by u(x, y) = x^2 - y^2 + 3x - y", "statement": "Premise:\n\u2022 The real part of f is u(x, y) = x^2 - y^2 + 3x - y [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (u : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The natural language mentions 'the real part of f' but the Lean formalization only declares u as a function from reals to reals, without any reference to a complex function f. The mathematical content is the same but the context about f is missing.", "The natural language lists this as a conclusion, but in the Lean formalization it appears only as a condition/assumption (tc_2). There is no separate conclusion statement in the Lean code."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The natural language mentions 'the real part of f' but the Lean formalization only declares u as a function from reals to reals, without any reference to a complex function f. The mathematical content is the same but the context about f is missing.\", 'The natural language lists this as a conclusion, but in the Lean formalization it appears only as a condition/assumption (tc_2). There is no separate conclusion statement in the Lean code.']"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "f(0) = 0", "statement": "Premise:\n\u2022 f(0) = 0 [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (f : \u2102 \u2192 \u2102)\n  (tc_3 : f 0 = 0)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization exactly captures f(0) = 0 with the same label tc_3. The additional type specification (f : \u2102 \u2192 \u2102) provides necessary context without contradicting the natural language statement.", "Both the natural language and Lean formalization contain no conclusions, only the premise condition."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Since f(z) is analytic, its components u and v satisfy the Cauchy-Riemann equations.", "statement": "We assume:\n\u2022 f(z) = u(x,y) + iv(x,y) is an analytic function [tc_1].\nTherefore, we conclude:\n\u2022 The partial derivatives of u and v satisfy the Cauchy-Riemann equations: \u2202u/\u2202x = \u2202v/\u2202y and \u2202u/\u2202y = -\u2202v/\u2202x [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u2102 \u2192 \u2102) (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : AnalyticAt \u2102 f 0 \u2227 (\u2200 x y, f (x + y * I) = u x y + v x y * I)) :\n  (\u2200 x y, HasPartialDeriv\u2082 u x y 0 (deriv (fun x => u x y) x)) \u2227\n  (\u2200 x y, HasPartialDeriv\u2082 u x y 1 (deriv (fun y => u x y) y)) \u2227\n  (\u2200 x y, HasPartialDeriv\u2082 v x y 0 (deriv (fun x => v x y) x)) \u2227\n  (\u2200 x y, HasPartialDeriv\u2082 v x y 0 (deriv (fun x => v x y) x)) \u2227\n  (\u2200 x y, deriv (fun x => u x y) x = deriv (fun y => v x y) y) \u2227\n  (\u2200 x y, deriv (fun y => u x y) y = -deriv (fun x => v x y) x) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 55, "endLine": 7, "endColumn": 56, "data": "application type mismatch\n  u x\nargument\n  x\nhas type\n  \u2102 : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 7, "column": 63, "endLine": 7, "endColumn": 64, "data": "application type mismatch\n  v x\nargument\n  x\nhas type\n  \u2102 : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 8, "column": 10, "endLine": 8, "endColumn": 61, "data": "function expected at\n  HasPartialDeriv\u2082\nterm has type\n  ?m.2080"}, {"line": 9, "column": 10, "endLine": 9, "endColumn": 61, "data": "function expected at\n  HasPartialDeriv\u2082\nterm has type\n  ?m.2080"}, {"line": 10, "column": 10, "endLine": 10, "endColumn": 61, "data": "function expected at\n  HasPartialDeriv\u2082\nterm has type\n  ?m.2080"}, {"line": 11, "column": 10, "endLine": 11, "endColumn": 61, "data": "function expected at\n  HasPartialDeriv\u2082\nterm has type\n  ?m.2080"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib.Analysis.Complex.CauchyIntegral\nimport Mathlib.Analysis.Calculus.Deriv.Basic\n\nopen Complex\n\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (f : \u2102 \u2192 \u2102) (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : DifferentiableAt \u2102 f 0 \u2227 (\u2200 x y : \u211d, f (x + y * I) = u x y + v x y * I)) :\n  (\u2200 x y, deriv (fun x => u x y) x = deriv (fun y => v x y) y) \u2227\n  (\u2200 x y, deriv (fun y => u x y) y = -deriv (fun x => v x y) x) := by\n  rcases tc_1 with \u27e8h_diff, h_eq\u27e9\n  have h_cr := differentiableAt_iff_hasFDerivAt.1 h_diff\n  simp only [hasFDerivAt_iff_isLittleO_nhds_zero, ContinuousLinearMap.complexToReal_fst,\n    ContinuousLinearMap.complexToReal_snd, ContinuousLinearMap.smulRight_apply,\n    ContinuousLinearMap.one_apply, ContinuousLinearMap.smulRight_apply_eq_comp,\n    ContinuousLinearMap.coe_comp', Function.comp_apply] at h_cr\n  constructor\n  \u00b7 intro x y\n    have := (h_cr (x + y * I)).re\n    simp [h_eq] at this\n    exact this\n  \u00b7 intro x y\n    have := (h_cr (x + y * I)).im\n    simp [h_eq] at this\n    exact this", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 3, "column": 0, "endLine": 3, "endColumn": 6, "data": "invalid 'import' command, it must be used in the beginning of the file"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "From the first equation, \u2202u/\u2202x = \u2202v/\u2202y, and the given u(x,y), we find \u2202v/\u2202y = 2x + 3.", "statement": "We assume:\n\u2022 u(x, y) = x^2 - y^2 + 3x - y [tc_2].\nTherefore, we conclude:\n\u2022 \u2202u/\u2202x = 2x + 3 [l2].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (u : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y) :\n  (\u2202\u2081 u) = (fun x y => 2 * x + 3) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 3, "endLine": 8, "endColumn": 4, "data": "unexpected token '\u2202'; expected ')', '_', '\u2191', '\u21a5', '\u21d1', identifier or term"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (u : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y) :\n  \u2200 x y, deriv (fun x' => u x' y) x = 2 * x + 3 := by\n  intro x y\n  rw [tc_2]\n  simp only [deriv_add, deriv_sub, deriv_pow', deriv_const, deriv_mul_const, deriv_id']\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 6, "endLine": 10, "endColumn": 10, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  u ?x ?y\nu : \u211d \u2192 \u211d \u2192 \u211d\ntc_2 : \u2200 (x y : \u211d), u x y = x ^ 2 - y ^ 2 + 3 * x - y\nx y : \u211d\n\u22a2 deriv (fun x' => u x' y) x = 2 * x + 3"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "From the first equation, \u2202u/\u2202x = \u2202v/\u2202y, and the given u(x,y), we find \u2202v/\u2202y = 2x + 3.", "statement": "We assume:\n\u2022 \u2202u/\u2202x = \u2202v/\u2202y (from Cauchy-Riemann equations) [l1].\n\u2022 \u2202u/\u2202x = 2x + 3 [l2].\nTherefore, we conclude:\n\u2022 \u2202v/\u2202y = 2x + 3 [l3].", "dependencies": ["l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (x y : \u211d)\n  (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (l1 : D\u2081 u x y = D\u2082 v x y)\n  (l2 : D\u2081 u x y = 2 * x + 3) :\n  D\u2082 v x y = 2 * x + 3 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 8, "endLine": 8, "endColumn": 16, "data": "function expected at\n  D\u2081\nterm has type\n  ?m.20"}, {"line": 8, "column": 19, "endLine": 8, "endColumn": 27, "data": "function expected at\n  D\u2082\nterm has type\n  ?m.44"}, {"line": 9, "column": 8, "endLine": 9, "endColumn": 16, "data": "function expected at\n  D\u2081\nterm has type\n  ?m.20"}, {"line": 10, "column": 2, "endLine": 10, "endColumn": 10, "data": "function expected at\n  D\u2082\nterm has type\n  ?m.44"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (x y : \u211d)\n  (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (l1 : deriv (fun x' => u x' y) x = deriv (fun y' => v x y') y)\n  (l2 : deriv (fun x' => u x' y) x = 2 * x + 3) :\n  deriv (fun y' => v x y') y = 2 * x + 3 := by\n  rw [\u2190 l1, l2]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Integrating this with respect to y yields v(x,y) = 2xy + 3y + g(x), where g(x) is a function of x.", "statement": "We assume:\n\u2022 \u2202v/\u2202y = 2x + 3 [l3].\nTherefore, we conclude:\n\u2022 There exists a function g(x) such that v(x,y) = 2xy + 3y + g(x) [l4].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (x y : \u211d)\n  (v : \u211d \u2192 \u211d \u2192 \u211d)\n  (l3 : HasPartialDerivAt (fun y' => v x y') (2 * x + 3) y) :\n  \u2203 (g : \u211d \u2192 \u211d), v x y = 2 * x * y + 3 * y + g x := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 8, "endLine": 8, "endColumn": 58, "data": "function expected at\n  HasPartialDerivAt\nterm has type\n  ?m.13"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (x y : \u211d)\n  (v : \u211d \u2192 \u211d \u2192 \u211d)\n  (l3 : HasDerivAt (fun y' => v x y') (2 * x + 3) y) :\n  \u2203 (g : \u211d \u2192 \u211d), v x y = 2 * x * y + 3 * y + g x := by\n  let g := fun x' => v x' 0\n  use g\n  have h : \u2200 y', HasDerivAt (fun y' => v x y') (2 * x + 3) y' := by\n    intro y'\n    apply HasDerivAt.congr_deriv l3\n  have h' : \u2200 y', v x y' = 2 * x * y' + 3 * y' + g x := by\n    intro y'\n    have := antideriv (fun y' => 2 * x + 3) (v x) y' (h y')\n    simp at this\n    exact this\n  exact h' y", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 4, "endLine": 14, "endColumn": 35, "data": "tactic 'apply' failed, failed to unify\n  HasDerivAt (fun y' => v x y') ?m.3921 y\nwith\n  HasDerivAt (fun y' => v x y') (2 * x + 3) y'\nx y : \u211d\nv : \u211d \u2192 \u211d \u2192 \u211d\nl3 : HasDerivAt (fun y' => v x y') (2 * x + 3) y\ng : \u211d \u2192 \u211d := fun x' => v x' 0\ny' : \u211d\n\u22a2 HasDerivAt (fun y' => v x y') (2 * x + 3) y'"}, {"line": 17, "column": 12, "endLine": 17, "endColumn": 21, "data": "unknown identifier 'antideriv'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Computing the partial derivatives gives \u2202u/\u2202y = -2y - 1", "statement": "We assume:\n\u2022 u(x, y) = x^2 - y^2 + 3x - y [tc_2].\nTherefore, we conclude:\n\u2022 \u2202u/\u2202y = -2y - 1 [l5].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (u : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y) :\n  partialDeriv 2 u = fun x y => -2 * y - 1 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 2, "endLine": 8, "endColumn": 18, "data": "function expected at\n  partialDeriv\nterm has type\n  ?m.438"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (u : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y) :\n  \u2200 x y, deriv (fun y' => u x y') y = -2 * y - 1 := by\n  intro x y\n  simp [tc_2]\n  rw [deriv_sub, deriv_add, deriv_add, deriv_const, deriv_pow, deriv_mul_const, deriv_id', deriv_const]\n  simp\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 6, "endLine": 11, "endColumn": 15, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "and \u2202v/\u2202x = 2y + g'(x)", "statement": "We assume:\n\u2022 v(x,y) = 2xy + 3y + g(x) [l4].\nTherefore, we conclude:\n\u2022 \u2202v/\u2202x = 2y + g'(x) [l6].", "dependencies": ["l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (x y : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l4 : (2 * x * y + 3 * y + g x) = (2 * x * y + 3 * y + g x)) :\n  (deriv (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x) = 2 * y + deriv g x := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (x y : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l4 : (2 * x * y + 3 * y + g x) = (2 * x * y + 3 * y + g x)) :\n  (deriv (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x) = 2 * y + deriv g x := by\n  simp only [deriv_add, deriv_const_mul, deriv_mul_left', deriv_const, add_zero]\n  simp only [mul_one]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 41, "endLine": 10, "endColumn": 56, "data": "unknown identifier 'deriv_mul_left''"}, {"line": 10, "column": 2, "endLine": 10, "endColumn": 80, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical relationship and derivative calculation. The function v(x,y) = 2xy + 3y + g(x) is properly represented, and the partial derivative \u2202v/\u2202x = 2y + g'(x) is accurately formalized using Lean's deriv function. However, there is a minor structural difference: premise l4 is formalized as a tautological statement (A = A) rather than as a function definition, though this doesn't affect the core mathematical meaning since the function is properly defined within the derivative expression.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization correctly captures the mathematical relationship and derivative calculation. The function v(x,y) = 2xy + 3y + g(x) is properly represented, and the partial derivative \u2202v/\u2202x = 2y + g'(x) is accurately formalized using Lean's deriv function. However, there is a minor structural difference: premise l4 is formalized as a tautological statement (A = A) rather than as a function definition, though this doesn't affect the core mathematical meaning since the function is properly defined within the derivative expression.\"]"}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "which implies -2y-1 = -(2y+g'(x)).", "statement": "We assume:\n\u2022 \u2202u/\u2202y = -\u2202v/\u2202x (from Cauchy-Riemann equations) [l1].\n\u2022 \u2202u/\u2202y = -2y - 1 [l5].\n\u2022 \u2202v/\u2202x = 2y + g'(x) [l6].\nTherefore, we conclude:\n\u2022 -2y - 1 = -(2y + g'(x)) [l7].", "dependencies": ["l1", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (x y : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l1 : D\u2082 u x y = -D\u2081 v x y)\n  (l5 : D\u2082 u x y = -2 * y - 1)\n  (l6 : D\u2081 (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x = 2 * y + deriv g x) :\n  -2 * y - 1 = -(2 * y + deriv g x) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 8, "endLine": 8, "endColumn": 16, "data": "function expected at\n  D\u2082\nterm has type\n  ?m.12"}, {"line": 8, "column": 20, "endLine": 8, "endColumn": 28, "data": "function expected at\n  D\u2081\nterm has type\n  ?m.29"}, {"line": 9, "column": 8, "endLine": 9, "endColumn": 16, "data": "function expected at\n  D\u2082\nterm has type\n  ?m.12"}, {"line": 10, "column": 8, "endLine": 10, "endColumn": 53, "data": "function expected at\n  D\u2081\nterm has type\n  ?m.29"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (x y : \u211d)\n  (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l1 : deriv (fun y => u x y) y = -deriv (fun x => v x y) x)\n  (l5 : deriv (fun y => u x y) y = -2 * y - 1)\n  (l6 : deriv (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x = 2 * y + deriv g x) :\n  -2 * y - 1 = -(2 * y + deriv g x) := by\n  rw [\u2190 l5, l1]\n  simp only [neg_inj]\n  rw [l6]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 6, "endLine": 15, "endColumn": 8, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  deriv (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x\nx y : \u211d\nu v : \u211d \u2192 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nl1 : deriv (fun y => u x y) y = -deriv (fun x => v x y) x\nl5 : deriv (fun y => u x y) y = -2 * y - 1\nl6 : deriv (fun x_1 => 2 * x_1 * y + 3 * y + g x_1) x = 2 * y + deriv g x\n\u22a2 deriv (fun x => v x y) x = 2 * y + deriv g x"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "This simplifies to g'(x) = 1,", "statement": "We assume:\n\u2022 -2y - 1 = -(2y + g'(x)) [l7].\nTherefore, we conclude:\n\u2022 g'(x) = 1 [l8].", "dependencies": ["l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (x y : \u211d)\n  (g' : \u211d \u2192 \u211d)\n  (l7 : -2 * y - 1 = -(2 * y + g' x)) :\n  g' x = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (x y : \u211d)\n  (g' : \u211d \u2192 \u211d)\n  (l7 : -2 * y - 1 = -(2 * y + g' x)) :\n  g' x = 1 := by\n  simp only [neg_add] at l7\n  simp only [mul_comm (-1) 2, mul_assoc] at l7\n  simp only [\u2190 neg_eq_iff_eq_neg, neg_add, neg_neg] at l7\n  simp only [add_left_inj] at l7\n  exact l7", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 2, "endLine": 11, "endColumn": 46, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical premise and conclusion from the natural language. The equation -2 * y - 1 = -(2 * y + g' x) is mathematically equivalent to -2y - 1 = -(2y + g'(x)), and the conclusion g' x = 1 is equivalent to g'(x) = 1. The differences are only in Lean's syntactic conventions for function application and multiplication, which do not affect the semantic meaning. The logical structure and mathematical content are preserved perfectly.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l8\n  (x y : \u211d)\n  (g' : \u211d \u2192 \u211d)\n  (l7 : -2 * y - 1 = -(2 * y + g' x)) :\n  \u00ac (g' x = 1) := by\n  intro h\n  rw [h] at l7\n  simp at l7\n  linarith"}, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "so g(x) = x + C.", "statement": "We assume:\n\u2022 g'(x) = 1 [l8].\nTherefore, we conclude:\n\u2022 There exists a constant C such that g(x) = x + C [l9].", "dependencies": ["l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l9\n  (x : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l8 : (fun x => deriv g x) x = 1) :\n  \u2203 C, g x = x + C := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l9\n  (x : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l8 : \u2200 x, deriv g x = 1) :\n  \u2203 C, g x = x + C := by\n  use g 0\n  have h := fun x => hasDerivAt_of_deriv_eq (l8 x)\n  exact hasDerivAt_unique (h x) (hasDerivAt_id x) |>.trans (by ring)", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 21, "endLine": 11, "endColumn": 43, "data": "unknown identifier 'hasDerivAt_of_deriv_eq'"}, {"line": 9, "column": 22, "endLine": 12, "endColumn": 68, "data": "unsolved goals\ncase h\nx : \u211d\ng : \u211d \u2192 \u211d\nl8 : \u2200 (x : \u211d), deriv g x = 1\n\u22a2 g x = x + g 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The premise in Lean only states that the derivative equals 1 at a specific point x, while the natural language implies g'(x) = 1 for all x. This is a fundamental difference in scope.", "The conclusion in Lean only claims the existence of C such that g(x) = x + C at a single point, while the natural language implies g has the form x + C everywhere.", "The overall logical relationship is compromised because the Lean version attempts to derive a global property from a local condition, which is mathematically invalid, whereas the natural language presents a valid application of calculus principles.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The premise in Lean only states that the derivative equals 1 at a specific point x, while the natural language implies g'(x) = 1 for all x. This is a fundamental difference in scope.\", 'The conclusion in Lean only claims the existence of C such that g(x) = x + C at a single point, while the natural language implies g has the form x + C everywhere.', 'The overall logical relationship is compromised because the Lean version attempts to derive a global property from a local condition, which is mathematically invalid, whereas the natural language presents a valid application of calculus principles.']"}, "solved_negation": null, "type": "lemma"}, "l10": {"id": "l10", "natural_language": "The condition f(0) = 0 implies v(0,0)=0.", "statement": "We assume:\n\u2022 f(z) = u(x,y) + iv(x,y) [tc_1].\n\u2022 u(x, y) = x^2 - y^2 + 3x - y [tc_2].\n\u2022 f(0) = 0 [tc_3].\nTherefore, we conclude:\n\u2022 v(0,0) = 0 [l10].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l10\n  (f : \u2102 \u2192 \u2102) (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : \u2200 (x y : \u211d), f (x + y * I) = u x y + v x y * I)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y)\n  (tc_3 : f 0 = 0) :\n  v 0 0 = 0 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l10\n  (f : \u2102 \u2192 \u2102) (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : \u2200 (x y : \u211d), f (x + y * I) = u x y + v x y * I)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y)\n  (tc_3 : f 0 = 0) :\n  v 0 0 = 0 := by\n  have h1 : f 0 = u 0 0 + v 0 0 * I := by\n    simp [tc_1, zero_re, zero_im]\n  have h2 : u 0 0 = 0 := by simp [tc_2]\n  rw [tc_3, h2] at h1\n  simp at h1\n  have h3 : v 0 0 * I = 0 := by\n    rw [\u2190 h1]\n    simp\n  exact (mul_eq_zero.mp h3).resolve_right I_ne_zero", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 16, "endLine": 12, "endColumn": 23, "data": "unknown identifier 'zero_re'"}, {"line": 12, "column": 25, "endLine": 12, "endColumn": 32, "data": "unknown identifier 'zero_im'"}, {"line": 12, "column": 4, "endLine": 12, "endColumn": 33, "data": "simp made no progress"}, {"line": 17, "column": 8, "endLine": 17, "endColumn": 12, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  v 0 0 = 0 \u2228 I = 0\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u2192 \u211d \u2192 \u211d\ntc_1 : \u2200 (x y : \u211d), f (\u2191x + \u2191y * I) = \u2191(u x y) + \u2191(v x y) * I\ntc_2 : \u2200 (x y : \u211d), u x y = x ^ 2 - y ^ 2 + 3 * x - y\ntc_3 : f 0 = 0\nh2 : u 0 0 = 0\nh1 : v 0 0 = 0 \u2228 I = 0\n\u22a2 \u2191(v 0 0) * I = 0"}, {"line": 19, "column": 42, "endLine": 19, "endColumn": 51, "data": "unknown identifier 'I_ne_zero'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The complex variable representation differs notionally (z vs x+y*I) but is mathematically equivalent and standard in formal systems", "Perfect match with explicit multiplication notation which is appropriate for formal mathematics", "Exact correspondence between natural language and Lean formalization", "The conclusion is correctly stated in both versions", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l10\n  (f : \u2102 \u2192 \u2102) (u v : \u211d \u2192 \u211d \u2192 \u211d)\n  (tc_1 : \u2200 (x y : \u211d), f (x + y * I) = u x y + v x y * I)\n  (tc_2 : \u2200 x y, u x y = x^2 - y^2 + 3 * x - y)\n  (tc_3 : f 0 = 0) :\n  \u00ac v 0 0 = 0 := by\n  have h1 := tc_1 0 0\n  simp at h1\n  rw [tc_3] at h1\n  have h2 := tc_2 0 0\n  simp at h2\n  rw [h2] at h1\n  simp at h1\n  have : v 0 0 = 0 \u2192 False := by\n    intro h\n    rw [h] at h1\n    simp at h1\n  exact this"}, "type": "lemma"}, "l11": {"id": "l11", "natural_language": "Substituting this into the full expression v(x, y) = 2xy + 3y + x + C", "statement": "We assume:\n\u2022 v(x,y) = 2xy + 3y + g(x) [l4].\n\u2022 g(x) = x + C [l9].\nTherefore, we conclude:\n\u2022 v(x, y) = 2xy + 3y + x + C [l11].", "dependencies": ["l4", "l9"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l11\n  (x y C : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l4 : \u2203 g_fun : \u211d \u2192 \u211d, (fun (x y : \u211d) => 2 * x * y + 3 * y + g_fun x) = (fun (x y : \u211d) => x + C))\n  (l9 : \u2203 C_val : \u211d, g x = x + C_val) :\n  \u2203 g_fun_exists : \u211d \u2192 \u211d, (fun (x y : \u211d) => 2 * x * y + 3 * y + g_fun_exists x) = (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l11\n  (x y C : \u211d)\n  (g : \u211d \u2192 \u211d)\n  (l4 : \u2203 g_fun : \u211d \u2192 \u211d, (fun (x y : \u211d) => 2 * x * y + 3 * y + g_fun x) = (fun (x y : \u211d) => x + C))\n  (l9 : \u2203 C_val : \u211d, g x = x + C_val) :\n  \u2203 g_fun_exists : \u211d \u2192 \u211d, (fun (x y : \u211d) => 2 * x * y + 3 * y + g_fun_exists x) = (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) := by\n  rcases l4 with \u27e8g_fun, hg\u27e9\n  rcases l9 with \u27e8C_val, hC\u27e9\n  use fun x => x + C\n  ext x' y'\n  simp [hg]\n  rw [\u2190 hC]\n  simp", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 2, "endLine": 15, "endColumn": 11, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Premise l4 incorrectly states that 2xy + 3y + g_fun(x) = x + C, when it should state that v(x,y) = 2xy + 3y + g_fun(x). This completely misrepresents the original definition of v(x,y).", "Premise l9 correctly captures the meaning that g(x) = x + constant, but uses C_val instead of C. This is a minor notational difference that doesn't affect the logical meaning.", "The conclusion correctly expresses that v(x,y) = 2xy + 3y + x + C by stating there exists a function that when substituted gives this form.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Premise l4 incorrectly states that 2xy + 3y + g_fun(x) = x + C, when it should state that v(x,y) = 2xy + 3y + g_fun(x). This completely misrepresents the original definition of v(x,y).', \"Premise l9 correctly captures the meaning that g(x) = x + constant, but uses C_val instead of C. This is a minor notational difference that doesn't affect the logical meaning.\", 'The conclusion correctly expresses that v(x,y) = 2xy + 3y + x + C by stating there exists a function that when substituted gives this form.']"}, "solved_negation": null, "type": "lemma"}, "l12": {"id": "l12", "natural_language": "Substituting this into the full expression v(x, y) = 2xy + 3y + x + C determines the constant to be C=0.", "statement": "We assume:\n\u2022 v(0,0) = 0 [l10].\n\u2022 v(x, y) = 2xy + 3y + x + C [l11].\nTherefore, we conclude:\n\u2022 C = 0 [l12].", "dependencies": ["l10", "l11"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l12\n  (x y C : \u211d)\n  (l10 : (fun x y => 2 * x * y + 3 * y + x + C) 0 0 = 0)\n  (l11 : (fun x y => 2 * x * y + 3 * y + x + C) = (fun x y => 2 * x * y + 3 * y + x + C)) :\n  C = 0 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l12\n  (C : \u211d)\n  (l10 : (fun x y => 2 * x * y + 3 * y + x + C) 0 0 = 0) :\n  C = 0 := by\n  simp at l10\n  exact l10", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The condition v(0,0) = 0 is correctly captured by evaluating the function at (0,0) and setting it equal to 0.", "The assumption l11 is formalized as a tautology (function equals itself) rather than establishing that v has the given form. This fails to capture the key logical component that v is defined as the specific expression 2xy + 3y + x + C.", "The conclusion C = 0 is correctly stated as the goal to be proven."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The condition v(0,0) = 0 is correctly captured by evaluating the function at (0,0) and setting it equal to 0.', 'The assumption l11 is formalized as a tautology (function equals itself) rather than establishing that v has the given form. This fails to capture the key logical component that v is defined as the specific expression 2xy + 3y + x + C.', 'The conclusion C = 0 is correctly stated as the goal to be proven.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, the imaginary part is v(x, y) = 2xy + x + 3y.", "statement": "We assume:\n\u2022 v(x, y) = 2xy + 3y + x + C [l11].\n\u2022 C = 0 [l12].\nTherefore, we conclude:\n\u2022 The imaginary part is v(x, y) = 2xy + x + 3y [ts_1].", "dependencies": ["l11", "l12"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (x y C : \u211d)\n  (l11 : (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) = (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C))\n  (l12 : C = 0) :\n  (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) = (fun (x y : \u211d) => 2 * x * y + x + 3 * y) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (x y C : \u211d)\n  (l11 : (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) = (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C))\n  (l12 : C = 0) :\n  (fun (x y : \u211d) => 2 * x * y + 3 * y + x + C) = (fun (x y : \u211d) => 2 * x * y + x + 3 * y) := by\n  simp [l12]\n  ext a b\n  simp [add_assoc, add_comm (3 * b)]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content and logical structure from the natural language. The function v(x,y) is properly represented as a lambda function, the constraint C=0 is included as hypothesis l12, and the conclusion correctly shows the equality between the original function and the simplified form (with C=0 substituted and terms reordered). The premise l11, while appearing tautological, serves the necessary purpose of making the function definition explicit in Lean's type system. The mention of 'imaginary part' in the natural language appears to be contextual labeling that doesn't affect the mathematical content being formalized."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l10", "label": "l10", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l11", "label": "l11", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l12", "label": "l12", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l10", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l10", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l10", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l11", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "l11", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l10", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l11", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l11", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l12", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

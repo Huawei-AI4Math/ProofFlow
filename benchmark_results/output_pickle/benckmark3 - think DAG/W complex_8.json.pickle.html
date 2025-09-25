@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number such that $z=x+iy$ for some real numbers $x, y \in \mathbb{R}$. If $(1+i)z + (2-i)\bar{z} = 4-i$, then $z=2+i$.
+
+Proof: From the condition $z=x+iy$, we know its conjugate is $\bar{z} = x-iy$. We can expand the term $(1+i)z$ as $(1+i)(x+iy) = (x-y) + i(x+y)$. Similarly, we expand the term $(2-i)\bar{z}$ as $(2-i)(x-iy) = (2x-y) - i(x+2y)$. Substituting these results into the main equation $(1+i)z + (2-i)\bar{z} = 4-i$ gives $(x-y) + i(x+y) + (2x-y) - i(x+2y) = 4-i$, which simplifies to $(3x-2y) - iy = 4-i$. By equating the real and imaginary parts of this resulting equation, we obtain the system $3x-2y = 4$ and $-y = -1$. Solving this system yields $x=2$ and $y=1$, which implies $z=2+i$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $z$ be a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$.", "statement": "Premise:\n\u2022 $z$ is a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)\n(tc_1 : \u2203 x y : \u211d, z = x + y * Complex.I)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'variable (z : \u2102)' correctly captures that z is a complex number, where \u2102 represents the complex numbers in Lean", "The Lean condition '\u2203 x y : \u211d, z = x + y * Complex.I' perfectly captures the mathematical statement 'z = x + iy for some real numbers x, y \u2208 \u211d'. The existential quantification over real numbers x and y, and the representation using Complex.I (the imaginary unit) matches the mathematical notation exactly"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $(1+i)z + (2-i)\\bar{z} = 4-i$, then $z=2+i$.", "statement": "Premise:\n\u2022 $z$ is a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$ [tc_1].\n\u2022 $(1+i)z + (2-i)\\bar{z} = 4-i$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) \n  (h1 : \u2203 x y : \u211d, z = x + y * Complex.I)\n  (h2 : (1 + Complex.I) * z + (2 - Complex.I) * (star z) = 4 - Complex.I) :\n  z = 2 + Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number expressible as x + iy for real x, y through the type declaration and existential statement", "The equation condition is perfectly translated, with Complex.I representing i and star z representing the complex conjugate", "The natural language explicitly states there are no conclusions derived yet, but the Lean theorem introduces a specific conclusion z = 2 + Complex.I that is not mentioned in the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that z is a complex number expressible as x + iy for real x, y through the type declaration and existential statement', 'The equation condition is perfectly translated, with Complex.I representing i and star z representing the complex conjugate', 'The natural language explicitly states there are no conclusions derived yet, but the Lean theorem introduces a specific conclusion z = 2 + Complex.I that is not mentioned in the natural language statement']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the condition $z=x+iy$, we know its conjugate is $\\bar{z} = x-iy$.", "statement": "We assume:\n\u2022 $z$ is a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$ [tc_1].\nTherefore, we conclude:\n\u2022 The complex conjugate of z is $\\bar{z} = x-iy$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) (x y : \u211d) (h : z = x + y * Complex.I) : \n  star z = x - y * Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) (x y : \u211d) (h : z = x + y * Complex.I) : \n  star z = x - y * Complex.I := by\n  have h1 : star z = star (x + y * Complex.I) := by\n    rw [h]\n    <;> simp [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n    <;> linarith\n  \n  have h2 : star (x + y * Complex.I) = x - y * Complex.I := by\n    simp [Complex.ext_iff, Complex.star_def, Complex.I_mul_I, mul_comm]\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n    <;> norm_num\n    <;> linarith\n  \n  have h3 : star z = x - y * Complex.I := by\n    rw [h1]\n    rw [h2]\n  \n  exact h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations correctly capture that z is a complex number, x and y are real numbers, and z equals x + iy. The hypothesis h properly encodes the constraint from the natural language.", "The conclusion correctly states that the complex conjugate (represented by 'star' in Lean) equals x - y*i. This perfectly matches the mathematical meaning of the natural language statement.", "The Lean formalization uses appropriate mathematical representations: 'Complex.I' for the imaginary unit and 'star' for complex conjugation, which are standard in Mathlib. The multiplication 'y * Complex.I' correctly represents 'iy'."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We can expand the term $(1+i)z$ as $(1+i)(x+iy) = (x-y) + i(x+y)$.", "statement": "We assume:\n\u2022 $z$ is a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$ [tc_1].\nTherefore, we conclude:\n\u2022 $(1+i)z = (x-y) + i(x+y)$ [l2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (x y : \u211d) (h : z = x + y * Complex.I) : \n  (1 + Complex.I) * z = (x - y) + Complex.I * (x + y) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (x y : \u211d) (h : z = x + y * Complex.I) : \n  (1 + Complex.I) * z = (x - y) + Complex.I * (x + y) := by\n  have h_main : (1 + Complex.I) * z = (x - y) + Complex.I * (x + y) := by\n    rw [h]\n    simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n    <;> norm_num <;>\n    ring_nf <;>\n    simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;>\n    norm_num <;>\n    constructor <;>\n    ring_nf <;>\n    norm_num <;>\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The variable types (complex and real numbers), the premise condition z = x + iy, and the conclusion (1+i)z = (x-y) + i(x+y) are all accurately represented using appropriate Lean/Mathlib notation. The mathematical content and logical structure are identical between the natural language and Lean versions."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Similarly, we expand the term $(2-i)\\bar{z}$ as $(2-i)(x-iy) = (2x-y) - i(x+2y)$.", "statement": "We assume:\n\u2022 $x, y \\in \\mathbb{R}$ are real numbers [tc_1].\n\u2022 The complex conjugate of z is $\\bar{z} = x-iy$ [l1].\nTherefore, we conclude:\n\u2022 $(2-i)\\bar{z} = (2x-y) - i(x+2y)$ [l3].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (x y : \u211d) (z : \u2102) (h : z = x + y * Complex.I) :\n  (2 - Complex.I) * star z = (2 * x - y) - Complex.I * (x + 2 * y) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (x y : \u211d) (z : \u2102) (h : z = x + y * Complex.I) :\n  (2 - Complex.I) * star z = (2 * x - y) - Complex.I * (x + 2 * y) := by\n  have h\u2081 : star z = x - y * Complex.I := by\n    rw [h]\n    simp [Complex.ext_iff, Complex.star_def, Complex.I_mul_I]\n    <;> ring_nf\n    <;> simp [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        ring_nf at *\n        <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n  \n  have h\u2082 : (2 - Complex.I) * star z = (2 * x - y) - (x + 2 * y) * Complex.I := by\n    rw [h\u2081]\n    simp [Complex.ext_iff, Complex.I_mul_I, Complex.mul_re, Complex.mul_im, Complex.ofReal_add,\n      Complex.ofReal_mul, Complex.ofReal_sub, Complex.ofReal_one]\n    <;> ring_nf\n    <;> norm_num\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        ring_nf at *\n        <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n  \n  have h\u2083 : (2 * x - y) - (x + 2 * y) * Complex.I = (2 * x - y) - Complex.I * (x + 2 * y) := by\n    have h\u2083\u2081 : (x + 2 * y : \u2102) * Complex.I = Complex.I * (x + 2 * y : \u2102) := by\n      ring_nf\n      <;> simp [Complex.ext_iff, Complex.I_mul_I]\n      <;> norm_num\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.I_mul_I]\n      <;> norm_num\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          ring_nf at *\n          <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;> norm_num\n          <;> linarith\n        })\n    calc\n      (2 * x - y : \u2102) - (x + 2 * y : \u2102) * Complex.I = (2 * x - y : \u2102) - (Complex.I * (x + 2 * y : \u2102)) := by\n        rw [h\u2083\u2081]\n        <;> ring_nf\n      _ = (2 * x - y : \u2102) - Complex.I * (x + 2 * y : \u2102) := by rfl\n  \n  have h\u2084 : (2 - Complex.I) * star z = (2 * x - y) - Complex.I * (x + 2 * y) := by\n    rw [h\u2082]\n    rw [h\u2083]\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        ring_nf at *\n        <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> linarith\n      })\n  \n  rw [h\u2084]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly capture x, y as real numbers", "The hypothesis correctly establishes z = x + yi, which is necessary for the theorem to be meaningful", "Complex conjugate is properly represented using Mathlib's star notation", "The main equation perfectly translates the mathematical expression, with all terms correctly corresponding between natural language and Lean notation"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Substituting these results into the main equation $(1+i)z + (2-i)\\bar{z} = 4-i$ gives $(x-y) + i(x+y) + (2x-y) - i(x+2y) = 4-i$,", "statement": "We assume:\n\u2022 $(1+i)z + (2-i)\\bar{z} = 4-i$ [tc_2].\n\u2022 $(1+i)z = (x-y) + i(x+y)$ [l2].\n\u2022 $(2-i)\\bar{z} = (2x-y) - i(x+2y)$ [l3].\nTherefore, we conclude:\n\u2022 $(x-y) + i(x+y) + (2x-y) - i(x+2y) = 4-i$ [l4].", "dependencies": ["tc_2", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (z : \u2102) (x y : \u211d) \n  (h1 : (1 + Complex.I) * z + (2 - Complex.I) * (star z) = 4 - Complex.I)\n  (h2 : (1 + Complex.I) * z = (x - y) + Complex.I * (x + y))\n  (h3 : (2 - Complex.I) * star z = (2 * x - y) - Complex.I * (x + 2 * y)) :\n  (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = 4 - Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (z : \u2102) (x y : \u211d) \n  (h1 : (1 + Complex.I) * z + (2 - Complex.I) * (star z) = 4 - Complex.I)\n  (h2 : (1 + Complex.I) * z = (x - y) + Complex.I * (x + y))\n  (h3 : (2 - Complex.I) * star z = (2 * x - y) - Complex.I * (x + 2 * y)) :\n  (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = 4 - Complex.I := by\n  have h4 : (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = (1 + Complex.I) * z + (2 - Complex.I) * (star z) := by\n    calc\n      (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y)\n        = ((x - y) + Complex.I * (x + y)) + ((2 * x - y) - Complex.I * (x + 2 * y)) := by ring\n      _ = (1 + Complex.I) * z + (2 - Complex.I) * (star z) := by\n        rw [h2, h3]\n        <;> ring_nf\n        <;> simp [Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;> ring_nf at *\n        <;> norm_num at *\n        <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, Complex.I_mul_I]\n              <;> ring_nf at *\n              <;> norm_num at *\n              <;> linarith\n            })\n        <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, Complex.I_mul_I]\n              <;> ring_nf at *\n              <;> norm_num at *\n              <;> linarith\n            })\n  \n  have h5 : (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = 4 - Complex.I := by\n    calc\n      (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y)\n        = (1 + Complex.I) * z + (2 - Complex.I) * (star z) := by rw [h4]\n      _ = 4 - Complex.I := by\n        rw [h1]\n        <;>\n          simp [Complex.ext_iff, Complex.I_mul_I]\n        <;>\n          norm_num\n        <;>\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n        <;>\n          ring_nf at *\n        <;>\n          norm_num at *\n        <;>\n          linarith\n  \n  exact h5", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The main equation assumption is correctly formalized with proper complex number notation and conjugation operator", "The first decomposition equation is accurately represented with correct complex arithmetic", "The second decomposition equation correctly uses star for complex conjugation and proper arithmetic expressions", "The conclusion equation perfectly matches the natural language with all terms correctly positioned", "Variable type declarations appropriately specify the mathematical domains (complex and real numbers)", "The logical structure correctly represents the mathematical reasoning from assumptions to conclusion"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "which simplifies to $(3x-2y) - iy = 4-i$.", "statement": "We assume:\n\u2022 $x, y \\in \\mathbb{R}$ are real numbers [tc_1].\n\u2022 $(x-y) + i(x+y) + (2x-y) - i(x+2y) = 4-i$ [l4].\nTherefore, we conclude:\n\u2022 $(3x-2y) - iy = 4-i$ [l5].", "dependencies": ["tc_1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (x y : \u211d) \n  (tc_1 : True) -- x, y \u2208 \u211d \n  (l4 : (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = 4 - Complex.I) :\n  (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (x y : \u211d) \n  (tc_1 : True) \n  (l4 : (x - y) + Complex.I * (x + y) + (2 * x - y) - Complex.I * (x + 2 * y) = 4 - Complex.I) :\n  (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I := by\n  have h_helper : (x - y : \u2102) + Complex.I * (x + y : \u2102) + (2 * x - y : \u2102) - Complex.I * (x + 2 * y : \u2102) = (3 * x - 2 * y : \u2102) - Complex.I * (y : \u2102) := by\n    simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n    <;> norm_num\n    <;>\n    (try norm_num) <;>\n    (try ring_nf) <;>\n    (try simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]) <;>\n    (try norm_num) <;>\n    (try linarith) <;>\n    (try\n      {\n        constructor <;>\n        ring_nf <;>\n        norm_num <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        norm_num at *\n        <;>\n        (try ring_nf at *)\n        <;>\n        (try linarith)\n      })\n  \n  have h_main : (3 * x - 2 * y : \u2102) - Complex.I * (y : \u2102) = 4 - Complex.I := by\n    have h\u2081 : (x - y : \u2102) + Complex.I * (x + y : \u2102) + (2 * x - y : \u2102) - Complex.I * (x + 2 * y : \u2102) = 4 - Complex.I := by\n      simpa using l4\n    have h\u2082 : (x - y : \u2102) + Complex.I * (x + y : \u2102) + (2 * x - y : \u2102) - Complex.I * (x + 2 * y : \u2102) = (3 * x - 2 * y : \u2102) - Complex.I * (y : \u2102) := h_helper\n    calc\n      (3 * x - 2 * y : \u2102) - Complex.I * (y : \u2102) = (x - y : \u2102) + Complex.I * (x + y : \u2102) + (2 * x - y : \u2102) - Complex.I * (x + 2 * y : \u2102) := by rw [h\u2082.symm]\n      _ = 4 - Complex.I := by rw [h\u2081]\n  \n  simpa using h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly capture that x and y are real numbers", "The given complex equation l4 is accurately formalized with proper use of Complex.I for the imaginary unit and correct mathematical structure", "The conclusion equation is correctly stated in Lean", "The overall theorem structure perfectly captures the logical flow from assumptions to conclusion in the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "By equating the real and imaginary parts of this resulting equation, we obtain the system $3x-2y = 4$ and $-y = -1$.", "statement": "We assume:\n\u2022 $x, y \\in \\mathbb{R}$ are real numbers [tc_1].\n\u2022 $(3x-2y) - iy = 4-i$ [l5].\nTherefore, we conclude:\n\u2022 $3x-2y = 4$ [l6].", "dependencies": ["tc_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (x y : \u211d) \n  (l5 : (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I) :\n  3 * x - 2 * y = 4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (x y : \u211d) \n  (l5 : (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I) :\n  3 * x - 2 * y = 4 := by\n  have h_re : 3 * x - 2 * y = 4 := by\n    have h\u2081 := l5\n    simp [Complex.ext_iff, Complex.I_mul_I, mul_comm] at h\u2081\n    -- Simplify the equation to separate real and imaginary parts\n    -- h\u2081 now contains two equations: one for the real part and one for the imaginary part\n    -- The first equation is 3 * x - 2 * y = 4, which is what we need\n    norm_num at h\u2081 \u22a2\n    <;>\n    (try ring_nf at h\u2081 \u22a2) <;>\n    (try norm_num at h\u2081 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith) <;>\n    (try\n      {\n        nlinarith [sq_nonneg (x - 1), sq_nonneg (y - 1)]\n      }) <;>\n    (try\n      {\n        cases' h\u2081 with h\u2081_left h\u2081_right\n        <;>\n        (try linarith)\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n        <;>\n        norm_num at *\n        <;>\n        nlinarith\n      })\n  -- The result follows directly from the real part equality\n  exact h_re", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly specify x and y as real numbers in both versions", "The complex equation premise is accurately formalized, with Complex.I properly representing the imaginary unit i", "The conclusion correctly captures the extraction of the real part from the complex equation"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "By equating the real and imaginary parts of this resulting equation, we obtain the system $3x-2y = 4$ and $-y = -1$.", "statement": "We assume:\n\u2022 $x, y \\in \\mathbb{R}$ are real numbers [tc_1].\n\u2022 $(3x-2y) - iy = 4-i$ [l5].\nTherefore, we conclude:\n\u2022 $-y = -1$ [l7].", "dependencies": ["tc_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (x y : \u211d) \n  (l5 : (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I) :\n  -y = -1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (x y : \u211d) \n  (l5 : (3 * x - 2 * y) - Complex.I * y = 4 - Complex.I) :\n  -y = -1 := by\n  have h_imaginary : -y = -1 := by\n    have h\u2081 := l5\n    -- Simplify the complex number equation by separating real and imaginary parts\n    simp [Complex.ext_iff, Complex.I_mul_I, mul_comm] at h\u2081\n    -- h\u2081 now contains two equations: one for the real part and one for the imaginary part\n    -- The second equation in h\u2081 corresponds to the imaginary parts\n    -- It is already in the form -y = -1, so we can directly use it\n    linarith\n  \n  exact h_imaginary", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations correctly capture that x and y are real numbers using the appropriate Lean type \u211d.", "The premise equation is accurately formalized, correctly representing the complex equation with proper multiplication notation and complex unit I.", "The conclusion exactly matches the natural language statement, representing the same mathematical equality -y = -1."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Solving this system yields $x=2$ and $y=1$", "statement": "We assume:\n\u2022 $-y = -1$ [l7].\nTherefore, we conclude:\n\u2022 $y=1$ [l8].", "dependencies": ["l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (y : \u211d) (l7 : -y = -1) : y = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (y : \u211d) (l7 : -y = -1) : y = 1 := by\n  have h_main : y = 1 := by\n    -- Use linear arithmetic to solve for y\n    linarith\n  \n  -- The main result is already derived, so we just use it\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the mathematical reasoning presented in the natural language. The assumption '-y = -1' is correctly represented as hypothesis l7, and the conclusion 'y = 1' is properly set as the theorem's goal. The additional type declaration '(y : \u211d)' is a reasonable mathematical specification that doesn't contradict the natural language statement. The logical structure of deductive reasoning from premise to conclusion is faithfully preserved."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "Solving this system yields $x=2$ and $y=1$", "statement": "We assume:\n\u2022 $3x-2y = 4$ [l6].\n\u2022 $y=1$ [l8].\nTherefore, we conclude:\n\u2022 $x=2$ [l9].", "dependencies": ["l6", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 (x y : \u211d) \n  (l6 : 3 * x - 2 * y = 4)\n  (l8 : y = 1) :\n  x = 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 (x y : \u211d) \n  (l6 : 3 * x - 2 * y = 4)\n  (l8 : y = 1) :\n  x = 2 := by\n  have h_main : x = 2 := by\n    have h9 : 3 * x - 2 * y = 4 := l6\n    have h10 : y = 1 := l8\n    -- Substitute y = 1 into the equation 3 * x - 2 * y = 4\n    rw [h10] at h9\n    -- Simplify the equation to 3 * x - 2 * 1 = 4\n    ring_nf at h9\n    -- Solve for x: 3 * x - 2 = 4\n    -- Add 2 to both sides: 3 * x = 6\n    -- Divide by 3: x = 2\n    linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations are appropriately typed as real numbers, matching the mathematical context", "The first equation 3x-2y=4 is correctly formalized with explicit multiplication notation", "The second equation y=1 is directly and correctly translated", "The conclusion x=2 is properly stated as the theorem's goal", "The logical structure of assumptions leading to conclusion is preserved in the theorem format", "Label references are consistently maintained between natural language and Lean formalization"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "which implies $z=2+i$.", "statement": "We assume:\n\u2022 $z$ is a complex number such that $z=x+iy$ for some real numbers $x, y \\in \\mathbb{R}$ [tc_1].\n\u2022 $y=1$ [l8].\n\u2022 $x=2$ [l9].\nTherefore, we conclude:\n\u2022 $z=2+i$ [ts_1].", "dependencies": ["tc_1", "l8", "l9"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (z : \u2102) \n  (x y : \u211d)\n  (tc_1 : z = x + y * Complex.I)\n  (l8 : y = 1)\n  (l9 : x = 2) :\n  z = 2 + Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (z : \u2102) \n  (x y : \u211d)\n  (tc_1 : z = x + y * Complex.I)\n  (l8 : y = 1)\n  (l9 : x = 2) :\n  z = 2 + Complex.I := by\n  have h_main : z = 2 + Complex.I := by\n    rw [tc_1]\n    rw [l9, l8]\n    <;> simp [Complex.ext_iff, pow_two]\n    <;> norm_num\n    <;>\n    simp_all [Complex.ext_iff, pow_two]\n    <;> norm_num\n    <;>\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The complex number representation is correctly formalized with proper type declarations and the equation z = x + y*Complex.I accurately captures z = x + iy", "The condition y = 1 is directly and correctly translated", "The condition x = 2 is directly and correctly translated", "The conclusion z = 2 + Complex.I correctly represents z = 2 + i using Lean's complex number notation", "The logical structure properly captures the assumption-conclusion relationship as a theorem with hypotheses leading to the goal"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

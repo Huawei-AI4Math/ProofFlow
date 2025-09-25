@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number. If $|z-i| = 1$ and $\operatorname{Arg}(z) = \pi/6$, then $z = \frac{\sqrt{3}}{2} + \frac{i}{2}$.
+
+Proof: From the condition $\operatorname{Arg}(z) = \pi/6$, we can write $z$ in polar form as $z = r(\frac{\sqrt{3}}{2} + \frac{i}{2})$ for some $r>0$. From the condition $|z-i|=1$, we can write this in cartesian coordinates $x, y$ as $x^2+(y-1)^2=1$. By substituting the real and imaginary parts of $z$, namely $x=r\frac{\sqrt{3}}{2}$ and $y=r/2$, into the cartesian equation, we get $(r\frac{\sqrt{3}}{2})^2 + (r/2-1)^2 = 1$, which simplifies to $r^2-r=0$. Since the argument of $z$ is defined, $z$ must be non-zero, which implies $r>0$; therefore, the only valid solution is $r=1$. Substituting $r=1$ into the polar form gives the result $z = \frac{\sqrt{3}}{2} + \frac{i}{2}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $z$ be a complex number. If $|z-i| = 1$", "statement": "Premise:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u2102)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean type declaration (z : \u2102) correctly captures that z is a complex number", "The Lean expression Complex.abs (z - Complex.I) = 1 correctly formalizes |z-i| = 1, where Complex.abs represents the absolute value and Complex.I represents the imaginary unit"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "and $\\operatorname{Arg}(z) = \\pi/6$", "statement": "Premise:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u2102)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number with the condition |z-i| = 1. The notation Complex.abs for absolute value and Complex.I for the imaginary unit i are the standard Lean representations.", "The Lean formalization correctly captures the argument condition Arg(z) = \u03c0/6 using Complex.arg, which is the standard Lean representation for the argument of a complex number."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the condition $\\operatorname{Arg}(z) = \\pi/6$, we can write $z$ in polar form as $z = r(\\frac{\\sqrt{3}}{2} + \\frac{i}{2})$ for some $r>0$.", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\nTherefore, we conclude:\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z : \u2102)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6) :\n  \u2203 r : \u211d, 0 < r \u2227 z = r * (Complex.exp (Complex.I * (\u03c0/6))) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z : \u2102)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6) :\n  \u2203 r : \u211d, 0 < r \u2227 z = r * (Complex.exp (Complex.I * (\u03c0/6))) := by\n  use Complex.abs z\n  constructor\n  \u00b7 apply Complex.abs.pos\n    intro h\n    rw [h] at tc_1\n    simp at tc_1\n  \u00b7 rw [Complex.abs_mul_exp_arg_mul_I z, tc_2]\n    simp [mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 2, "endLine": 15, "endColumn": 16, "data": "unsolved goals\ncase h.left\nz : \u2102\ntc_2 : z.arg = \u03c0 / 6\nh : z = 0\ntc_1 : True\n\u22a2 False"}, {"line": 16, "column": 8, "endLine": 16, "endColumn": 39, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u2191(Complex.abs z) * Complex.exp (\u2191z.arg * Complex.I)\ncase h.right\nz : \u2102\ntc_1 : Complex.abs (z - Complex.I) = 1\ntc_2 : z.arg = \u03c0 / 6\n\u22a2 z = \u2191(Complex.abs z) * Complex.exp (Complex.I * (\u2191\u03c0 / 6))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The assumptions |z-i| = 1 and Arg(z) = \u03c0/6 are correctly captured in the Lean formalization as tc_1 and tc_2.", "The conclusion about the polar form is mathematically equivalent in both versions. The natural language uses rectangular form (\u221a3/2 + i/2) while Lean uses exponential form (exp(i * \u03c0/6)), but these represent the same complex number.", "The existential quantification over r > 0 and the overall logical structure are preserved correctly in the Lean formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma neg_l1\n  (z : \u2102)\n  (tc_1 : abs (z - I) = 1)\n  (tc_2 : arg z = \u03c0/6) :\n  \u00ac \u2203 r : \u211d, 0 < r \u2227 z = r * (Real.cos (\u03c0/6) + Real.sin (\u03c0/6) * I) := by\n  intro \u27e8r, hr, hz\u27e9\n  have h1 : abs z = r := by\n    rw [hz]\n    simp [abs_ofReal_mul, abs_ofReal_add_I_mul]\n  have h2 : abs (z - I) = abs (r * (Real.cos (\u03c0/6) + Real.sin (\u03c0/6) * I) - I) := by\n    rw [hz]\n  rw [tc_1] at h2\n  have h3 : (r * Real.cos (\u03c0/6))^2 + (r * Real.sin (\u03c0/6) - 1)^2 = 1 := by\n    rw [\u2190 normSq_eq_abs_sq, h2]\n    simp [normSq]\n    ring\n  simp [Real.cos_pi_div_six, Real.sin_pi_div_six] at h3\n  have h4 : r^2 - r = 0 := by\n    linear_combination h3\n  have h5 : r = 0 \u2228 r = 1 := by\n    rw [\u2190 sub_eq_zero, mul_eq_zero, sub_eq_zero] at h4\n    exact h4\n  cases h5 with\n  | inl h => exact hr.ne' h\n  | inr h =>\n    rw [h] at hz\n    simp [Real.cos_pi_div_six, Real.sin_pi_div_six] at hz\n    have h6 : abs (z - I) = abs ((Real.sqrt 3)/2 + (1/2)*I - I) := by\n      rw [hz]\n    rw [tc_1] at h6\n    simp at h6\n    norm_num at h6"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "From the condition $|z-i|=1$, we can write this in cartesian coordinates $x, y$ as $x^2+(y-1)^2=1$.", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\nTherefore, we conclude:\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r : \u211d, 0 < r \u2227 z = r * (Complex.exp (Complex.I * (\u03c0/6))))\n  (hz : z = x + y * Complex.I) :\n  (Complex.abs (z - Complex.I) = 1) \u2194 (x ^ 2 + (y - 1) ^ 2 = 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l2\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : abs (z - I) = 1)\n  (tc_2 : arg z = \u03c0/6)\n  (l1 : \u2203 r : \u211d, 0 < r \u2227 z = r * (exp (I * (\u03c0/6))))\n  (hz : z = x + y * I) :\n  (abs (z - I) = 1) \u2194 (x ^ 2 + (y - 1) ^ 2 = 1) := by\n  rw [hz]\n  simp only [normSq_sub, normSq_eq_abs, sub_re, sub_im, I_re, I_im, one_mul]\n  simp only [pow_two]\n  norm_num\n  rw [\u2190 tc_1]\n  congr! 1\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 2, "endLine": 13, "endColumn": 76, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and Cartesian form representation are correctly formalized", "The absolute value condition |z-i| = 1 is perfectly captured", "The argument condition Arg(z) = \u03c0/6 is correctly formalized", "The polar form condition has equivalent mathematical meaning but different representation: natural language uses explicit rectangular components (sqrt(3)/2 + i/2) while Lean uses exponential form Complex.exp(Complex.I * (\u03c0/6))", "The main equivalence statement between |z-i|=1 and x^2 + (y-1)^2 = 1 is perfectly captured", "The overall logical structure as a lemma with proper hypotheses and conclusion is correct", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.83 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l2\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r : \u211d, 0 < r \u2227 z = r * (Complex.exp (Complex.I * (\u03c0/6))))\n  (hz : z = x + y * Complex.I) :\n  \u00ac((Complex.abs (z - Complex.I) = 1) \u2194 (x ^ 2 + (y - 1) ^ 2 = 1)) := by\n  simp only [tc_1, true_iff, not_true]\n  push_neg\n  intro h\n  obtain \u27e8r, hr, hz'\u27e9 := l1\n  rw [hz, hz']\n  have : Complex.exp (Complex.I * (\u03c0/6)) = (Real.sqrt 3)/2 + (1/2) * Complex.I := by\n    simp [Complex.exp_eq_cos_add_sin_mul_I, cos, sin]\n  rw [this]\n  simp only [Complex.ofReal_mul, Complex.ofReal_div, Complex.ofReal_one, Complex.ofReal_add]\n  simp only [Complex.add_re, Complex.mul_re, Complex.mul_im, Complex.add_im, Complex.I_re, Complex.I_im]\n  ring_nf\n  have : (r * (1/2) - 1)^2 = (r/2 - 1)^2 := by ring\n  rw [this]\n  have : (r * Real.sqrt 3 / 2)^2 + (r/2 - 1)^2 = r^2 - r + 1 := by\n    ring_nf\n    rw [\u2190 Real.sq_sqrt 3 (by norm_num)]\n    ring\n  rw [this]\n  have : r^2 - r + 1 = 1 := by\n    rw [\u2190 tc_1]\n    simp [hz, hz', Complex.abs, Complex.normSq, sub_re, sub_im]\n    ring_nf\n    rw [\u2190 Real.sq_sqrt 3 (by norm_num)]\n    ring\n  rw [this] at h\n  exact h"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "By substituting the real and imaginary parts of $z$, namely $x=r\\frac{\\sqrt{3}}{2}$ and $y=r/2$,", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2]\nTherefore, we conclude:\n\u2022 The real and imaginary parts of z from its polar form [l1] are x = r * sqrt(3)/2 and y = r/2 [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)) :\n  z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l3\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : abs (z - I) = 1)\n  (tc_2 : arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (exp (I * (\u03c0/6))))\n  (l2 : (z = x + y * I) \u2192 (abs (z - I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)) :\n  z = r * (ofReal (Real.sqrt 3 / 2) + I / 2) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2 := by\n  intro h\n  have h_re : re z = r * (Real.sqrt 3 / 2) := by\n    rw [h]\n    simp [ofReal_div, add_re, mul_re, I_re, I_im, div_re, ofReal_div, ofReal_mul]\n    ring\n  have h_im : im z = r / 2 := by\n    rw [h]\n    simp [ofReal_div, add_im, mul_im, I_re, I_im, div_im, ofReal_div, ofReal_mul]\n    ring\n  have h_z_eq : z = re z + im z * I := by simp\n  rw [h_z_eq, h_re, h_im] at h\n  simp at h\n  exact \u27e8by rw [h_re], by rw [h_im]\u27e9", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 16, "column": 4, "endLine": 16, "endColumn": 8, "data": "no goals to be solved"}, {"line": 24, "column": 16, "endLine": 24, "endColumn": 20, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  z.re\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl1 : \u2203 r_val, 0 < r_val \u2227 z = \u2191r_val * cexp (I * (\u2191\u03c0 / 6))\nl2 : z = \u2191x + \u2191y * I \u2192 (Complex.abs (z - I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nh_re : z.re = r * (\u221a3 / 2)\nh_im : z.im = r / 2\nh_z_eq : z = \u2191z.re + \u2191z.im * I\nh : \u2191r * (\u2191\u221a3 / 2) + \u2191r / 2 * I = \u2191r * (\u2191\u221a3 / 2 + I / 2)\n\u22a2 x = r * (\u221a3 / 2)"}, {"line": 24, "column": 30, "endLine": 24, "endColumn": 34, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  z.im\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl1 : \u2203 r_val, 0 < r_val \u2227 z = \u2191r_val * cexp (I * (\u2191\u03c0 / 6))\nl2 : z = \u2191x + \u2191y * I \u2192 (Complex.abs (z - I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nh_re : z.re = r * (\u221a3 / 2)\nh_im : z.im = r / 2\nh_z_eq : z = \u2191z.re + \u2191z.im * I\nh : \u2191r * (\u2191\u221a3 / 2) + \u2191r / 2 * I = \u2191r * (\u2191\u221a3 / 2 + I / 2)\n\u22a2 y = r / 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1 correctly captures |z-i| = 1 in both versions", "tc_2 correctly captures Arg(z) = \u03c0/6 in both versions", "l1 correctly represents the polar form, with exp(i\u03c0/6) being mathematically equivalent to sqrt(3)/2 + i/2", "l2 correctly captures the equivalence between the modulus condition and Cartesian equation", "The conclusion has a major inconsistency: l1 uses variable r_val while the conclusion uses r with no established relationship. Additionally, the logical structure differs - natural language presents this as a derivation from assumptions, while Lean presents it as a conditional statement with an additional premise.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['tc_1 correctly captures |z-i| = 1 in both versions', 'tc_2 correctly captures Arg(z) = \u03c0/6 in both versions', 'l1 correctly represents the polar form, with exp(i\u03c0/6) being mathematically equivalent to sqrt(3)/2 + i/2', 'l2 correctly captures the equivalence between the modulus condition and Cartesian equation', 'The conclusion has a major inconsistency: l1 uses variable r_val while the conclusion uses r with no established relationship. Additionally, the logical structure differs - natural language presents this as a derivation from assumptions, while Lean presents it as a conditional statement with an additional premise.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "into the cartesian equation, we get $(r\\frac{\\sqrt{3}}{2})^2 + (r/2-1)^2 = 1$,", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2]\n\u2022 The real and imaginary parts of z from its polar form [l1] are x = r * sqrt(3)/2 and y = r/2 [l3]\nTherefore, we conclude:\n\u2022 (r * sqrt(3)/2)^2 + (r/2 - 1)^2 = 1 [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (hz : z = x + y * Complex.I)\n  (hr : z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) :\n  (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (hz : z = x + y * Complex.I)\n  (hr : z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) :\n  (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1 := by\n  have \u27e8hx, hy\u27e9 := l3 hr\n  rw [hx, hy] at hz\n  have hz' : z = x + y * Complex.I := by rw [hx, hy]; exact hz\n  have := (l2 hz').mp tc_1\n  rw [hx, hy] at this\n  exact this", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["tc_1 correctly formalizes the complex modulus condition", "tc_2 correctly formalizes the argument condition", "l1 uses exponential form instead of rectangular form, but they are mathematically equivalent since exp(i\u03c0/6) = sqrt(3)/2 + i/2", "l2 correctly captures the equivalence between modulus condition and Cartesian equation with proper conditional structure", "l3 correctly formalizes the relationship between polar and Cartesian coordinates with proper conditional structure", "l4 perfectly matches the final equation. The additional assumptions hz and hr provide necessary variable connections for the proof structure"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "which simplifies to $r^2-r=0$.", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2]\n\u2022 The real and imaginary parts of z from its polar form [l1] are x = r * sqrt(3)/2 and y = r/2 [l3]\n\u2022 (r * sqrt(3)/2)^2 + (r/2 - 1)^2 = 1 [l4]\nTherefore, we conclude:\n\u2022 r^2 - r = 0 [l5].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1) :\n  r ^ 2 - r = 0 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1) :\n  r ^ 2 - r = 0 := by\n  have h : z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2) := by\n    obtain \u27e8r_val, hr_val, hz\u27e9 := l1\n    rw [hz]\n    simp [Complex.exp_eq_exp_\u2102]\n    simp [cos_pi_div_six, sin_pi_div_six]\n    ring_nf\n    congr\n    simp [Complex.ofReal_div]\n  have \u27e8hx, hy\u27e9 := l3 h\n  rw [hx, hy] at l4\n  simp at l4\n  linear_combination l4", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 4, "endLine": 18, "endColumn": 41, "data": "simp made no progress"}, {"line": 23, "column": 6, "endLine": 23, "endColumn": 8, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  x\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - Complex.I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl1 : \u2203 r_val, 0 < r_val \u2227 z = \u2191r_val * Complex.exp (Complex.I * (\u2191\u03c0 / 6))\nl2 : z = \u2191x + \u2191y * Complex.I \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nl3 : z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2) \u2192 x = r * (\u221a3 / 2) \u2227 y = r / 2\nl4 : (r * (\u221a3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1\nh : z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2)\nhx : x = r * (\u221a3 / 2)\nhy : y = r / 2\n\u22a2 r ^ 2 - r = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1: Both versions correctly express the condition |z-i| = 1", "tc_2: Both versions correctly express Arg(z) = \u03c0/6", "l1: Major inconsistency - natural language specifies rectangular form z = r * (sqrt(3)/2 + i/2) but Lean uses exponential form with different variable name r_val", "l2: Both versions correctly express the equivalence between the modulus condition and Cartesian equation", "l3: Minor notational difference in representing i/2, but mathematical meaning is preserved", "l4: Both versions correctly express the expanded equation", "l5: Both versions correctly state the final conclusion r\u00b2 - r = 0", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['tc_1: Both versions correctly express the condition |z-i| = 1', 'tc_2: Both versions correctly express Arg(z) = \u03c0/6', 'l1: Major inconsistency - natural language specifies rectangular form z = r * (sqrt(3)/2 + i/2) but Lean uses exponential form with different variable name r_val', 'l2: Both versions correctly express the equivalence between the modulus condition and Cartesian equation', 'l3: Minor notational difference in representing i/2, but mathematical meaning is preserved', 'l4: Both versions correctly express the expanded equation', 'l5: Both versions correctly state the final conclusion r\u00b2 - r = 0']"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Since the argument of $z$ is defined, $z$ must be non-zero, which implies $r>0$; therefore, the only valid solution is $r=1$.", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2]\n\u2022 The real and imaginary parts of z from its polar form [l1] are x = r * sqrt(3)/2 and y = r/2 [l3]\n\u2022 (r * sqrt(3)/2)^2 + (r/2 - 1)^2 = 1 [l4]\n\u2022 r^2 - r = 0 [l5]\nTherefore, we conclude:\n\u2022 r = 1 [l6].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1)\n  (l5 : r ^ 2 - r = 0) :\n  r = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1)\n  (l5 : r ^ 2 - r = 0) :\n  r = 1 := by\n  have h : r = 0 \u2228 r = 1 := by linear_combination l5\n  obtain \u27e8r_val, hr_val, hz\u27e9 := l1\n  have hz' : z = r_val * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2) := by\n    rw [hz]\n    simp [Complex.exp_mul_I, Complex.ofReal_cos, Complex.ofReal_sin, cos (\u03c0/6), sin (\u03c0/6)]\n  have hxy : x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2 := by\n    apply l3\n    rw [\u2190 hz']\n    congr\n    simp\n    exact hr_val.ne.symm\n  cases h with\n  | inl h => \n    rw [h] at hxy\n    simp at hxy\n    have := hxy.1\n    simp [hr_val] at this\n  | inr h => exact h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 31, "endLine": 15, "endColumn": 52, "data": "Not a comparison: r = 0 \u2228 r = 1"}, {"line": 19, "column": 4, "endLine": 19, "endColumn": 90, "data": "invalid 'simp', proposition expected\n  \u211d"}, {"line": 19, "column": 4, "endLine": 19, "endColumn": 90, "data": "invalid 'simp', proposition expected\n  \u211d"}, {"line": 17, "column": 79, "endLine": 19, "endColumn": 90, "data": "unsolved goals\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - Complex.I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl2 : z = \u2191x + \u2191y * Complex.I \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nl3 : z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2) \u2192 x = r * (\u221a3 / 2) \u2227 y = r / 2\nl4 : (r * (\u221a3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1\nl5 : r ^ 2 - r = 0\nh : r = 0 \u2228 r = 1\nr_val : \u211d\nhr_val : 0 < r_val\nhz : z = \u2191r_val * Complex.exp (Complex.I * (\u2191\u03c0 / 6))\n\u22a2 Complex.exp (Complex.I * (\u2191\u03c0 / 6)) = \u2191\u221a3 / 2 + Complex.I / 2 \u2228 r_val = 0"}, {"line": 22, "column": 8, "endLine": 22, "endColumn": 13, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u2191r_val * (\u2191(\u221a3 / 2) + Complex.I / 2)\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - Complex.I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl2 : z = \u2191x + \u2191y * Complex.I \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nl3 : z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2) \u2192 x = r * (\u221a3 / 2) \u2227 y = r / 2\nl4 : (r * (\u221a3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1\nl5 : r ^ 2 - r = 0\nh : r = 0 \u2228 r = 1\nr_val : \u211d\nhr_val : 0 < r_val\nhz : z = \u2191r_val * Complex.exp (Complex.I * (\u2191\u03c0 / 6))\nhz' : z = \u2191r_val * (\u2191(\u221a3 / 2) + Complex.I / 2)\n\u22a2 z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2)"}, {"line": 27, "column": 10, "endLine": 31, "endColumn": 25, "data": "unsolved goals\ncase intro.intro.inl\nz : \u2102\nx y r : \u211d\ntc_1 : Complex.abs (z - Complex.I) = 1\ntc_2 : z.arg = \u03c0 / 6\nl2 : z = \u2191x + \u2191y * Complex.I \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1)\nl3 : z = \u2191r * (\u2191(\u221a3 / 2) + Complex.I / 2) \u2192 x = r * (\u221a3 / 2) \u2227 y = r / 2\nl4 : (r * (\u221a3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1\nl5 : r ^ 2 - r = 0\nr_val : \u211d\nhr_val : 0 < r_val\nhz : z = \u2191r_val * Complex.exp (Complex.I * (\u2191\u03c0 / 6))\nhz' : z = \u2191r_val * (\u2191(\u221a3 / 2) + Complex.I / 2)\nh : r = 0\nhxy : x = 0 \u2227 y = 0\nthis : x = 0\n\u22a2 r = 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1 correctly captures |z-i| = 1 using Complex.abs", "tc_2 correctly captures Arg(z) = \u03c0/6 using Complex.arg", "l1 has major inconsistency: natural language specifies rectangular form z = r * (sqrt(3)/2 + i/2) with variable r, but Lean uses exponential form with r_val. While mathematically equivalent, this creates variable name inconsistency and different mathematical representation", "l2 correctly captures the equivalence between the modulus condition and Cartesian equation", "l3 correctly captures the real and imaginary parts extraction", "l4 correctly captures the expanded equation", "l5 correctly captures the simplified quadratic equation", "l6 correctly captures the final conclusion r = 1", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['tc_1 correctly captures |z-i| = 1 using Complex.abs', 'tc_2 correctly captures Arg(z) = \u03c0/6 using Complex.arg', 'l1 has major inconsistency: natural language specifies rectangular form z = r * (sqrt(3)/2 + i/2) with variable r, but Lean uses exponential form with r_val. While mathematically equivalent, this creates variable name inconsistency and different mathematical representation', 'l2 correctly captures the equivalence between the modulus condition and Cartesian equation', 'l3 correctly captures the real and imaginary parts extraction', 'l4 correctly captures the expanded equation', 'l5 correctly captures the simplified quadratic equation', 'l6 correctly captures the final conclusion r = 1']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Substituting $r=1$ into the polar form gives the result $z = \\frac{\\sqrt{3}}{2} + \\frac{i}{2}$.", "statement": "We assume:\n\u2022 z is a complex number such that |z-i| = 1 [tc_1]\n\u2022 The argument of z is Arg(z) = \u03c0/6 [tc_2]\n\u2022 z can be written in polar form as z = r * (sqrt(3)/2 + i/2) for some modulus r > 0 [l1]\n\u2022 Writing z in Cartesian form as z = x + iy, the condition |z-i|=1 [tc_1] is equivalent to the equation x^2 + (y-1)^2 = 1 [l2]\n\u2022 The real and imaginary parts of z from its polar form [l1] are x = r * sqrt(3)/2 and y = r/2 [l3]\n\u2022 (r * sqrt(3)/2)^2 + (r/2 - 1)^2 = 1 [l4]\n\u2022 r^2 - r = 0 [l5]\n\u2022 r = 1 [l6]\nTherefore, we conclude:\n\u2022 z = sqrt(3)/2 + i/2 [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1)\n  (l5 : r ^ 2 - r = 0)\n  (l6 : r = 1) :\n  z = Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102) (x y r : \u211d)\n  (tc_1 : Complex.abs (z - Complex.I) = 1)\n  (tc_2 : Complex.arg z = \u03c0/6)\n  (l1 : \u2203 r_val : \u211d, 0 < r_val \u2227 z = r_val * (Complex.exp (Complex.I * (\u03c0/6))))\n  (l2 : (z = x + y * Complex.I) \u2192 (Complex.abs (z - Complex.I) = 1 \u2194 x ^ 2 + (y - 1) ^ 2 = 1))\n  (l3 : (z = r * (Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2)) \u2192 x = r * (Real.sqrt 3 / 2) \u2227 y = r / 2)\n  (l4 : (r * (Real.sqrt 3 / 2)) ^ 2 + (r / 2 - 1) ^ 2 = 1)\n  (l5 : r ^ 2 - r = 0)\n  (l6 : r = 1) :\n  z = Complex.ofReal (Real.sqrt 3 / 2) + Complex.I / 2 := by\n  obtain \u27e8r_val, hr_val, hz\u27e9 := l1\n  have : Complex.exp (Complex.I * (\u03c0/6)) = Complex.ofReal (Real.cos (\u03c0/6)) + Complex.I * Complex.ofReal (Real.sin (\u03c0/6)) :=\n    Complex.exp_mul_I _\n  rw [this] at hz\n  simp only [Complex.ofReal_div, Complex.ofReal_sin, Complex.ofReal_cos] at hz\n  rw [Real.cos_pi_div_six, Real.sin_pi_div_six] at hz\n  simp only [Complex.ofReal_div] at hz\n  have : r_val = 1 := by\n    rw [hz] at tc_1\n    simp at tc_1\n    rw [\u2190 l4, \u2190 l6]\n    simp\n  rw [this] at hz\n  simp at hz\n  exact hz", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1: The complex modulus condition is correctly formalized", "tc_2: The argument condition is correctly formalized", "l1: Uses exponential form exp(i\u03c0/6) instead of rectangular form sqrt(3)/2 + i/2, but these are mathematically equivalent. Also uses existential quantification which is more precise", "l2: The equivalence between modulus condition and Cartesian equation is properly captured", "l3: The relationship between polar and Cartesian coordinates is correctly expressed", "l4: The algebraic equation is perfectly matched", "l5: The simplified equation r^2 - r = 0 is correctly formalized", "l6: The solution r = 1 is correctly stated", "ts_1: The final conclusion is correctly formalized with proper complex number notation", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

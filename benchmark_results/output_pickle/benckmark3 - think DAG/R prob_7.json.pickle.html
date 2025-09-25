@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(\Omega, \mathcal{F}, \mu)$ be a measure space. Let $A_1, A_2 \in \mathcal{F}$ be two disjoint sets with measures $\mu(A_1) = 5$ and $\mu(A_2) = 3$. Let $f: \Omega 	o \mathbb{R}$ be a function defined by $f = 4 \cdot \mathbf{1}_{A_1} + 7 \cdot \mathbf{1}_{A_2}$. Then the Lebesgue integral of $f$ is $\int_\Omega f \, d\mu = 41$.
+
+Proof: By linearity of the Lebesgue integral, we can decompose the integral of $f$ as $\int_\Omega f \, d\mu = \int_\Omega 4 \cdot \mathbf{1}_{A_1} \, d\mu + \int_\Omega 7 \cdot \mathbf{1}_{A_2} \, d\mu$. Based on the definition of the integral for a scaled indicator function, the first term evaluates to $\int_\Omega 4 \cdot \mathbf{1}_{A_1} \, d\mu = 4 \cdot \mu(A_1)$. Similarly, the second term evaluates to $\int_\Omega 7 \cdot \mathbf{1}_{A_2} \, d\mu = 7 \cdot \mu(A_2)$. Substituting these results into the sum gives the expression $\int_\Omega f \, d\mu = 4 \cdot \mu(A_1) + 7 \cdot \mu(A_2)$. Using the given measures $\mu(A_1) = 5$ and $\mu(A_2) = 3$, we calculate the final value as $\int_\Omega f \, d\mu = 4 \cdot 5 + 7 \cdot 3 = 41$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(\\Omega, \\mathcal{F}, \\mu)$ be a measure space.", "statement": "Premise:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (hA\u2081 : Measurable A\u2081) (hA\u2082 : Measurable A\u2082)\n  (h_disjoint : A\u2081 \u2229 A\u2082 = \u2205) (h\u03bc\u2081 : \u03bc A\u2081 = 5) (h\u03bc\u2082 : \u03bc A\u2082 = 3) :\n  \u222b x in (A\u2081 \u222a A\u2082), (4 * (1 : \u211d) * (1 : \u211d) + 7 * (1 : \u211d) * (1 : \u211d)) \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 50, "endLine": 7, "endColumn": 59, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Let $A_1, A_2 \\in \\mathcal{F}$ be two disjoint sets", "statement": "Premise:\n\u2022 Given a measure space $(\\Omega, \\mathcal{F}, \\mu)$ [tc_1].\n\u2022 $A_1$ and $A_2$ are disjoint sets belonging to the sigma-algebra $\\mathcal{F}$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : Measure \u03a9) \n  (A\u2081 A\u2082 : Set \u03a9)\n  (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measurable\u2081 : MeasurableSet A\u2081)\n  (h_measurable\u2082 : MeasurableSet A\u2082)\n  (h_measure\u2081 : \u03bc A\u2081 = 5)\n  (h_measure\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d)\n  (h_f : \u2200 x, f x = if x \u2208 A\u2081 then 4 else if x \u2208 A\u2082 then 7 else 0) :\n  \u222b x, f x \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 17, "column": 42, "endLine": 17, "endColumn": 65, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 20, "endLine": 17, "endColumn": 65, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 7, "endLine": 9, "endColumn": 16, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "...with measures $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$.", "statement": "Premise:\n\u2022 Given a measure space $(\\Omega, \\mathcal{F}, \\mu)$ [tc_1] and two disjoint sets $A_1, A_2 \\in \\mathcal{F}$ [tc_2].\n\u2022 The measures of the sets are $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : Measure \u03a9) \n  (A\u2081 A\u2082 : Set \u03a9)\n  (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measure1 : \u03bc A\u2081 = 5)\n  (h_measure2 : \u03bc A\u2082 = 3) :\n  \u222b x, (4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 13, "endLine": 13, "endColumn": 36, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 45, "endLine": 13, "endColumn": 68, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 2, "endLine": 13, "endColumn": 73, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 39, "endLine": 8, "endColumn": 48, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_4": {"id": "tc_4", "natural_language": "Let $f: \\Omega \to \\mathbb{R}$ be a function defined by $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$.", "statement": "Premise:\n\u2022 Given the space $\\Omega$ from [tc_1] and the sets $A_1, A_2$ from [tc_2].\n\u2022 The function $f: \\Omega \to \\mathbb{R}$ is defined as $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_4 (A\u2081 A\u2082 : Set \u211d)\n  (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h\u03bcA\u2081 : MeasureTheory.volume A\u2081 = 5)\n  (h\u03bcA\u2082 : MeasureTheory.volume A\u2082 = 3) :\n  let f := fun x => if x \u2208 A\u2081 then 4 else if x \u2208 A\u2082 then 7 else 0\n  \u222b x, f x = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 42, "endLine": 11, "endColumn": 65, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 20, "endLine": 11, "endColumn": 65, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 2, "endLine": 12, "endColumn": 10, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "By linearity of the Lebesgue integral, we can decompose the integral of $f$ as $\\int_\\Omega f \\, d\\mu = \\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu + \\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1, A_2 \\in \\mathcal{F}$ are disjoint sets [tc_2].\n\u2022 $f = 4 \\cdot \\mathbf{1}_{A_1} + 7 \\cdot \\mathbf{1}_{A_2}$ [tc_4].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].", "dependencies": ["tc_1", "tc_2", "tc_4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : Measure \u03a9)\n  {A\u2081 A\u2082 : Set \u03a9} \n  (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082) \n  (h_disjoint : A\u2081 \u2229 A\u2082 = \u2205)\n  (f : \u03a9 \u2192 \u211d)\n  (hf : \u2200 x, f x = 4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) :\n  \u222b x, f x \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc := by sorry", "lean_pass": false, "error_msg": [{"line": 14, "column": 24, "endLine": 14, "endColumn": 47, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 56, "endLine": 14, "endColumn": 79, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 26, "endLine": 15, "endColumn": 49, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 66, "endLine": 15, "endColumn": 89, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 7, "endLine": 9, "endColumn": 16, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  [DecidablePred (\u00b7 \u2208 A\u2081)] [DecidablePred (\u00b7 \u2208 A\u2082)]\n  (\u03bc : Measure \u03a9)\n  {A\u2081 A\u2082 : Set \u03a9} \n  (hA\u2081 : MeasurableSet A\u2081) (hA\u2082 : MeasurableSet A\u2082) \n  (h_disjoint : A\u2081 \u2229 A\u2082 = \u2205)\n  (f : \u03a9 \u2192 \u211d)\n  (hf : \u2200 x, f x = 4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) :\n  \u222b x, f x \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc := by\n  have h1 : \u2200 x : \u03a9, f x = (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) + (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) := by sorry\n  have h2 : \u222b x, f x \u2202\u03bc = \u222b x, ( (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) + (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) ) \u2202\u03bc := by sorry\n  have h3 : \u222b x, ( (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) + (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) ) \u2202\u03bc = \u222b x, (4 : \u211d) * (if x \u2208 A\u2081 then (1 : \u211d) else 0) \u2202\u03bc + \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by sorry\n  have h4 : \u222b x, f x \u2202\u03bc = \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) \u2202\u03bc + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc := by sorry\n  sorry", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 7, "column": 7, "endLine": 7, "endColumn": 16, "data": "function expected at\n  Measure\nterm has type\n  ?m.544"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Based on the definition of the integral for a scaled indicator function, the first term evaluates to $\\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu = 4 \\cdot \\mu(A_1)$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_1$ is a set in $\\mathcal{F}$ [tc_2].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) (A\u2081 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) :\n  \u222b x in A\u2081, (4 : \u211d) = 4 * \u03bc A\u2081 := by sorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 2, "endLine": 9, "endColumn": 20, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 23, "endLine": 9, "endColumn": 31, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) (A\u2081 : Set \u03a9) (hA\u2081 : MeasurableSet A\u2081) :\n  MeasureTheory.integral \u03bc A\u2081 (fun _ => (4 : \u211d)) = 4 * \u03bc A\u2081 := by\n  have h_main : MeasureTheory.integral \u03bc A\u2081 (fun _ => (4 : \u211d)) = (4 : \u211d) * \u03bc A\u2081 := by\n    have h\u2081 : MeasureTheory.integral \u03bc A\u2081 (fun _ => (4 : \u211d)) = (4 : \u211d) * \u03bc A\u2081 := by\n      -- Use the lemma for the integral of a constant over a measurable set\n      have h\u2082 : MeasureTheory.integral \u03bc A\u2081 (fun _ => (4 : \u211d)) = (4 : \u211d) * \u03bc A\u2081 := by\n        -- Apply the lemma that the integral of a constant is the constant times the measure\n        calc\n          MeasureTheory.integral \u03bc A\u2081 (fun _ => (4 : \u211d)) = \u222b x in A\u2081, (4 : \u211d) := by\n            simp [MeasureTheory.integral_congr_ae]\n          _ = (4 : \u211d) * \u03bc A\u2081 := by\n            -- Use the fact that the integral of a constant over a measurable set is the constant times the measure\n            have h\u2083 : \u222b x in A\u2081, (4 : \u211d) = (4 : \u211d) * \u03bc A\u2081 := by\n              -- Use the set_integral_const lemma\n              have h\u2084 : \u222b x in A\u2081, (4 : \u211d) = (4 : \u211d) * \u03bc A\u2081 := by\n                -- Use the set_integral_const lemma\n                simp [hA\u2081, set_integral_const]\n                <;>\n                simp_all [mul_comm]\n                <;>\n                norm_cast\n                <;>\n                simp_all [MeasureTheory.Measure.toReal, ENNReal.toReal_mul]\n                <;>\n                field_simp\n                <;>\n                ring_nf\n                <;>\n                norm_num\n                <;>\n                linarith\n              -- Use the set_integral_const lemma\n              exact h\u2084\n            -- Use the fact that the integral of a constant over a measurable set is the constant times the measure\n            exact h\u2083\n          _ = (4 : \u211d) * \u03bc A\u2081 := by rfl\n      -- The result follows directly from the lemma\n      exact h\u2082\n    -- The result follows directly from the lemma\n    exact h\u2081\n  \n  -- Simplify the expression to match the desired form\n  have h\u2082 : (4 : \u211d) * \u03bc A\u2081 = 4 * \u03bc A\u2081 := by\n    ring_nf\n    <;> simp_all [mul_assoc]\n    <;> norm_num\n    <;> simp_all [hA\u2081]\n  \n  -- Combine the results to get the final equality\n  linarith", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 6, "column": 2, "endLine": 6, "endColumn": 48, "data": "function expected at\n  MeasureTheory.integral \u03bc A\u2081\nterm has type\n  Prop"}, {"line": 7, "column": 16, "endLine": 7, "endColumn": 62, "data": "function expected at\n  MeasureTheory.integral \u03bc A\u2081\nterm has type\n  Prop"}, {"line": 7, "column": 65, "endLine": 7, "endColumn": 79, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.3127\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 14, "endLine": 8, "endColumn": 60, "data": "function expected at\n  MeasureTheory.integral \u03bc A\u2081\nterm has type\n  Prop"}, {"line": 8, "column": 63, "endLine": 8, "endColumn": 77, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.4625\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 16, "endLine": 10, "endColumn": 62, "data": "function expected at\n  MeasureTheory.integral \u03bc A\u2081\nterm has type\n  Prop"}, {"line": 10, "column": 65, "endLine": 10, "endColumn": 79, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.6123\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 10, "endLine": 13, "endColumn": 56, "data": "function expected at\n  MeasureTheory.integral \u03bc A\u2081\nterm has type\n  Prop"}, {"line": 13, "column": 59, "endLine": 13, "endColumn": 77, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 14, "endLine": 15, "endColumn": 28, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.9593\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 10, "endLine": 15, "endColumn": 28, "data": "invalid 'calc' step, left-hand side is\n  Sort ?u.8172 : Type ?u.8172\nbut previous right-hand side is\n  \u222b (x : \u03a9) in A\u2081, 4 : \u211d"}, {"line": 13, "column": 81, "endLine": 14, "endColumn": 50, "data": "unsolved goals\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\n\u22a2 sorry = (MeasureTheory.volume A\u2081).toReal * 4"}, {"line": 47, "column": 12, "endLine": 47, "endColumn": 26, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.14053\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 49, "column": 8, "endLine": 49, "endColumn": 28, "data": "simp_all made no progress"}, {"line": 54, "column": 2, "endLine": 54, "endColumn": 10, "data": "linarith failed to find a contradiction\ncase h1.h\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 : Set \u03a9\nhA\u2081 : MeasurableSet A\u2081\nh_main : sorry\nh\u2082 : sorry\na\u271d : sorry < 4 * \u03bc A\u2081\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Similarly, the second term evaluates to $\\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu = 7 \\cdot \\mu(A_2)$.", "statement": "We assume:\n\u2022 $(\\Omega, \\mathcal{F}, \\mu)$ is a measure space [tc_1].\n\u2022 $A_2$ is a set in $\\mathcal{F}$ [tc_2].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu = 7 \\cdot \\mu(A_2)$ [l3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (A\u2082 : Set \u03a9) \n  (hA\u2082 : MeasurableSet A\u2082)\n  (\u03bc : MeasureTheory.Measure \u03a9) :\n  \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u03bc A\u2082 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 18, "endLine": 12, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 48, "endLine": 12, "endColumn": 56, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (A\u2082 : Set \u03a9) \n  (hA\u2082 : MeasurableSet A\u2082)\n  (\u03bc : MeasureTheory.Measure \u03a9) :\n  \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u03bc A\u2082 := by\n  have h\u2081 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by\n    -- Factor out the constant 7 from the integral using the linearity property.\n    have h\u2081\u2080 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by\n      -- Use the property of integrals that allows factoring out a constant.\n      have h\u2081\u2081 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by\n        -- Apply the linearity of the integral to factor out the constant 7.\n        have h\u2081\u2082 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by simp\n        rw [h\u2081\u2082]\n        -- Use the fact that the integral of a constant times a function is the constant times the integral of the function.\n        have h\u2081\u2083 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc = 7 * \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by\n          -- Use the linearity of the integral.\n          rw [MeasureTheory.integral_mul_left]\n          <;>\n          (try simp_all [hA\u2082]) <;>\n          (try apply MeasurableSet.indicator) <;>\n          (try assumption) <;>\n          (try apply MeasurableSet.univ) <;>\n          (try apply MeasurableSet.empty)\n        rw [h\u2081\u2083]\n        <;>\n        (try simp_all) <;>\n        (try norm_num)\n      -- The result follows directly from the above step.\n      exact h\u2081\u2081\n    -- The result follows directly from the above step.\n    exact h\u2081\u2080\n  \n  have h\u2082 : \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc = (\u03bc A\u2082 : \u211d) := by\n    have h\u2082\u2081 : \u222b x : \u03a9, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc = \u222b x in A\u2082, (1 : \u211d) \u2202\u03bc := by\n      -- The integral of the indicator function over the whole space is the integral over the set A\u2082.\n      simp [MeasureTheory.integral_indicator hA\u2082]\n      <;>\n      (try simp_all) <;>\n      (try norm_num)\n    rw [h\u2082\u2081]\n    -- The integral of 1 over A\u2082 is the measure of A\u2082.\n    have h\u2082\u2082 : \u222b x in A\u2082, (1 : \u211d) \u2202\u03bc = (\u03bc A\u2082 : \u211d) := by\n      -- Use the fact that the integral of 1 over a set is the measure of that set.\n      simp [MeasureTheory.integral_const]\n      <;>\n      (try simp_all) <;>\n      (try norm_num)\n      <;>\n      (try ring_nf)\n      <;>\n      (try field_simp)\n      <;>\n      (try linarith)\n    rw [h\u2082\u2082]\n  \n  have h\u2083 : \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u03bc A\u2082 := by\n    calc\n      \u222b x, (7 : \u211d) * (if x \u2208 A\u2082 then 1 else 0) \u2202\u03bc = 7 * \u222b x, (if x \u2208 A\u2082 then (1 : \u211d) else 0) \u2202\u03bc := by rw [h\u2081]\n      _ = 7 * (\u03bc A\u2082 : \u211d) := by rw [h\u2082]\n      _ = 7 * \u03bc A\u2082 := by\n        -- Since \u03bc A\u2082 is a non-negative real number, we can safely cast it to \u211d and multiply by 7.\n        norm_cast\n        <;> simp [mul_comm]\n        <;> simp_all [ENNReal.coe_mul]\n        <;> ring_nf\n        <;> norm_num\n        <;> simp_all [ENNReal.coe_mul]\n  \n  rw [h\u2083]\n  <;> simp_all [mul_comm]\n  <;> norm_cast\n  <;> simp_all [ENNReal.coe_mul]\n  <;> ring_nf\n  <;> norm_num\n  <;> simp_all [ENNReal.coe_mul]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 18, "endLine": 9, "endColumn": 41, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 48, "endLine": 9, "endColumn": 56, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 28, "endLine": 10, "endColumn": 51, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 68, "endLine": 10, "endColumn": 97, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 31, "endLine": 12, "endColumn": 54, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 71, "endLine": 12, "endColumn": 100, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 33, "endLine": 14, "endColumn": 56, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 73, "endLine": 14, "endColumn": 102, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 35, "endLine": 16, "endColumn": 58, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 81, "endLine": 16, "endColumn": 110, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 19, "column": 35, "endLine": 19, "endColumn": 64, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 19, "column": 81, "endLine": 19, "endColumn": 110, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 37, "column": 18, "endLine": 37, "endColumn": 47, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 37, "column": 54, "endLine": 37, "endColumn": 64, "data": "type mismatch\n  \u03bc A\u2082\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 38, "column": 25, "endLine": 38, "endColumn": 54, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 38, "column": 86, "endLine": 43, "endColumn": 20, "data": "unsolved goals\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\nA\u2082 : Set \u03a9\nhA\u2082 : MeasurableSet A\u2082\n\u03bc : MeasureTheory.Measure \u03a9\nh\u2081 : (\u03bc Set.univ).toReal * (7 * sorry) = 7 * ((\u03bc Set.univ).toReal * sorry)\n\u22a2 (\u03bc Set.univ).toReal * sorry = (\u03bc A\u2082).toReal"}, {"line": 46, "column": 39, "endLine": 46, "endColumn": 49, "data": "type mismatch\n  \u03bc A\u2082\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 46, "column": 53, "endLine": 57, "endColumn": 20, "data": "unsolved goals\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\nA\u2082 : Set \u03a9\nhA\u2082 : MeasurableSet A\u2082\n\u03bc : MeasureTheory.Measure \u03a9\nh\u2081 : (\u03bc Set.univ).toReal * (7 * sorry) = 7 * (\u03bc A\u2082).toReal\nh\u2082\u2081 : (\u03bc Set.univ).toReal * sorry = (\u03bc A\u2082).toReal\n\u22a2 (\u03bc A\u2082).toReal = sorry"}, {"line": 60, "column": 28, "endLine": 60, "endColumn": 51, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 60, "column": 58, "endLine": 60, "endColumn": 66, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 62, "column": 22, "endLine": 62, "endColumn": 45, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 62, "column": 62, "endLine": 62, "endColumn": 91, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 63, "column": 14, "endLine": 63, "endColumn": 24, "data": "type mismatch\n  \u03bc A\u2082\nhas type\n  ENNReal : Type\nbut is expected to have type\n  \u211d : Type"}, {"line": 64, "column": 10, "endLine": 64, "endColumn": 18, "data": "failed to synthesize\n  HMul \u2115 ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 71, "column": 12, "endLine": 71, "endColumn": 38, "data": "simp_all made no progress"}, {"line": 73, "column": 6, "endLine": 73, "endColumn": 8, "data": "unknown identifier 'h\u2083'"}, {"line": 73, "column": 6, "endLine": 73, "endColumn": 8, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.32870\ncase refine_1\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\nA\u2082 : Set \u03a9\nhA\u2082 : MeasurableSet A\u2082\n\u03bc : MeasureTheory.Measure \u03a9\nh\u2081 : \u222b (x : \u03a9), 7 * sorry \u2202\u03bc = 7 * \u222b (x : \u03a9), sorry \u2202\u03bc\nh\u2082 : \u222b (x : \u03a9), sorry \u2202\u03bc = sorry\n\u22a2 HMul \u2115 ENNReal \u211d"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Substituting these results into the sum gives the expression $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$.", "statement": "We assume:\n\u2022 $\\int_\\Omega f \\, d\\mu = \\int_\\Omega (4 \\cdot \\mathbf{1}_{A_1}) \\, d\\mu + \\int_\\Omega (7 \\cdot \\mathbf{1}_{A_2}) \\, d\\mu$ [l1].\n\u2022 $\\int_\\Omega 4 \\cdot \\mathbf{1}_{A_1} \\, d\\mu = 4 \\cdot \\mu(A_1)$ [l2].\n\u2022 $\\int_\\Omega 7 \\cdot \\mathbf{1}_{A_2} \\, d\\mu = 7 \\cdot \\mu(A_2)$ [l3].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$ [l4].", "dependencies": ["l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measurable\u2081 : MeasurableSet A\u2081)\n  (h_measurable\u2082 : MeasurableSet A\u2082)\n  (l1 : \u222b x, (4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) = \n            \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) + \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0))\n  (l2 : \u222b x, 4 * (if x \u2208 A\u2081 then 1 else 0) = 4 * \u03bc A\u2081)\n  (l3 : \u222b x, 7 * (if x \u2208 A\u2082 then 1 else 0) = 7 * \u03bc A\u2082) :\n  \u222b x, (4 * (if x \u2208 A\u2081 then 1 else 0) + 7 * (if x \u2208 A\u2082 then 1 else 0)) = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 8, "endLine": 12, "endColumn": 76, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 12, "endLine": 13, "endColumn": 83, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 49, "endLine": 13, "endColumn": 83, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 8, "endLine": 14, "endColumn": 42, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 8, "endLine": 14, "endColumn": 42, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 8, "endLine": 15, "endColumn": 42, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 8, "endLine": 15, "endColumn": 42, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 2, "endLine": 16, "endColumn": 70, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 2, "endLine": 16, "endColumn": 70, "data": "failed to synthesize\n  NormedAddCommGroup ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 8, "endLine": 12, "endColumn": 76, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 12, "endLine": 13, "endColumn": 83, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 49, "endLine": 13, "endColumn": 83, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] [MeasureTheory.MeasureSpace \u03a9]\n  (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) \n  (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measurable\u2081 : MeasurableSet A\u2081)\n  (h_measurable\u2082 : MeasurableSet A\u2082)\n  (l1 : \u222b x, ((4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650))) = \n            \u222b x, (4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + \u222b x, (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650)))\n  (l2 : \u222b x, (4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) = (4 : \u211d\u22650) * \u03bc A\u2081)\n  (l3 : \u222b x, (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) = (7 : \u211d\u22650) * \u03bc A\u2082) :\n  \u222b x, ((4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650))) = (4 : \u211d\u22650) * \u03bc A\u2081 + (7 : \u211d\u22650) * \u03bc A\u2082 := by\n  have h_step1 : \u222b x, ((4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650))) = \u222b x, (4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + \u222b x, (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) := by\n    rw [l1]\n  \n  have h_step2 : \u222b x, ((4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650))) = (4 : \u211d\u22650) * \u03bc A\u2081 + \u222b x, (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) := by\n    rw [h_step1]\n    rw [l2]\n    <;> simp [add_assoc]\n    <;>\n    (try norm_num) <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  have h_step3 : \u222b x, ((4 : \u211d\u22650) * (if h : x \u2208 A\u2081 then (1 : \u211d\u22650) else (0 : \u211d\u22650)) + (7 : \u211d\u22650) * (if h : x \u2208 A\u2082 then (1 : \u211d\u22650) else (0 : \u211d\u22650))) = (4 : \u211d\u22650) * \u03bc A\u2081 + (7 : \u211d\u22650) * \u03bc A\u2082 := by\n    rw [h_step2]\n    rw [l3]\n    <;> simp [add_assoc]\n    <;>\n    (try norm_num) <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  apply h_step3", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 19, "endLine": 11, "endColumn": 22, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 21, "endLine": 11, "endColumn": 22, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 51, "endLine": 11, "endColumn": 54, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 53, "endLine": 11, "endColumn": 54, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 66, "endLine": 11, "endColumn": 69, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 68, "endLine": 11, "endColumn": 69, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 27, "endLine": 11, "endColumn": 70, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 79, "endLine": 11, "endColumn": 82, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 81, "endLine": 11, "endColumn": 82, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 111, "endLine": 11, "endColumn": 114, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 113, "endLine": 11, "endColumn": 114, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 126, "endLine": 11, "endColumn": 129, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 128, "endLine": 11, "endColumn": 129, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 87, "endLine": 11, "endColumn": 130, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 22, "endLine": 12, "endColumn": 25, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 24, "endLine": 12, "endColumn": 25, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 54, "endLine": 12, "endColumn": 57, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 56, "endLine": 12, "endColumn": 57, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 69, "endLine": 12, "endColumn": 72, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 71, "endLine": 12, "endColumn": 72, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 30, "endLine": 12, "endColumn": 73, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 87, "endLine": 12, "endColumn": 90, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 89, "endLine": 12, "endColumn": 90, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 119, "endLine": 12, "endColumn": 122, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 121, "endLine": 12, "endColumn": 122, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 134, "endLine": 12, "endColumn": 137, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 136, "endLine": 12, "endColumn": 137, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 95, "endLine": 12, "endColumn": 138, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 18, "endLine": 13, "endColumn": 21, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 20, "endLine": 13, "endColumn": 21, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 50, "endLine": 13, "endColumn": 53, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 52, "endLine": 13, "endColumn": 53, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 65, "endLine": 13, "endColumn": 68, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 67, "endLine": 13, "endColumn": 68, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 26, "endLine": 13, "endColumn": 69, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 78, "endLine": 13, "endColumn": 81, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 80, "endLine": 13, "endColumn": 81, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 18, "endLine": 14, "endColumn": 21, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 20, "endLine": 14, "endColumn": 21, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 50, "endLine": 14, "endColumn": 53, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 52, "endLine": 14, "endColumn": 53, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 65, "endLine": 14, "endColumn": 68, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 67, "endLine": 14, "endColumn": 68, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 26, "endLine": 14, "endColumn": 69, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 78, "endLine": 14, "endColumn": 81, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 80, "endLine": 14, "endColumn": 81, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 13, "endLine": 15, "endColumn": 16, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 15, "endLine": 15, "endColumn": 16, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 45, "endLine": 15, "endColumn": 48, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 47, "endLine": 15, "endColumn": 48, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 60, "endLine": 15, "endColumn": 63, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 62, "endLine": 15, "endColumn": 63, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 21, "endLine": 15, "endColumn": 64, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 73, "endLine": 15, "endColumn": 76, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 75, "endLine": 15, "endColumn": 76, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 105, "endLine": 15, "endColumn": 108, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 107, "endLine": 15, "endColumn": 108, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 120, "endLine": 15, "endColumn": 123, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 122, "endLine": 15, "endColumn": 123, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 81, "endLine": 15, "endColumn": 124, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 134, "endLine": 15, "endColumn": 137, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 136, "endLine": 15, "endColumn": 137, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 153, "endLine": 15, "endColumn": 156, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 155, "endLine": 15, "endColumn": 156, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 28, "endLine": 16, "endColumn": 31, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 30, "endLine": 16, "endColumn": 31, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 60, "endLine": 16, "endColumn": 63, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 62, "endLine": 16, "endColumn": 63, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 75, "endLine": 16, "endColumn": 78, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 77, "endLine": 16, "endColumn": 78, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 36, "endLine": 16, "endColumn": 79, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 88, "endLine": 16, "endColumn": 91, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 90, "endLine": 16, "endColumn": 91, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 120, "endLine": 16, "endColumn": 123, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 122, "endLine": 16, "endColumn": 123, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 135, "endLine": 16, "endColumn": 138, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 137, "endLine": 16, "endColumn": 138, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 96, "endLine": 16, "endColumn": 139, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 154, "endLine": 16, "endColumn": 157, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 156, "endLine": 16, "endColumn": 157, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 186, "endLine": 16, "endColumn": 189, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 188, "endLine": 16, "endColumn": 189, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 201, "endLine": 16, "endColumn": 204, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 203, "endLine": 16, "endColumn": 204, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 162, "endLine": 16, "endColumn": 205, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2081)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 219, "endLine": 16, "endColumn": 222, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 221, "endLine": 16, "endColumn": 222, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 251, "endLine": 16, "endColumn": 254, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 253, "endLine": 16, "endColumn": 254, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 266, "endLine": 16, "endColumn": 269, "data": "failed to synthesize\n  LE Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 268, "endLine": 16, "endColumn": 269, "data": "failed to synthesize\n  OfNat Type 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Type\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 227, "endLine": 16, "endColumn": 270, "data": "failed to synthesize\n  Decidable (x \u2208 A\u2082)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 168, "endLine": 37, "endColumn": 15, "data": "unsolved goals\n\u03a9 : Type u_1\ninst\u271d\u00b9 : MeasurableSpace \u03a9\ninst\u271d : MeasureTheory.MeasureSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA\u2081 A\u2082 : Set \u03a9\nh_disjoint : Disjoint A\u2081 A\u2082\nh_measurable\u2081 : MeasurableSet A\u2081\nh_measurable\u2082 : MeasurableSet A\u2082\nl1 : \u222b (x : \u03a9), sorry * sorry + sorry * sorry = \u222b (x : \u03a9), sorry * sorry + \u222b (x_1 : \u03a9), sorry * sorry\nl2 : sorry\nl3 : sorry\n\u22a2 sorry"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Using the given measures $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$, we calculate the final value as $\\int_\\Omega f \\, d\\mu = 4 \\cdot 5 + 7 \\cdot 3 = 41$.", "statement": "We assume:\n\u2022 The measures of the sets are $\\mu(A_1) = 5$ and $\\mu(A_2) = 3$ [tc_3].\n\u2022 $\\int_\\Omega f \\, d\\mu = 4 \\cdot \\mu(A_1) + 7 \\cdot \\mu(A_2)$ [l4].\nTherefore, we conclude:\n\u2022 $\\int_\\Omega f \\, d\\mu = 41$ [ts_1].", "dependencies": ["tc_3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measure\u2081 : \u03bc A\u2081 = 5) (h_measure\u2082 : \u03bc A\u2082 = 3)\n  (f : \u03a9 \u2192 \u211d) (h_f : f = 4 \u2022 (Set.toIndicator A\u2081) + 7 \u2022 (Set.toIndicator A\u2082))\n  (h_integral : \u222b x, f x \u2202\u03bc = 4 * \u03bc A\u2081 + 7 * \u03bc A\u2082) :\n  \u222b x, f x \u2202\u03bc = 41 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 30, "endLine": 11, "endColumn": 48, "data": "unknown constant 'Set.toIndicator'"}, {"line": 11, "column": 57, "endLine": 11, "endColumn": 75, "data": "unknown constant 'Set.toIndicator'"}, {"line": 12, "column": 30, "endLine": 12, "endColumn": 49, "data": "failed to synthesize\n  HAdd ENNReal ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A\u2081 A\u2082 : Set \u03a9) (h_disjoint : Disjoint A\u2081 A\u2082)\n  (h_measure\u2081 : (\u03bc A\u2081).toReal = 5) (h_measure\u2082 : (\u03bc A\u2082).toReal = 3)\n  (f : \u03a9 \u2192 \u211d) (h_f : f = (4 : \u211d) \u2022 (Set.indicator A\u2081) + (7 : \u211d) \u2022 (Set.indicator A\u2082))\n  (h_integral : (\u222b x, f x \u2202\u03bc : \u211d) = (4 : \u211d) * (\u03bc A\u2081).toReal + (7 : \u211d) * (\u03bc A\u2082).toReal) :\n  (\u222b x, f x \u2202\u03bc : \u211d) = 41 := by\n  have h_step\u2081 : (\u222b x, f x \u2202\u03bc : \u211d) = (4 : \u211d) * (5 : \u211d) + (7 : \u211d) * (3 : \u211d) := by\n    rw [h_integral]\n    rw [h_measure\u2081, h_measure\u2082]\n    <;> norm_num\n    <;>\n    (try norm_cast) <;>\n    (try simp_all) <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  have h_step\u2082 : (\u222b x, f x \u2202\u03bc : \u211d) = 41 := by\n    rw [h_step\u2081]\n    <;> norm_num\n    <;>\n    (try norm_cast) <;>\n    (try simp_all) <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  exact h_step\u2082", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 8, "column": 56, "endLine": 8, "endColumn": 84, "data": "typeclass instance problem is stuck, it is often due to metavariables\n  HSMul \u211d ((\u03a9 \u2192 ?m.1032) \u2192 \u03a9 \u2192 ?m.1032) (\u03a9 \u2192 \u211d)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_4", "label": "tc_4", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#fa2c07", "highlight": {"background": "#a3c2a8", "border": "#fa2c07"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

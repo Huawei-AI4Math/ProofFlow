@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1-p)p^k$ for $k \in \{0, 1, 2, ...\}$. The parameter $p$ satisfies $0 < p < 1$. Then, the expected value of $X$ is $E[X] = \frac{p}{1-p}$, the variance of $X$ is $Var(X) = \frac{p}{(1-p)^2}$, and the characteristic function of $X$ is $\phi_X(t) = \frac{1-p}{1-pe^{it}}$.
+
+Proof: To find the moments and characteristic function of $X$, we rely on the properties of geometric series. Since $0 < p < 1$, the geometric series $\sum_{k=0}^\infty a^k$ converges for $a=p$, with the sum being $\sum_{k=0}^\infty a^k = \frac{1}{1-a}$ for $|a|<1$. By differentiating this series with respect to $a$, we find that $\sum_{k=0}^\infty k a^k = \frac{a}{(1-a)^2}$. Using this result, the expected value of $X$ is calculated as $E[X] = \sum_{k=0}^\infty k \cdot P(X=k) = (1-p) \sum_{k=0}^\infty k p^k = (1-p) \frac{p}{(1-p)^2} = \frac{p}{1-p}$. To find the variance, we first need $E[X^2]$. Differentiating the series for $\sum k a^k$ again yields $\sum_{k=0}^\infty k^2 a^k = \frac{a(1+a)}{(1-a)^3}$. This allows us to compute the second moment: $E[X^2] = \sum_{k=0}^\infty k^2 \cdot P(X=k) = (1-p) \sum_{k=0}^\infty k^2 p^k = (1-p) \frac{p(1+p)}{(1-p)^3} = \frac{p(1+p)}{(1-p)^2}$. Now, we can find the variance using the formula $Var(X) = E[X^2] - (E[X])^2 = \frac{p(1+p)}{(1-p)^2} - \left(\frac{p}{1-p}\right)^2 = \frac{p+p^2-p^2}{(1-p)^2} = \frac{p}{(1-p)^2}$. For the characteristic function, we must evaluate the series $E[e^{itX}]$. The term of the corresponding geometric series is $pe^{it}$. Since $0 < p < 1$ and $|e^{it}|=1$, the magnitude $|pe^{it}| = p < 1$, which guarantees convergence. The characteristic function is $\phi_X(t) = E[e^{itX}] = \sum_{k=0}^\infty e^{itk} P(X=k) = (1-p) \sum_{k=0}^\infty (pe^{it})^k = (1-p) \frac{1}{1-pe^{it}} = \frac{1-p}{1-pe^{it}}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a discrete random variable with a probability mass function (PMF) given by $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$. The parameter $p$ satisfies $0 < p < 1$.", "statement": "Premise:\n\u2022 $X$ is a discrete random variable with sample space $\\{0, 1, 2, ...\\}$ [tc_1_1]\n\u2022 The PMF of X is $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1_2]\n\u2022 The parameter $p$ satisfies $0 < p < 1$ [tc_1_3]", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (X : \u2115 \u2192 \u211d)\n  (p : \u211d)\n  (tc_1_1 : X 0 = 0 \u2227 \u2200 k : \u2115, X (k+1) = X k + 1)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k)\n  (tc_1_3 : 0 < p \u2227 p < 1)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization defines X as a deterministic function \u2115 \u2192 \u211d representing the identity function, completely missing that X should be a discrete random variable. The sample space concept is not captured at all.", "The Lean formalization only states that (1-p)*p^k is non-negative, but completely misses that this expression should equal P(X=k). The PMF definition is not captured.", "Both the natural language and Lean formalization correctly specify that p is strictly between 0 and 1."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization defines X as a deterministic function \u2115 \u2192 \u211d representing the identity function, completely missing that X should be a discrete random variable. The sample space concept is not captured at all.', 'The Lean formalization only states that (1-p)*p^k is non-negative, but completely misses that this expression should equal P(X=k). The PMF definition is not captured.', 'Both the natural language and Lean formalization correctly specify that p is strictly between 0 and 1.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "the geometric series $\\sum_{k=0}^\\infty a^k$ converges for $a=p$, with the sum being $\\sum_{k=0}^\\infty a^k = \\frac{1}{1-a}$ for $|a|<1$.", "statement": "We assume:\n\u2022 $X$ is a discrete random variable with sample space $\\{0, 1, 2, ...\\}$ [tc_1_1]\n\u2022 The PMF of X is $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1_2]\n\u2022 The parameter $p$ satisfies $0 < p < 1$ [tc_1_3]\nTherefore, we conclude:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, the geometric series converges and its sum is $\\sum_{k=0}^{\\infty} a^k = \\frac{1}{1-a}$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2102) :\n  |a| < 1 \u2192 \u2211' (k : \u2115), a ^ k = 1 / (1 - a) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 2, "endLine": 7, "endColumn": 5, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l1\n  (a : \u2102) :\n  \u2016a\u2016 < 1 \u2192 \u2211' (k : \u2115), a ^ k = 1 / (1 - a) := by\n  intro h\n  have := hasSum_geometric_of_norm_lt_one h\n  simp_rw [\u2190 one_div] at this\n  exact this.tsum_eq", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By differentiating this series with respect to $a$, we find that $\\sum_{k=0}^\\infty k a^k = \\frac{a}{(1-a)^2}$.", "statement": "We assume:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, the geometric series converges and its sum is $\\sum_{k=0}^{\\infty} a^k = \\frac{1}{1-a}$ [l1]\nTherefore, we conclude:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, $\\sum_{k=0}^{\\infty} k a^k = \\frac{a}{(1-a)^2}$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  {a : \u2102}\n  (l1 : |a| < 1 \u2192 \u2211' (k : \u2115), a ^ k = 1 / (1 - a)) :\n  |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u2102) * a ^ k = a / (1 - a) ^ 2 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 8, "endLine": 7, "endColumn": 11, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 2, "endLine": 8, "endColumn": 5, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l2\n  {a : \u2102}\n  (h : \u2016a\u2016 < 1 \u2192 HasSum (fun (k : \u2115) => a ^ k) (1 / (1 - a))) :\n  \u2016a\u2016 < 1 \u2192 HasSum (fun (k : \u2115) => (k : \u2102) * a ^ k) (a / (1 - a) ^ 2) := by\n  intro ha\n  have hsum := hasSum_geometric_of_norm_lt_one ha\n  have hderiv : HasSum (fun n => (n + 1) * a ^ n) (1 / (1 - a) ^ 2) := by\n    have := hasSum_geometric_of_norm_lt_one ha\n    exact hasSum_geometric_deriv ha\n  simp only [add_zero, mul_one] at hderiv\n  convert HasSum.mul_right a hderiv using 1\n  \u00b7 ext k\n    simp [Nat.cast_succ, mul_add, add_mul]\n  \u00b7 field_simp [sub_ne_zero.2 (ne_of_lt ha)]\n    ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 10, "endLine": 13, "endColumn": 32, "data": "unknown identifier 'hasSum_geometric_deriv'"}, {"line": 16, "column": 2, "endLine": 17, "endColumn": 42, "data": "unsolved goals\ncase h.e.h.a\na : \u2102\nh : \u2016a\u2016 < 1 \u2192 HasSum (fun k => a ^ k) (1 / (1 - a))\nha : \u2016a\u2016 < 1\nhsum : HasSum (fun n => a ^ n) (1 - a)\u207b\u00b9\nhderiv : HasSum (fun n => (n + 1) * a ^ n) (1 / (1 - a) ^ 2)\nk : \u2102\n\u22a2 HasSum (fun k => \u2191k * a ^ k) k \u2194 HasSum (fun i => i * a ^ i * a + a ^ i * a) k"}, {"line": 19, "column": 4, "endLine": 19, "endColumn": 8, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Differentiating the series for $\\sum k a^k$ again yields $\\sum_{k=0}^\\infty k^2 a^k = \\frac{a(1+a)}{(1-a)^3}$.", "statement": "We assume:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, $\\sum_{k=0}^{\\infty} k a^k = \\frac{a}{(1-a)^2}$ [l2]\nTherefore, we conclude:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, $\\sum_{k=0}^{\\infty} k^2 a^k = \\frac{a(1+a)}{(1-a)^3}$ [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {a : \u2102}\n  (ha : |a| < 1)\n  (l2 : \u2211' (k : \u2115), (k : \u2102) * a ^ k = a / (1 - a) ^ 2) :\n  \u2211' (k : \u2115), (k : \u2102)^2 * a ^ k = a * (1 + a) / (1 - a) ^ 3 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 8, "endLine": 7, "endColumn": 11, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {a : \u2102}\n  (ha : Complex.abs a < 1)\n  (l2 : \u2211' (k : \u2115), (k : \u2102) * a ^ k = a / (1 - a) ^ 2) :\n  \u2211' (k : \u2115), (k : \u2102)^2 * a ^ k = a * (1 + a) / (1 - a) ^ 3 := by\n  have h1 : \u2200 x : \u2102, Complex.abs x < 1 \u2192 (1 - x) ^ 2 \u2260 0 := by\n    intro x hx\n    exact pow_ne_zero _ (sub_ne_zero_of_ne (mt (congr_arg Complex.abs) (by simpa using hx)))\n  have h2 : \u2200 x : \u2102, Complex.abs x < 1 \u2192 HasDerivAt (fun x => x / (1 - x) ^ 2) ((1 + x) / (1 - x) ^ 3) x := by\n    intro x hx\n    have := h1 x hx\n    simp [this]\n    apply HasDerivAt.div\n    \u00b7 exact hasDerivAt_id x\n    \u00b7 apply HasDerivAt.pow\n      exact hasDerivAt_const x 1\n    \u00b7 exact this\n    \u00b7 simp [this]\n  have summable_k : Summable (fun k : \u2115 => (k : \u2102) * a ^ k) := by\n    rw [\u2190 l2]\n    exact Summable.hasSum (summable_geometric_of_abs_lt_1 ha).mul_left\n  have h3 := hasDerivAt_tsum ha (fun k => (k : \u2102) * a ^ k) summable_k (h2 a ha)\n  rw [\u2190 l2, h3]\n  field_simp [h1 a ha]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 75, "endLine": 12, "endColumn": 89, "data": "type mismatch, term\n  hx\nafter simplification has type\n  Complex.abs x < 1 : Prop\nbut is expected to have type\n  \u00ac1 = Complex.abs x : Prop"}, {"line": 16, "column": 4, "endLine": 16, "endColumn": 15, "data": "simp made no progress"}, {"line": 24, "column": 8, "endLine": 24, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  a / (1 - a) ^ 2\na : \u2102\nha : Complex.abs a < 1\nl2 : \u2211' (k : \u2115), \u2191k * a ^ k = a / (1 - a) ^ 2\nh1 : \u2200 (x : \u2102), Complex.abs x < 1 \u2192 (1 - x) ^ 2 \u2260 0\nh2 : \u2200 (x : \u2102), Complex.abs x < 1 \u2192 HasDerivAt (fun x => x / (1 - x) ^ 2) ((1 + x) / (1 - x) ^ 3) x\n\u22a2 Summable fun k => \u2191k * a ^ k"}, {"line": 26, "column": 29, "endLine": 26, "endColumn": 31, "data": "application type mismatch\n  hasDerivAt_tsum ha\nargument\n  ha\nhas type\n  Complex.abs a < 1 : Prop\nbut is expected to have type\n  Summable ?m.18332 : Prop"}, {"line": 26, "column": 42, "endLine": 26, "endColumn": 57, "data": "type mismatch\n  k * a ^ k\nhas type\n  \u2102 : outParam Type\nbut is expected to have type\n  \u2200 (y : ?m.18326), HasDerivAt (?m.18334 k) (?m.18335 k y) y : Prop"}, {"line": 9, "column": 63, "endLine": 29, "endColumn": 6, "data": "unsolved goals\na : \u2102\nha : Complex.abs a < 1\nl2 : \u2211' (k : \u2115), \u2191k * a ^ k = a / (1 - a) ^ 2\nh1 : \u2200 (x : \u2102), Complex.abs x < 1 \u2192 (1 - x) ^ 2 \u2260 0\nh2 : \u2200 (x : \u2102), Complex.abs x < 1 \u2192 HasDerivAt (fun x => x / (1 - x) ^ 2) ((1 + x) / (1 - x) ^ 3) x\nsummable_k : Summable fun k => \u2191k * a ^ k\n\u22a2 \u2211' (k : \u2115), \u2191k ^ 2 * a ^ k = a * (1 + a) / (1 - a) ^ 3"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "the expected value of $X$ is calculated as $E[X] = \\sum_{k=0}^\\infty k \\cdot P(X=k) = (1-p) \\sum_{k=0}^\\infty k p^k$.", "statement": "We assume:\n\u2022 The PMF of X is $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1_2]\nTherefore, we conclude:\n\u2022 The expected value of $X$ is given by $E[X] = (1-p) \\sum_{k=0}^\\infty k p^k$ [l4].", "dependencies": ["tc_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (X : \u2115 \u2192 \u211d) (p : \u211d)\n  (tc_1_1 : X 0 = 0 \u2227 \u2200 k : \u2115, X (k + 1) = X k + 1)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l1 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), a ^ k = 1 / (1 - a))\n  (l2 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) * a ^ k = a / (1 - a) ^ 2)\n  (l3 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) ^ 2 * a ^ k = a * (1 + a) / (1 - a) ^ 3) :\n  (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) * p ^ k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (X : \u2115 \u2192 \u211d) (p : \u211d)\n  (tc_1_1 : X 0 = 0 \u2227 \u2200 k : \u2115, X (k + 1) = X k + 1)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l1 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), a ^ k = 1 / (1 - a))\n  (l2 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) * a ^ k = a / (1 - a) ^ 2)\n  (l3 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) ^ 2 * a ^ k = a * (1 + a) / (1 - a) ^ 3) :\n  (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) * p ^ k := by\n  simp_rw [mul_assoc]\n  rw [\u2190 tsum_mul_right (1 - p) (fun k => (k : \u211d) * p ^ k)]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 11, "endLine": 14, "endColumn": 20, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition is incomplete. The natural language states that X has PMF P(X=k) = (1-p)p^k, but the Lean formalization only ensures non-negativity of these values without establishing them as the actual probability mass function of X.", "The expected value conclusion is structurally similar but presented as a distributive property proof rather than directly stating E[X] = (1-p) \u2211_{k=0}^\u221e k p^k as the expected value of the random variable X.", "The additional mathematical constraints (0 < p < 1) and helper lemmas for infinite series are consistent with the geometric distribution context, even though not explicitly mentioned in the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The PMF definition is incomplete. The natural language states that X has PMF P(X=k) = (1-p)p^k, but the Lean formalization only ensures non-negativity of these values without establishing them as the actual probability mass function of X.', 'The expected value conclusion is structurally similar but presented as a distributive property proof rather than directly stating E[X] = (1-p) \u2211_{k=0}^\u221e k p^k as the expected value of the random variable X.', 'The additional mathematical constraints (0 < p < 1) and helper lemmas for infinite series are consistent with the geometric distribution context, even though not explicitly mentioned in the natural language.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Using this result, the expected value of $X$ is calculated as $E[X] = \\sum_{k=0}^\\infty k \\cdot P(X=k) = (1-p) \\sum_{k=0}^\\infty k p^k = (1-p) \\frac{p}{(1-p)^2} = \\frac{p}{1-p}$.", "statement": "We assume:\n\u2022 The parameter $p$ satisfies $0 < p < 1$ [tc_1_3]\n\u2022 For any real or complex number $a$ such that $|a| < 1$, $\\sum_{k=0}^{\\infty} k a^k = \\frac{a}{(1-a)^2}$ [l2]\n\u2022 The expected value of $X$ is given by $E[X] = (1-p) \\sum_{k=0}^\\infty k p^k$ [l4]\nTherefore, we conclude:\n\u2022 $E[X] = \\frac{p}{1-p}$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (p : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l2 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) * a ^ k = a / (1 - a) ^ 2)\n  (l4 : (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = p / (1 - p) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (p : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l2 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) * a ^ k = a / (1 - a) ^ 2)\n  (l4 : (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = p / (1 - p) := by\n  have hp : |p| < 1 := by\n    rw [abs_of_pos tc_1_3.1]\n    exact tc_1_3.2\n  rw [l4, l2 p hp]\n  field_simp [sub_ne_zero_of_ne (ne_of_lt tc_1_3.2).symm]\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The parameter constraint tc_1_3 correctly captures the bounds 0 < p < 1 using logical conjunction.", "The series formula l2 correctly captures the mathematical relationship but restricts to real numbers only, while the natural language mentions both real and complex numbers.", "The expected value definition l4 represents a distributive property rather than defining E[X] as stated in the natural language. The semantic meaning is fundamentally different.", "The conclusion ts_1 should establish that E[X] = p/(1-p), but instead directly relates the series to the final expression without referencing the expected value E[X]."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The parameter constraint tc_1_3 correctly captures the bounds 0 < p < 1 using logical conjunction.', 'The series formula l2 correctly captures the mathematical relationship but restricts to real numbers only, while the natural language mentions both real and complex numbers.', 'The expected value definition l4 represents a distributive property rather than defining E[X] as stated in the natural language. The semantic meaning is fundamentally different.', 'The conclusion ts_1 should establish that E[X] = p/(1-p), but instead directly relates the series to the final expression without referencing the expected value E[X].']"}, "solved_negation": null, "type": "solution"}, "l5": {"id": "l5", "natural_language": "$E[X^2] = \\sum_{k=0}^\\infty k^2 \\cdot P(X=k) = (1-p) \\sum_{k=0}^\\infty k^2 p^k$.", "statement": "We assume:\n\u2022 The PMF of X is $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1_2]\nTherefore, we conclude:\n\u2022 The second moment of $X$ is given by $E[X^2] = (1-p) \\sum_{k=0}^\\infty k^2 p^k$ [l5].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (p : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (p : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := by\n  rw [\u2190 tsum_mul_right (1 - p) (fun k => (k : \u211d) ^ 2 * p ^ k)]\n  congr\n  ext k\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 8, "endLine": 9, "endColumn": 61, "data": "function expected at\n  tsum_mul_right\nterm has type\n  \u2211' (x : ?m.3507), ?m.3512 x * ?m.3513 = (\u2211' (x : ?m.3507), ?m.3512 x) * ?m.3513"}, {"line": 9, "column": 6, "endLine": 9, "endColumn": 61, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.3875\np : \u211d\ntc_1_2 : \u2200 (k : \u2115), 0 \u2264 (1 - p) * p ^ k\n\u22a2 \u2211' (k : \u2115), \u2191k ^ 2 * ((1 - p) * p ^ k) = (1 - p) * \u2211' (k : \u2115), \u2191k ^ 2 * p ^ k"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition from natural language is not explicitly captured in Lean - only a non-negativity constraint is provided instead of the full PMF specification P(X=k) = (1-p)p^k", "The second moment formula is correctly represented, showing the algebraic relationship between the full expectation and the factored form", "The mathematical relationship is preserved - the Lean equation demonstrates the same second moment calculation through algebraic manipulation", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.67 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l5\n  (p : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k)\n  (hp : p \u2260 1)\n  (hsum : Summable fun k : \u2115 => (k : \u211d)^2 * p^k) :\n  \u00ac (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := by\n  intro h\n  have h\u2081 : \u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := h\n  simp_rw [mul_assoc (1 - p) _ _] at h\u2081\n  have h\u2082 : (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := rfl\n  rw [\u2190h\u2081] at h\u2082\n  have h\u2083 : \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k = \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k := rfl\n  rw [h\u2082] at h\u2083\n  exact hp (mul_left_cancel\u2080 (by linarith) h\u2083)"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "$E[X^2] = ... = (1-p) \\sum_{k=0}^\\infty k^2 p^k = (1-p) \\frac{p(1+p)}{(1-p)^3} = \\frac{p(1+p)}{(1-p)^2}$.", "statement": "We assume:\n\u2022 The parameter $p$ satisfies $0 < p < 1$ [tc_1_3]\n\u2022 For any real or complex number $a$ such that $|a| < 1$, $\\sum_{k=0}^{\\infty} k^2 a^k = \\frac{a(1+a)}{(1-a)^3}$ [l3]\n\u2022 The second moment of $X$ is given by $E[X^2] = (1-p) \\sum_{k=0}^\\infty k^2 p^k$ [l5]\nTherefore, we conclude:\n\u2022 $E[X^2] = \\frac{p(1+p)}{(1-p)^2}$ [l6].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (p : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l3 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) ^ 2 * a ^ k = a * (1 + a) / (1 - a) ^ 3)\n  (l5 : (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = p * (1 + p) / (1 - p) ^ 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (p : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1)\n  (l3 : \u2200 (a : \u211d), |a| < 1 \u2192 \u2211' (k : \u2115), (k : \u211d) ^ 2 * a ^ k = a * (1 + a) / (1 - a) ^ 3)\n  (l5 : (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (k : \u211d) ^ 2 * p ^ k) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = p * (1 + p) / (1 - p) ^ 2 := by\n  have h : |p| < 1 := by\n    rw [abs_lt]\n    exact \u27e8by linarith [tc_1_3.1], tc_1_3.2\u27e9\n  rw [l5, l3 p h]\n  field_simp [ne_of_gt (sub_pos.mpr tc_1_3.2), ne_of_gt tc_1_3.1]\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The parameter constraint is perfectly captured with the correct bounds on p.", "The series formula is mathematically correct, though it's restricted to real numbers while the natural language mentions complex numbers. Since only real numbers are used in this context, this is acceptable.", "The second moment definition has a structural issue - it's presented as an algebraic identity rather than a definition of E[X^2], though the mathematical content is equivalent.", "The final conclusion correctly matches the natural language goal, expressing E[X^2] in the desired closed form."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The parameter constraint is perfectly captured with the correct bounds on p.', \"The series formula is mathematically correct, though it's restricted to real numbers while the natural language mentions complex numbers. Since only real numbers are used in this context, this is acceptable.\", \"The second moment definition has a structural issue - it's presented as an algebraic identity rather than a definition of E[X^2], though the mathematical content is equivalent.\", 'The final conclusion correctly matches the natural language goal, expressing E[X^2] in the desired closed form.']"}, "solved_negation": null, "type": "lemma"}, "ts_2": {"id": "ts_2", "natural_language": "Now, we can find the variance using the formula $Var(X) = E[X^2] - (E[X])^2 = \\frac{p(1+p)}{(1-p)^2} - \\left(\\frac{p}{1-p}\\right)^2 = \\frac{p+p^2-p^2}{(1-p)^2} = \\frac{p}{(1-p)^2}$.", "statement": "We assume:\n\u2022 $E[X] = \\frac{p}{1-p}$ [ts_1]\n\u2022 $E[X^2] = \\frac{p(1+p)}{(1-p)^2}$ [l6]\nTherefore, we conclude:\n\u2022 $Var(X) = \\frac{p}{(1-p)^2}$ [ts_2].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (p : \u211d)\n  (ts_1 : (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = p / (1 - p))\n  (l6 : (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = p * (1 + p) / (1 - p) ^ 2) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) - ( (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) ) ^ 2 = p / (1 - p) ^ 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_2\n  (p : \u211d)\n  (ts_1 : (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) = p / (1 - p))\n  (l6 : (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) = p * (1 + p) / (1 - p) ^ 2) :\n  (\u2211' (k : \u2115), (k : \u211d) ^ 2 * ((1 - p) * p ^ k)) - ( (\u2211' (k : \u2115), (k : \u211d) * ((1 - p) * p ^ k)) ) ^ 2 = p / (1 - p) ^ 2 := by\n  rw [ts_1, l6]\n  field_simp\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption E[X] = p/(1-p) is correctly formalized as an infinite sum with the geometric distribution probability mass function.", "The assumption E[X\u00b2] = p(1+p)/(1-p)\u00b2 is correctly formalized as the second moment using the same probability distribution.", "The conclusion Var(X) = p/(1-p)\u00b2 is correctly formalized using the standard variance formula E[X\u00b2] - (E[X])\u00b2, which is mathematically equivalent to the natural language statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}, "l7": {"id": "l7", "natural_language": "Since $0 < p < 1$ and $|e^{it}|=1$, the magnitude $|pe^{it}| = p < 1$, which guarantees convergence.", "statement": "We assume:\n\u2022 The parameter $p$ satisfies $0 < p < 1$ [tc_1_3]\nTherefore, we conclude:\n\u2022 For any real number $t$, the magnitude $|pe^{it}| = p$, and thus $|pe^{it}| < 1$ [l7].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1", "l5", "l6", "ts_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (p : \u211d) (t : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1) :\n  |p * Complex.exp (t * Complex.i)| = p \u2227 |p * Complex.exp (t * Complex.i)| < 1 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 24, "endLine": 8, "endColumn": 33, "data": "unknown constant 'Complex.i'"}, {"line": 8, "column": 2, "endLine": 8, "endColumn": 35, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 64, "endLine": 8, "endColumn": 73, "data": "unknown constant 'Complex.i'"}, {"line": 8, "column": 42, "endLine": 8, "endColumn": 75, "data": "failed to synthesize\n  Lattice \u2102\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma l7\n  (p : \u211d) (t : \u211d)\n  (tc_1_3 : 0 < p \u2227 p < 1) :\n  abs (p * exp (t * I)) = p \u2227 abs (p * exp (t * I)) < 1 := by\n  constructor\n  \u00b7 simp [abs_mul, Complex.abs_exp, abs_of_pos tc_1_3.1]\n  \u00b7 simp [abs_mul, Complex.abs_exp, abs_of_pos tc_1_3.1, tc_1_3.2]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "The characteristic function is $\\phi_X(t) = E[e^{itX}] = \\sum_{k=0}^\\infty e^{itk} P(X=k) = (1-p) \\sum_{k=0}^\\infty (pe^{it})^k$.", "statement": "We assume:\n\u2022 The PMF of X is $P(X=k) = (1-p)p^k$ for $k \\in \\{0, 1, 2, ...\\}$ [tc_1_2]\nTherefore, we conclude:\n\u2022 The characteristic function of $X$ is given by $\\phi_X(t) = (1-p) \\sum_{k=0}^\\infty (pe^{it})^k$ [l8].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1", "l5", "l6", "ts_2", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (p : \u211d)\n  (t : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k) :\n  (\u2211' (k : \u2115), Complex.exp (t * k * Complex.I) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (p : \u211d)\n  (t : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k) :\n  (\u2211' (k : \u2115), Complex.exp (t * k * Complex.I) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := by\n  simp_rw [mul_assoc (1 - p), \u2190 mul_pow]\n  rw [tsum_mul_left]\n  congr\n  ext k\n  rw [mul_comm (Complex.exp _), \u2190 mul_assoc, \u2190 Complex.exp_nat_mul]\n  simp only [mul_comm (p ^ k), mul_assoc]\n  congr\n  rw [mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 11, "endLine": 10, "endColumn": 28, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PMF definition P(X=k) = (1-p)p^k is not explicitly stated in the Lean formalization, only referenced indirectly through the non-negativity constraint tc_1_2. However, the constraint does capture the essential form of the PMF.", "The characteristic function formula is perfectly captured in the Lean formalization, with the left side representing the definition of characteristic function and the right side representing the simplified form from the natural language conclusion.", "The mathematical equivalence between the characteristic function definition and its simplified form is correctly represented as an equality in Lean, capturing the logical relationship stated in the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.67 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter Complex\n\nlemma neg_l8\n  (p : \u211d)\n  (t : \u211d)\n  (tc_1_2 : \u2200 k : \u2115, 0 \u2264 (1 - p) * p ^ k)\n  (h_abs : Summable fun k \u21a6 Complex.abs ((1 - p) * p ^ k))\n  (h_abs' : Summable fun k \u21a6 Complex.abs ((p * Complex.exp (t * Complex.I)) ^ k))\n  (hp : p \u2260 1) :\n  \u00ac (\u2211' (k : \u2115), Complex.exp (t * k * Complex.I) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := by\n  intro h\n  have h1 : \u2211' (k : \u2115), Complex.exp (t * k * Complex.I) * ((1 - p) * p ^ k) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := h\n  have h2 : \u2211' (k : \u2115), Complex.exp (t * k * Complex.I) * ((1 - p) * p ^ k) = (1 - p) * \u2211' (k : \u2115), p ^ k * Complex.exp (t * k * Complex.I) := by\n    congr\n    ext k\n    rw [mul_comm, \u2190 mul_assoc, \u2190 exp_nat_mul, mul_comm]\n  rw [h2] at h1\n  have h3 : (1 - p) * \u2211' (k : \u2115), p ^ k * Complex.exp (t * k * Complex.I) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := h1\n  have h4 : \u2211' (k : \u2115), p ^ k * Complex.exp (t * k * Complex.I) = \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k := by\n    exact mul_left_cancel\u2080 (sub_ne_zero_of_ne hp) h3\n  have h5 : \u2200 k : \u2115, p ^ k * Complex.exp (t * k * Complex.I) = (p * Complex.exp (t * Complex.I)) ^ k := by\n    intro k\n    rw [\u2190 mul_pow]\n  have h6 := tsum_congr h5\n  rw [h6] at h4\n  exact (rfl : \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k = \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k) h4"}, "type": "lemma"}, "ts_3": {"id": "ts_3", "natural_language": "The characteristic function is $\\phi_X(t) = ... = (1-p) \\sum_{k=0}^\\infty (pe^{it})^k = (1-p) \\frac{1}{1-pe^{it}} = \\frac{1-p}{1-pe^{it}}$.", "statement": "We assume:\n\u2022 For any real or complex number $a$ such that $|a| < 1$, the geometric series converges and its sum is $\\sum_{k=0}^{\\infty} a^k = \\frac{1}{1-a}$ [l1]\n\u2022 For any real number $t$, the magnitude $|pe^{it}| < 1$ [l7]\n\u2022 The characteristic function of $X$ is given by $\\phi_X(t) = (1-p) \\sum_{k=0}^\\infty (pe^{it})^k$ [l8]\nTherefore, we conclude:\n\u2022 $\\phi_X(t) = \\frac{1-p}{1-pe^{it}}$ [ts_3].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "ts_1", "l5", "l6", "ts_2", "l7", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_3\n  (p : \u211d) (t : \u211d)\n  (l1_a : \u2200 (a : \u2102), Complex.abs a < 1 \u2192 HasSum (fun k : \u2115 => a ^ k) (1 / (1 - a)))\n  (l7 : Complex.abs (p * Complex.exp (t * Complex.I)) < 1)\n  (l8 : (\u2211' (k : \u2115), (Complex.exp (t * k * Complex.I)) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k) :\n  (\u2211' (k : \u2115), (Complex.exp (t * k * Complex.I)) * ((1 - p) * p ^ k)) = (1 - p) / (1 - p * Complex.exp (t * Complex.I)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_3\n  (p : \u211d) (t : \u211d)\n  (l1_a : \u2200 (a : \u2102), Complex.abs a < 1 \u2192 HasSum (fun k : \u2115 => a ^ k) (1 / (1 - a)))\n  (l7 : Complex.abs (p * Complex.exp (t * Complex.I)) < 1)\n  (l8 : (\u2211' (k : \u2115), (Complex.exp (t * k * Complex.I)) * ((1 - p) * p ^ k)) = (1 - p) * \u2211' (k : \u2115), (p * Complex.exp (t * Complex.I)) ^ k) :\n  (\u2211' (k : \u2115), (Complex.exp (t * k * Complex.I)) * ((1 - p) * p ^ k)) = (1 - p) / (1 - p * Complex.exp (t * Complex.I)) := by\n  rw [l8]\n  have h := l1_a (p * Complex.exp (t * Complex.I)) l7\n  rw [\u2190mul_one (1 - p), \u2190h.tsum_eq]\n  congr 1\n  field_simp\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 6, "endLine": 13, "endColumn": 22, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  1 - p\np t : \u211d\nl1_a : \u2200 (a : \u2102), Complex.abs a < 1 \u2192 HasSum (fun k => a ^ k) (1 / (1 - a))\nl7 : Complex.abs (\u2191p * Complex.exp (\u2191t * Complex.I)) < 1\nl8 :\n  \u2211' (k : \u2115), Complex.exp (\u2191t * \u2191k * Complex.I) * ((1 - \u2191p) * \u2191p ^ k) =\n    (1 - \u2191p) * \u2211' (k : \u2115), (\u2191p * Complex.exp (\u2191t * Complex.I)) ^ k\nh : HasSum (fun k => (\u2191p * Complex.exp (\u2191t * Complex.I)) ^ k) (1 / (1 - \u2191p * Complex.exp (\u2191t * Complex.I)))\n\u22a2 (1 - \u2191p) * \u2211' (k : \u2115), (\u2191p * Complex.exp (\u2191t * Complex.I)) ^ k = (1 - \u2191p) / (1 - \u2191p * Complex.exp (\u2191t * Complex.I))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The geometric series convergence condition l1_a correctly captures both convergence and the sum formula using HasSum.", "The magnitude condition l7 correctly translates the absolute value constraint on pe^{it}.", "The characteristic function definition l8 has a major inconsistency. The natural language defines \u03c6_X(t) = (1-p)\u2211(pe^{it})^k, but the Lean formalization presents this as an equality between two different expressions, with the left side involving exp(t*k*I) * ((1-p)*p^k) which doesn't directly correspond to the stated definition.", "The conclusion ts_3 correctly states the target formula (1-p)/(1-pe^{it}) that should be proven.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The geometric series convergence condition l1_a correctly captures both convergence and the sum formula using HasSum.', 'The magnitude condition l7 correctly translates the absolute value constraint on pe^{it}.', \"The characteristic function definition l8 has a major inconsistency. The natural language defines \u03c6_X(t) = (1-p)\u2211(pe^{it})^k, but the Lean formalization presents this as an equality between two different expressions, with the left side involving exp(t*k*I) * ((1-p)*p^k) which doesn't directly correspond to the stated definition.\", 'The conclusion ts_3 correctly states the target formula (1-p)/(1-pe^{it}) that should be proven.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_3", "label": "ts_3", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_2", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

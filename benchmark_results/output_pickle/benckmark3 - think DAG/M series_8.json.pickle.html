@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence such that $a_n = 3n^2 - 3n + 1$. Let the partial sum be $S_N = \sum_{n=1}^{N} a_n$. Prove that $S_N = N^3$ for all integers $N \geq 1$.
+
+Proof: We will prove this by induction on $N$. First, for the base case $N=1$, we have $S_1 = a_1$. We calculate $a_1=3(1)^2-3(1)+1 = 3-3+1 = 1$. The formula for the sum gives $1^3=1$. So $S_1 = 1^3$, which holds. Now, for the inductive step, we assume the statement is true for some integer $k \geq 1$, which means $S_k = k^3$. We want to show that the statement is true for $k+1$, i.e., $S_{k+1} = (k+1)^3$. We know that $S_{k+1} = S_k + a_{k+1}$. From the inductive hypothesis, $S_k = k^3$, and we have $a_{k+1} = 3(k+1)^2-3(k+1)+1$. So we need to show that $k^3 + 3(k+1)^2-3(k+1)+1 = (k+1)^3$. We expand the terms on the left side: $3(k+1)^2 = 3(k^2+2k+1) = 3k^2+6k+3$. Also, $-3(k+1) = -3k-3$. So the left side becomes $k^3 + (3k^2+6k+3) + (-3k-3) + 1 = k^3 + 3k^2+3k+1$. The right side is $(k+1)^3 = k^3+3k^2+3k+1$. Since the left side equals the right side, the statement is true for $k+1$. By the principle of mathematical induction, the statement is true for all integers $N \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be a sequence such that $a_n = 3n^2 - 3n + 1$.", "statement": "Premise:\n\u2022 $(a_n)$ is a sequence of numbers where for any integer $n \\geq 1$, $a_n = 3n^2 - 3n + 1$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The natural language refers to 'a sequence of numbers' without specifying the domain or codomain, while Lean explicitly declares 'a : \u2115 \u2192 \u211d' (natural numbers to real numbers). The natural language mentions 'integer n \u2265 1' suggesting the domain could be integers, but Lean uses natural numbers. However, since natural numbers \u2265 1 are a subset of integers \u2265 1, this is functionally equivalent for the given constraint.", "The mathematical content is identical: both state that for n \u2265 1, a_n = 3n\u00b2 - 3n + 1. However, there's a domain difference - natural language says 'integer n \u2265 1' while Lean uses natural numbers. Since the constraint n \u2265 1 with natural numbers covers the same effective domain as the mathematical statement, this is a minor notational difference."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The natural language refers to 'a sequence of numbers' without specifying the domain or codomain, while Lean explicitly declares 'a : \u2115 \u2192 \u211d' (natural numbers to real numbers). The natural language mentions 'integer n \u2265 1' suggesting the domain could be integers, but Lean uses natural numbers. However, since natural numbers \u2265 1 are a subset of integers \u2265 1, this is functionally equivalent for the given constraint.\", \"The mathematical content is identical: both state that for n \u2265 1, a_n = 3n\u00b2 - 3n + 1. However, there's a domain difference - natural language says 'integer n \u2265 1' while Lean uses natural numbers. Since the constraint n \u2265 1 with natural numbers covers the same effective domain as the mathematical statement, this is a minor notational difference.\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Let the partial sum be $S_N = \\sum_{n=1}^{N} a_n$.", "statement": "Premise:\n\u2022 $(a_n)$ is a sequence of numbers where for any integer $n \\geq 1$, $a_n = 3n^2 - 3n + 1$ [tc_1].\n\u2022 $S_N$ is the partial sum of the sequence $(a_n)$, defined as $S_N = \\sum_{n=1}^{N} a_n$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1)\n\ntheorem tc_2 (N : \u2115) (hN : N \u2265 1) : \n  (\u2211 n in Finset.Icc 1 N, a n) = N^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The sequence definition is referenced but not explicitly stated in the Lean theorem. The natural language explicitly gives the formula a_n = 3n^2 - 3n + 1, while Lean just uses 'a n' assuming it's defined elsewhere.", "The partial sum definition matches perfectly. Lean's '\u2211 n in Finset.Icc 1 N, a n' is equivalent to the mathematical notation \u2211_{n=1}^{N} a_n.", "The natural language states there are no new conclusions, just initial conditions. However, the Lean theorem makes a substantial claim that the sum equals N^3, which is not mentioned in the natural language at all."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The sequence definition is referenced but not explicitly stated in the Lean theorem. The natural language explicitly gives the formula a_n = 3n^2 - 3n + 1, while Lean just uses 'a n' assuming it's defined elsewhere.\", \"The partial sum definition matches perfectly. Lean's '\u2211 n in Finset.Icc 1 N, a n' is equivalent to the mathematical notation \u2211_{n=1}^{N} a_n.\", 'The natural language states there are no new conclusions, just initial conditions. However, the Lean theorem makes a substantial claim that the sum equals N^3, which is not mentioned in the natural language at all.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "for the base case $N=1$, we have $S_1 = a_1$.", "statement": "We assume:\n\u2022 $S_N$ is the partial sum of the sequence $(a_n)$, defined as $S_N = \\sum_{n=1}^{N} a_n$ [tc_2].\nTherefore, we conclude:\n\u2022 $S_1 = a_1$ [l1].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_2 : \u2200 N : \u2115, N \u2265 1 \u2192 (\u2211 n in Finset.Icc 1 N, a n) = N^3)\n\ntheorem l1 : \n  a 1 = 1^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n\ntheorem l1 (tc_2 : \u2200 N : \u2115, N \u2265 1 \u2192 (\u2211 n in Finset.Icc 1 N, a n) = (N : \u211d)^3) : \n  a 1 = (1 : \u211d)^3 := by\n  have h_sum : (\u2211 n in Finset.Icc 1 1, a n) = (1 : \u211d)^3 := by\n    have h\u2081 : (\u2211 n in Finset.Icc 1 1, a n) = (1 : \u211d)^3 := by\n      have h\u2082 : (\u2211 n in Finset.Icc 1 1, a n) = (1 : \u211d)^3 := by\n        have h\u2083 : (1 : \u2115) \u2265 1 := by norm_num\n        have h\u2084 : (\u2211 n in Finset.Icc 1 1, a n) = (1 : \u211d)^3 := by\n          specialize tc_2 1 h\u2083\n          norm_num at tc_2 \u22a2\n          <;> simpa using tc_2\n        exact h\u2084\n      exact h\u2082\n    exact h\u2081\n  \n  have h_sum_eq_a1 : (\u2211 n in Finset.Icc 1 1, a n) = a 1 := by\n    simp [Finset.sum_Icc_succ_top]\n    <;> norm_num\n    <;> simp_all\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : a 1 = (1 : \u211d)^3 := by\n    have h\u2082 : a 1 = (1 : \u211d)^3 := by\n      calc\n        a 1 = (\u2211 n in Finset.Icc 1 1, a n) := by\n          rw [h_sum_eq_a1]\n          <;> simp [Finset.sum_Icc_succ_top]\n          <;> norm_num\n          <;> simp_all\n          <;> norm_num\n          <;> linarith\n        _ = (1 : \u211d)^3 := by rw [h_sum]\n    exact h\u2082\n  \n  apply h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 4}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language defines S_N as a general partial sum \u2211_{n=1}^{N} a_n, but the Lean formalization (tc_2) adds a specific constraint that S_N = N^3. This fundamentally changes the mathematical meaning from a general definition to a specific sequence property.", "The natural language concludes S_1 = a_1 (a general relationship), while the Lean formalization concludes a 1 = 1^3 (a specific numerical result). Although this follows logically from tc_2, it doesn't directly capture the stated general relationship S_1 = a_1."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language defines S_N as a general partial sum \u2211_{n=1}^{N} a_n, but the Lean formalization (tc_2) adds a specific constraint that S_N = N^3. This fundamentally changes the mathematical meaning from a general definition to a specific sequence property.', \"The natural language concludes S_1 = a_1 (a general relationship), while the Lean formalization concludes a 1 = 1^3 (a specific numerical result). Although this follows logically from tc_2, it doesn't directly capture the stated general relationship S_1 = a_1.\"]"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We calculate $a_1=3(1)^2-3(1)+1 = 3-3+1 = 1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence of numbers where for any integer $n \\geq 1$, $a_n = 3n^2 - 3n + 1$ [tc_1].\nTherefore, we conclude:\n\u2022 $a_1 = 1$ [l2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a : \u2115 \u2192 \u211d) \n  (h : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1) : \n  a 1 = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a : \u2115 \u2192 \u211d) \n  (h : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1) : \n  a 1 = 1 := by\n  have h1 : a 1 = (3 : \u211d) * (1 : \u211d)^2 - 3 * (1 : \u211d) + 1 := by\n    have h\u2082 : a 1 = (3 : \u211d) * (1 : \u2115)^2 - 3 * (1 : \u2115) + 1 := by\n      have h\u2083 : (1 : \u2115) \u2265 1 := by norm_num\n      have h\u2084 : a 1 = (3 : \u211d) * (1 : \u2115)^2 - 3 * (1 : \u2115) + 1 := by\n        have h\u2085 := h 1 h\u2083\n        norm_num at h\u2085 \u22a2\n        <;>\n        (try norm_cast at h\u2085 \u22a2) <;>\n        (try simp_all [pow_two]) <;>\n        (try ring_nf at h\u2085 \u22a2) <;>\n        (try linarith) <;>\n        (try assumption) <;>\n        (try norm_num at h\u2085 \u22a2) <;>\n        (try simp_all [pow_two]) <;>\n        (try ring_nf at h\u2085 \u22a2) <;>\n        (try linarith)\n        <;>\n        (try assumption)\n        <;>\n        (try norm_num at h\u2085 \u22a2)\n        <;>\n        (try simp_all [pow_two])\n        <;>\n        (try ring_nf at h\u2085 \u22a2)\n        <;>\n        (try linarith)\n        <;>\n        (try assumption)\n        <;>\n        (try norm_num at h\u2085 \u22a2)\n        <;>\n        (try simp_all [pow_two])\n        <;>\n        (try ring_nf at h\u2085 \u22a2)\n        <;>\n        (try linarith)\n        <;>\n        (try assumption)\n      exact h\u2084\n    -- Convert the natural numbers to real numbers\n    have h\u2083 : (a 1 : \u211d) = (3 : \u211d) * (1 : \u211d)^2 - 3 * (1 : \u211d) + 1 := by\n      norm_cast at h\u2082 \u22a2\n      <;>\n      simp_all [pow_two]\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith\n    exact h\u2083\n  \n  have h2 : a 1 = 1 := by\n    have h\u2083 : a 1 = (3 : \u211d) * (1 : \u211d)^2 - 3 * (1 : \u211d) + 1 := h1\n    rw [h\u2083]\n    <;> norm_num\n    <;>\n    (try ring_nf)\n    <;>\n    (try norm_num)\n    <;>\n    (try linarith)\n  \n  apply h2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition is correctly formalized. The use of natural numbers instead of integers is appropriate since the condition n \u2265 1 makes them equivalent for this context, and the mathematical formula is accurately represented.", "The conclusion a_1 = 1 is directly and correctly translated from the natural language.", "The logical structure properly captures the assumption-conclusion relationship, with the sequence definition as a hypothesis and the specific value as the theorem statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The formula for the sum gives $1^3=1$. So $S_1 = 1^3$, which holds.", "statement": "We assume:\n\u2022 $S_1 = a_1$ [l1].\n\u2022 $a_1 = 1$ [l2].\nTherefore, we conclude:\n\u2022 $S_1 = 1^3$ [l3].", "dependencies": ["l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (S : \u2115 \u2192 \u211d)\n  (hS : \u2200 N : \u2115, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (l1 : S 1 = a 1)\n  (l2 : a 1 = 1) :\n  S 1 = 1^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (S : \u2115 \u2192 \u211d)\n  (hS : \u2200 N : \u2115, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (l1 : S 1 = a 1)\n  (l2 : a 1 = 1) :\n  S 1 = 1^3 := by\n  have h3 : S 1 = 1 := by\n    have h3\u2081 : S 1 = a 1 := l1\n    have h3\u2082 : a 1 = (1 : \u211d) := by exact_mod_cast l2\n    linarith\n  \n  have h4 : (1 : \u211d)^3 = 1 := by\n    norm_num\n    <;>\n    simp [pow_three]\n    <;>\n    norm_num\n  \n  have h5 : S 1 = (1 : \u211d)^3 := by\n    rw [h3]\n    <;>\n    norm_num at h4 \u22a2 <;>\n    linarith\n  \n  -- Convert the goal to use real numbers for consistency\n  norm_num at h5 \u22a2\n  <;>\n  simpa using h5", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the logical components from the natural language. The assumptions l1 (S 1 = a 1) and l2 (a 1 = 1) are faithfully represented, and the conclusion l3 (S 1 = 1^3) matches exactly. The additional constraint hS defining S as a sum function is an extra mathematical detail that provides context but doesn't contradict the natural language statements. The logical flow and mathematical meaning are preserved."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "we assume the statement is true for some integer $k \\geq 1$, which means $S_k = k^3$.", "statement": "Definition (Inductive Hypothesis):\n\u2022 For some integer $k \\ge 1$, we assume that $S_k = k^3$ [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 (k : \u2115) (hk : k \u2265 1) :\n  let a : \u2115 \u2192 \u211d := fun n => 3 * (n : \u211d)^2 - 3 * (n : \u211d) + 1\n  let S : \u2115 \u2192 \u211d := fun N => \u2211 n in Finset.Icc 1 N, a n\n  S k = (k : \u211d)^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The natural language states k is an integer, but Lean uses natural numbers (\u2115). While natural numbers are a subset of integers, this is a type difference that changes the domain slightly.", "Both the natural language and Lean specify that k \u2265 1, which matches perfectly.", "Both state that S_k = k^3. The Lean version includes type coercion to reals which is a technical detail that doesn't change the mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "We know that $S_{k+1} = S_k + a_{k+1}$.", "statement": "We assume:\n\u2022 $S_N$ is the partial sum of the sequence $(a_n)$, defined as $S_N = \\sum_{n=1}^{N} a_n$ [tc_2].\nTherefore, we conclude:\n\u2022 For any integer $k \\ge 1$, $S_{k+1} = S_k + a_{k+1}$ [l4].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (k : \u2115) (hk : k \u2265 1) \n  (a : \u2115 \u2192 \u211d) \n  (ha : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1) :\n  (\u2211 n in Finset.Icc 1 (k + 1), a n) = (\u2211 n in Finset.Icc 1 k, a n) + a (k + 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (k : \u2115) (hk : k \u2265 1) \n  (a : \u2115 \u2192 \u211d) \n  (ha : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1) :\n  (\u2211 n in Finset.Icc 1 (k + 1), a n) = (\u2211 n in Finset.Icc 1 k, a n) + a (k + 1) := by\n  have h_main : (\u2211 n in Finset.Icc 1 (k + 1), a n) = (\u2211 n in Finset.Icc 1 k, a n) + a (k + 1) := by\n    have h\u2081 : \u2211 n in Finset.Icc 1 (k + 1), a n = \u2211 n in Finset.Icc 1 k, a n + a (k + 1) := by\n      rw [Finset.sum_Icc_succ_top (by omega : 1 \u2264 k + 1)]\n      <;>\n      simp_all [add_comm]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    linarith\n  \n  apply h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical relationship S_{k+1} = S_k + a_{k+1} using appropriate sum notation. The constraint k \u2265 1 is properly represented, and the partial sum definition is accurately translated. The additional specification of the sequence formula (ha) is an extra constraint that doesn't contradict the general statement and is acceptable under the 'extra conditions are fine' guideline."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "we have $a_{k+1} = 3(k+1)^2-3(k+1)+1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence of numbers where for any integer $n \\geq 1$, $a_n = 3n^2 - 3n + 1$ [tc_1].\nTherefore, we conclude:\n\u2022 For any integer $k \\ge 1$, $a_{k+1} = 3(k+1)^2-3(k+1)+1$ [l5].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a : \u2115 \u2192 \u211d) \n  (h : \u2200 n, n \u2265 1 \u2192 a n = 3 * (n : \u211d)^2 - 3 * (n : \u211d) + 1) :\n  \u2200 k, k \u2265 1 \u2192 a (k + 1) = 3 * ((k + 1) : \u211d)^2 - 3 * ((k + 1) : \u211d) + 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a : \u2115 \u2192 \u211d) \n  (h : \u2200 n, n \u2265 1 \u2192 a n = 3 * (n : \u211d)^2 - 3 * (n : \u211d) + 1) :\n  \u2200 k, k \u2265 1 \u2192 a (k + 1) = 3 * ((k + 1) : \u211d)^2 - 3 * ((k + 1) : \u211d) + 1 := by\n  intro k hk\n  have h\u2081 : (k + 1 : \u2115) \u2265 1 := by\n    have h\u2082 : k \u2265 1 := hk\n    have h\u2083 : (k : \u2115) + 1 \u2265 1 := by\n      omega\n    exact h\u2083\n  \n  have h\u2082 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n    have h\u2083 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n      have h\u2084 : (k + 1 : \u2115) \u2265 1 := h\u2081\n      have h\u2085 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n        have h\u2086 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n          -- Use the given property of the sequence to express a (k + 1)\n          have h\u2087 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n            -- Apply the given property to n = k + 1\n            have h\u2088 : (k + 1 : \u2115) \u2265 1 := h\u2081\n            have h\u2089 : a (k + 1) = 3 * ((k + 1 : \u2115) : \u211d)^2 - 3 * ((k + 1 : \u2115) : \u211d) + 1 := by\n              -- Use the given property of the sequence\n              specialize h (k + 1) h\u2088\n              -- Simplify the expression to match the required form\n              norm_cast at h \u22a2\n              <;> simp_all [Nat.cast_add, Nat.cast_one, pow_two]\n              <;> ring_nf at *\n              <;> linarith\n            exact h\u2089\n          exact h\u2087\n        exact h\u2086\n      exact h\u2085\n    exact h\u2083\n  \n  have h\u2083 : ((k + 1 : \u2115) : \u211d) = (k + 1 : \u211d) := by\n    norm_cast\n    <;> simp [add_assoc]\n    <;> ring_nf\n    <;> norm_num\n    <;> linarith\n  \n  have h\u2084 : a (k + 1) = 3 * ((k + 1) : \u211d)^2 - 3 * ((k + 1) : \u211d) + 1 := by\n    rw [h\u2082]\n    have h\u2085 : ((k + 1 : \u2115) : \u211d) = (k + 1 : \u211d) := h\u2083\n    rw [h\u2085]\n    <;> norm_num\n    <;> ring_nf\n    <;> simp_all [Nat.cast_add, Nat.cast_one, pow_two]\n    <;> linarith\n  \n  exact h\u2084", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition and formula are correctly captured in Lean, with appropriate type declarations (\u2115 \u2192 \u211d) and the exact mathematical formula.", "The conclusion correctly translates the natural language statement about a_{k+1} into Lean syntax, preserving the domain constraint k \u2265 1.", "The logical structure properly captures that this is a direct application of the premise - the theorem correctly shows that the general formula for n \u2265 1 implies the specific case for k+1 when k \u2265 1."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "We expand the terms on the left side: $3(k+1)^2 = 3(k^2+2k+1) = 3k^2+6k+3$. Also, $-3(k+1) = -3k-3$. So the left side becomes $k^3 + (3k^2+6k+3) + (-3k-3) + 1 = k^3 + 3k^2+3k+1$.", "statement": "We assume:\n\u2022 For any integer $k \\ge 1$, $a_{k+1} = 3(k+1)^2-3(k+1)+1$ [l5].\nTherefore, we conclude:\n\u2022 $k^3 + a_{k+1} = k^3 + 3k^2+3k+1$ [l6].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (a : \u2115 \u2192 \u211d) (k : \u2115) \n  (h : k \u2265 1 \u2192 a (k + 1) = 3 * (k + 1)^2 - 3 * (k + 1) + 1) :\n  k \u2265 1 \u2192 k^3 + a (k + 1) = k^3 + 3 * k^2 + 3 * k + 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (a : \u2115 \u2192 \u211d) (k : \u2115) \n  (h : k \u2265 1 \u2192 a (k + 1) = 3 * (k + 1 : \u211d)^2 - 3 * (k + 1 : \u211d) + 1) :\n  k \u2265 1 \u2192 (k : \u211d)^3 + a (k + 1) = (k : \u211d)^3 + 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n  intro hk\n  have h_a : a (k + 1) = 3 * (k + 1 : \u211d)^2 - 3 * (k + 1 : \u211d) + 1 := by\n    have h\u2081 : k \u2265 1 := hk\n    have h\u2082 : a (k + 1) = 3 * (k + 1 : \u211d)^2 - 3 * (k + 1 : \u211d) + 1 := h h\u2081\n    exact h\u2082\n  \n  have h_expand : (3 : \u211d) * (k + 1 : \u211d)^2 - 3 * (k + 1 : \u211d) + 1 = 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n    have h\u2081 : (3 : \u211d) * (k + 1 : \u211d)^2 - 3 * (k + 1 : \u211d) + 1 = 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n      ring_nf at *\n      <;> simp [add_assoc]\n      <;> ring_nf\n      <;> norm_cast\n      <;> field_simp\n      <;> ring_nf\n      <;> norm_cast\n      <;> linarith\n    rw [h\u2081]\n    <;> norm_num\n  \n  have h_main : (k : \u211d)^3 + a (k + 1) = (k : \u211d)^3 + 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n    rw [h_a]\n    rw [h_expand]\n    <;> ring_nf\n    <;> norm_cast\n    <;> simp_all [pow_two, pow_three]\n    <;> ring_nf at *\n    <;> linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition is correctly captured with the same mathematical formula and constraint k \u2265 1. Using natural numbers instead of integers is acceptable since k \u2265 1.", "The conclusion formula k^3 + a(k+1) = k^3 + 3k^2 + 3k + 1 is identical in both natural language and Lean formalization.", "The logical structure properly captures that the conclusion follows from the given assumption about the sequence formula. The theorem format in Lean appropriately represents the deductive relationship shown in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "The right side is $(k+1)^3 = k^3+3k^2+3k+1$.", "statement": "We assume:\n\u2022 $k$ is an integer.\nTherefore, we conclude:\n\u2022 $(k+1)^3 = k^3+3k^2+3k+1$ [l7].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (k : \u2124) : (k + 1)^3 = k^3 + 3*k^2 + 3*k + 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (k : \u2124) : (k + 1)^3 = k^3 + 3*k^2 + 3*k + 1 := by\n  have h_main : (k + 1)^3 = k^3 + 3*k^2 + 3*k + 1 := by\n    ring_nf\n    <;>\n    simp [pow_three, mul_assoc, mul_comm, mul_left_comm]\n    <;>\n    ring_nf\n    <;>\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the natural language statement. The variable k is correctly declared as an integer (\u2124), and the mathematical equation (k+1)\u00b3 = k\u00b3+3k\u00b2+3k+1 is accurately represented using Lean's notation. The logical structure as a universal theorem about integers is preserved exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Since the left side equals the right side, the statement is true for $k+1$.", "statement": "We assume:\n\u2022 For some integer $k \\ge 1$, we assume that $S_k = k^3$ [def_1].\n\u2022 For any integer $k \\ge 1$, $S_{k+1} = S_k + a_{k+1}$ [l4].\n\u2022 $k^3 + a_{k+1} = k^3 + 3k^2+3k+1$ [l6].\n\u2022 $(k+1)^3 = k^3+3k^2+3k+1$ [l7].\nTherefore, we conclude:\n\u2022 $S_{k+1} = (k+1)^3$ [l8].", "dependencies": ["def_1", "l4", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (k : \u2115) \n  (hk : k \u2265 1)\n  (a : \u2115 \u2192 \u211d)\n  (ha : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1)\n  (S : \u2115 \u2192 \u211d)\n  (hS : \u2200 N, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (def_1 : S k = k^3)\n  (l4 : S (k + 1) = S k + a (k + 1))\n  (l6 : k^3 + a (k + 1) = k^3 + 3 * k^2 + 3 * k + 1)\n  (l7 : (k + 1)^3 = k^3 + 3 * k^2 + 3 * k + 1) :\n  S (k + 1) = (k + 1)^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (k : \u2115) \n  (hk : k \u2265 1)\n  (a : \u2115 \u2192 \u211d)\n  (ha : \u2200 n, n \u2265 1 \u2192 a n = 3 * n^2 - 3 * n + 1)\n  (S : \u2115 \u2192 \u211d)\n  (hS : \u2200 N, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (def_1 : S k = k^3)\n  (l4 : S (k + 1) = S k + a (k + 1))\n  (l6 : k^3 + a (k + 1) = k^3 + 3 * k^2 + 3 * k + 1)\n  (l7 : (k + 1)^3 = k^3 + 3 * k^2 + 3 * k + 1) :\n  S (k + 1) = (k + 1)^3 := by\n  have h1 : S (k + 1) = (k : \u211d)^3 + a (k + 1) := by\n    have h1\u2081 : S (k + 1) = S k + a (k + 1) := l4\n    have h1\u2082 : S k = (k : \u211d)^3 := by\n      norm_cast at def_1 \u22a2\n      <;> simp_all [pow_three]\n      <;> ring_nf at *\n      <;> norm_num at *\n      <;> linarith\n    rw [h1\u2081, h1\u2082]\n    <;> ring_nf\n    <;> norm_num\n    <;> simp_all [pow_three]\n    <;> ring_nf at *\n    <;> norm_num at *\n    <;> linarith\n  \n  have h2 : S (k + 1) = (k : \u211d)^3 + 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n    have h2\u2081 : (k : \u211d)^3 + a (k + 1) = (k : \u211d)^3 + 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n      norm_cast at l6 \u22a2\n      <;>\n      (try ring_nf at l6 \u22a2) <;>\n      (try simp_all [pow_three]) <;>\n      (try norm_num at l6 \u22a2) <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [pow_two, pow_three]\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;> linarith\n        })\n    linarith\n  \n  have h3 : S (k + 1) = (k + 1 : \u211d)^3 := by\n    have h3\u2081 : (k + 1 : \u211d)^3 = (k : \u211d)^3 + 3 * (k : \u211d)^2 + 3 * (k : \u211d) + 1 := by\n      norm_cast at l7 \u22a2\n      <;>\n      (try ring_nf at l7 \u22a2) <;>\n      (try simp_all [pow_three]) <;>\n      (try norm_num at l7 \u22a2) <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [pow_two, pow_three]\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;> linarith\n        })\n    linarith\n  \n  norm_cast at h3 \u22a2\n  <;>\n  (try ring_nf at h3 \u22a2) <;>\n  (try simp_all [pow_three]) <;>\n  (try norm_num at h3 \u22a2) <;>\n  (try linarith)\n  <;>\n  (try\n    {\n      simp_all [pow_two, pow_three]\n      <;> ring_nf at *\n      <;> norm_num at *\n      <;> linarith\n    })", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the logical components from the natural language. The additional function definitions (ha and hS) provide necessary mathematical context that makes the theorem more rigorous without contradicting the natural language statements. All four given conditions (def_1, l4, l6, l7) and the conclusion are accurately represented. The use of natural numbers instead of integers is appropriate given the constraint k \u2265 1."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By the principle of mathematical induction, the statement is true for all integers $N \\geq 1$.", "statement": "We assume:\n\u2022 The statement $P(N) \\equiv S_N = N^3$ holds for $N=1$, as shown by $S_1 = 1^3$ [l3].\n\u2022 For any integer $k \\ge 1$, if we assume $P(k)$ holds (i.e., $S_k = k^3$ [def_1]), then $P(k+1)$ also holds, as shown by $S_{k+1} = (k+1)^3$ [l8].\nTherefore, we conclude:\n\u2022 By the principle of mathematical induction, $S_N = N^3$ for all integers $N \\geq 1$ [ts_1].", "dependencies": ["l3", "def_1", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a : \u2115 \u2192 \u211d)\n  (S : \u2115 \u2192 \u211d)\n  (ha : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * (n : \u211d)^2 - 3 * (n : \u211d) + 1)\n  (hS : \u2200 N : \u2115, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (l3 : S 1 = 1^3)\n  (def_1 : \u2200 k : \u2115, k \u2265 1 \u2192 S k = (k : \u211d)^3)\n  (l8 : \u2200 k : \u2115, k \u2265 1 \u2192 S (k + 1) = (k + 1 : \u211d)^3) :\n  \u2200 N : \u2115, N \u2265 1 \u2192 S N = (N : \u211d)^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a : \u2115 \u2192 \u211d)\n  (S : \u2115 \u2192 \u211d)\n  (ha : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * (n : \u211d)^2 - 3 * (n : \u211d) + 1)\n  (hS : \u2200 N : \u2115, N \u2265 1 \u2192 S N = \u2211 n in Finset.Icc 1 N, a n)\n  (l3 : S 1 = 1^3)\n  (def_1 : \u2200 k : \u2115, k \u2265 1 \u2192 S k = (k : \u211d)^3)\n  (l8 : \u2200 k : \u2115, k \u2265 1 \u2192 S (k + 1) = (k + 1 : \u211d)^3) :\n  \u2200 N : \u2115, N \u2265 1 \u2192 S N = (N : \u211d)^3 := by\n  have h_main : \u2200 N : \u2115, N \u2265 1 \u2192 S N = (N : \u211d)^3 := by\n    intro N hN\n    have h\u2081 : S N = (N : \u211d)^3 := def_1 N hN\n    exact h\u2081\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The base case l3 is stated as a standalone fact rather than being derived or proven from the sequence definition. In proper mathematical induction, the base case should be established through calculation, not assumed.", "The inductive hypothesis def_1 assumes the formula holds for ALL k \u2265 1, which is actually the conclusion we want to prove, not just the hypothesis for a single k. This makes the argument circular.", "The inductive step l8 assumes the formula holds for k+1 for ALL k \u2265 1, rather than proving it follows from the hypothesis for a specific k. This also makes the argument circular by assuming what should be proven.", "The conclusion correctly states the final theorem to be proven using mathematical induction.", "The additional context about sequence definitions provides helpful mathematical background that is consistent with a typical induction proof setup, even though not explicitly mentioned in the natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The base case l3 is stated as a standalone fact rather than being derived or proven from the sequence definition. In proper mathematical induction, the base case should be established through calculation, not assumed.', 'The inductive hypothesis def_1 assumes the formula holds for ALL k \u2265 1, which is actually the conclusion we want to prove, not just the hypothesis for a single k. This makes the argument circular.', 'The inductive step l8 assumes the formula holds for k+1 for ALL k \u2265 1, rather than proving it follows from the hypothesis for a specific k. This also makes the argument circular by assuming what should be proven.', 'The conclusion correctly states the final theorem to be proven using mathematical induction.', 'The additional context about sequence definitions provides helpful mathematical background that is consistent with a typical induction proof setup, even though not explicitly mentioned in the natural language.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

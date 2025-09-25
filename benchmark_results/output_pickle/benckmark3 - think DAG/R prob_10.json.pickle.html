@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $A, B \in \mathcal{F}$ be disjoint measurable sets in a measure space $(\Omega, \mathcal{F}, \mu)$. Suppose their measures are $\mu(A) = 5$ and $\mu(B) = 3$. If $f$ is a simple function given by $f = 2 \cdot \mathbf{1}_A + 7 \cdot \mathbf{1}_B$, then $\int_{A \cup B} f \,d\mu = 31$.
+
+Proof: By the definition of the integral for a simple function, the integral of $f$ over the entire space $\Omega$ is given by $\int_{\Omega} f \,d\mu = 2 \cdot \mu(A) + 7 \cdot \mu(B)$. Using the provided measures $\mu(A) = 5$ and $\mu(B) = 3$, this integral evaluates to $\int_{\Omega} f \,d\mu = 2 \cdot 5 + 7 \cdot 3 = 31$. The integral over the subset $A \cup B$ is equivalent to the integral of $f \cdot \mathbf{1}_{A \cup B}$ over $\Omega$, and since the function $f$ is zero everywhere outside of $A \cup B$, we have $f \cdot \mathbf{1}_{A \cup B} = f$, which means $\int_{A \cup B} f \,d\mu = \int_{\Omega} f \,d\mu$. By combining our results, we conclude that $\int_{A \cup B} f \,d\mu = 31$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $A, B \\in \\mathcal{F}$ be disjoint measurable sets in a measure space $(\\Omega, \\mathcal{F}, \\mu)$.", "statement": "Premise:\n\u2022 Let $(\\Omega, \\mathcal{F}, \\mu)$ be a measure space.\n\u2022 Let $A, B \\in \\mathcal{F}$ be disjoint measurable sets [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B) :\n  Disjoint A B := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures the measure space structure with \u03a9 as the underlying space, MeasurableSpace \u03a9 providing the \u03c3-algebra, and \u03bc as the measure", "The natural language states 'A, B \u2208 F' (membership in \u03c3-algebra) while Lean separates this into declaring A, B as sets and then separately stating they are measurable. This captures the same mathematical meaning but with different structural presentation", "Both the natural language and Lean explicitly state that A and B are disjoint measurable sets, with Lean using the formal 'Disjoint A B' predicate", "The natural language explicitly states this is only a premise with no conclusions, but the Lean theorem has 'Disjoint A B' as its conclusion/proposition. This creates a logical inconsistency where the premise becomes both an assumption and the thing to be proved"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the measure space structure with \u03a9 as the underlying space, MeasurableSpace \u03a9 providing the \u03c3-algebra, and \u03bc as the measure', \"The natural language states 'A, B \u2208 F' (membership in \u03c3-algebra) while Lean separates this into declaring A, B as sets and then separately stating they are measurable. This captures the same mathematical meaning but with different structural presentation\", \"Both the natural language and Lean explicitly state that A and B are disjoint measurable sets, with Lean using the formal 'Disjoint A B' predicate\", \"The natural language explicitly states this is only a premise with no conclusions, but the Lean theorem has 'Disjoint A B' as its conclusion/proposition. This creates a logical inconsistency where the premise becomes both an assumption and the thing to be proved\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Suppose their measures are $\\mu(A) = 5$ and $\\mu(B) = 3$.", "statement": "Premise:\n\u2022 Let $(\\Omega, \\mathcal{F}, \\mu)$ be a measure space with measurable sets $A, B$ [tc_1].\n\u2022 The measures are $\\mu(A) = 5$ and $\\mu(B) = 3$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B)\n  (hA_measure : \u03bc A = 5) (hB_measure : \u03bc B = 3) :\n  let f : \u03a9 \u2192 \u211d := fun x => if x \u2208 A then 2 else if x \u2208 B then 7 else 0\n  \u222b x in A \u222a B, f x = 31 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 49, "endLine": 11, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 28, "endLine": 11, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 2, "endLine": 12, "endColumn": 19, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "If $f$ is a simple function given by $f = 2 \\cdot \\mathbf{1}_A + 7 \\cdot \\mathbf{1}_B$", "statement": "Premise:\n\u2022 Let $A, B$ be measurable sets [tc_1].\n\u2022 $f$ is a simple function defined as $f = 2 \\cdot \\mathbf{1}_A + 7 \\cdot \\mathbf{1}_B$ [tc_3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9)\n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B)\n  (h_measure_A : \u03bc A = 5) (h_measure_B : \u03bc B = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : f = 2 \u2022 (fun x => if x \u2208 A then 1 else 0) + 7 \u2022 (fun x => if x \u2208 B then 1 else 0))\n  (tc_1 : \u2200 s : Set \u03a9, MeasurableSet s \u2192 MeasurableSet s) -- placeholder for tc_1\n  (tc_3 : \u2200 (g : \u03a9 \u2192 \u211d) (S : Set \u03a9), MeasurableSet S \u2192 Measurable g \u2192 \n    g = 2 \u2022 (fun x => if x \u2208 A then 1 else 0) + 7 \u2022 (fun x => if x \u2208 B then 1 else 0) \u2192 \n    \u222b x in S, g x \u2202\u03bc = 31) -- placeholder for tc_3\n  : \u222b x in A \u222a B, f x \u2202\u03bc = 31 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 38, "endLine": 11, "endColumn": 60, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 78, "endLine": 11, "endColumn": 100, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 22, "endLine": 14, "endColumn": 44, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 62, "endLine": 14, "endColumn": 84, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "By the definition of the integral for a simple function, the integral of $f$ over the entire space $\\Omega$ is given by $\\int_{\\Omega} f \\,d\\mu = 2 \\cdot \\mu(A) + 7 \\cdot \\mu(B)$.", "statement": "We assume:\n\u2022 $A, B$ are disjoint measurable sets in a measure space $(\\Omega, \\mathcal{F}, \\mu)$ [tc_1].\n\u2022 $f$ is a simple function defined as $f = 2 \\cdot \\mathbf{1}_A + 7 \\cdot \\mathbf{1}_B$ [tc_3].\nTherefore, we conclude:\n\u2022 The integral of $f$ over $\\Omega$ is given by the formula $\\int_{\\Omega} f \\,d\\mu = 2 \\cdot \\mu(A) + 7 \\cdot \\mu(B)$ [l1].", "dependencies": ["tc_1", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B)\n  (hA_measure : \u03bc A = 5) (hB_measure : \u03bc B = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0))\n  (hA_dec : \u2200 x, Decidable (x \u2208 A)) (hB_dec : \u2200 x, Decidable (x \u2208 B)) :\n  \u222b x, f x \u2202\u03bc = 31 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 36, "endLine": 11, "endColumn": 58, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 67, "endLine": 11, "endColumn": 89, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B)\n  (hA_measure : \u03bc A = 5) (hB_measure : \u03bc B = 3)\n  (f : \u03a9 \u2192 \u211d) (hf : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0))\n  (hA_dec : \u2200 x, Decidable (x \u2208 A)) (hB_dec : \u2200 x, Decidable (x \u2208 B)) :\n  \u222b x, f x \u2202\u03bc = 31 := by\n  have hA_measurable : MeasurableFun \u03a9 \u211d (fun x \u21a6 if x \u2208 A then (1 : \u211d) else 0) := by\n    have h\u2081 : MeasurableSet A := hA\n    have h\u2082 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 \u21a6 if x \u2208 A then (1 : \u211d) else 0) := by\n      apply Measurable.congr (MeasureTheory.indicator_measurable hA (1 : \u211d))\n      <;> simp [MeasureTheory.indicator]\n      <;> aesop\n    exact h\u2082\n  \n  have hB_measurable : MeasurableFun \u03a9 \u211d (fun x \u21a6 if x \u2208 B then (1 : \u211d) else 0) := by\n    have h\u2081 : MeasurableSet B := hB\n    have h\u2082 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 \u21a6 if x \u2208 B then (1 : \u211d) else 0) := by\n      apply Measurable.congr (MeasureTheory.indicator_measurable hB (1 : \u211d))\n      <;> simp [MeasureTheory.indicator]\n      <;> aesop\n    exact h\u2082\n  \n  have hf_measurable : MeasurableFun \u03a9 \u211d f := by\n    have h\u2081 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0)) := by\n      -- Prove that 2 * (if x \u2208 A then 1 else 0) is measurable\n      have h\u2082 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (if x \u2208 A then (1 : \u211d) else 0 : \u211d)) := hA_measurable\n      -- Multiply by the constant 2\n      have h\u2083 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d)) := by\n        exact Measurable.mul measurable_const h\u2082\n      exact h\u2083\n    have h\u2084 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0)) := by\n      -- Prove that 7 * (if x \u2208 B then 1 else 0) is measurable\n      have h\u2085 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (if x \u2208 B then (1 : \u211d) else 0 : \u211d)) := hB_measurable\n      -- Multiply by the constant 7\n      have h\u2086 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d)) := by\n        exact Measurable.mul measurable_const h\u2085\n      exact h\u2086\n    -- Prove that the sum of the two measurable functions is measurable\n    have h\u2087 : MeasurableFun \u03a9 \u211d (fun x \u21a6 (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d) + (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d)) := by\n      exact Measurable.add h\u2081 h\u2084\n    -- Use the fact that f is equal to this sum to conclude that f is measurable\n    have h\u2088 : f =\u1da0[nhds] (fun x \u21a6 (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d) + (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d)) := by\n      filter_upwards [Set.univ_mem] with x\n      rw [hf]\n      <;> ring_nf\n      <;> simp [hA_dec x, hB_dec x]\n      <;> norm_num\n      <;> aesop\n    have h\u2089 : MeasurableFun \u03a9 \u211d f := by\n      apply h\u2087.congr_ae h\u2088.symm\n    exact h\u2089\n  \n  have h_integral_A : \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc = \u03bc A := by\n    have h\u2081 : \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc = \u222b x : \u03a9, (1 : \u211d) \u2202\u03bc.restrict A := by\n      -- Use the integral of the indicator function to relate it to the restricted measure\n      rw [\u2190 MeasureTheory.integral_indicator hA (fun x => (1 : \u211d))]\n      <;> simp [MeasureTheory.indicator]\n      <;> congr 1\n      <;> ext x\n      <;> simp [hA_dec]\n      <;> aesop\n    have h\u2082 : \u222b x : \u03a9, (1 : \u211d) \u2202\u03bc.restrict A = \u03bc A := by\n      -- Use the fact that the integral of 1 over A is the measure of A\n      simp [MeasureTheory.integral_ones]\n      <;> rw [MeasureTheory.restrict_apply]\n      <;> simp\n      <;> congr 1\n      <;> ext x\n      <;> simp [hA_dec]\n      <;> aesop\n    -- Combine the results to get the final equality\n    rw [h\u2081, h\u2082]\n  \n  have h_integral_B : \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc = \u03bc B := by\n    have h\u2081 : \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc = \u222b x : \u03a9, (1 : \u211d) \u2202\u03bc.restrict B := by\n      -- Use the integral of the indicator function to relate it to the restricted measure\n      rw [\u2190 MeasureTheory.integral_indicator hB (fun x => (1 : \u211d))]\n      <;> simp [MeasureTheory.indicator]\n      <;> congr 1\n      <;> ext x\n      <;> simp [hB_dec]\n      <;> aesop\n    have h\u2082 : \u222b x : \u03a9, (1 : \u211d) \u2202\u03bc.restrict B = \u03bc B := by\n      -- Use the fact that the integral of 1 over B is the measure of B\n      simp [MeasureTheory.integral_ones]\n      <;> rw [MeasureTheory.restrict_apply]\n      <;> simp\n      <;> congr 1\n      <;> ext x\n      <;> simp [hB_dec]\n      <;> aesop\n    -- Combine the results to get the final equality\n    rw [h\u2081, h\u2082]\n  \n  have h_integral_f : \u222b x : \u03a9, f x \u2202\u03bc = 2 * \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc + 7 * \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc := by\n    have h\u2081 : \u222b x : \u03a9, f x \u2202\u03bc = \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0) + 7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc := by\n      apply MeasureTheory.integral_congr_ae\n      filter_upwards [Set.univ_mem] with x\n      rw [hf]\n      <;> simp_all\n      <;> ring_nf\n      <;> simp_all [hA_dec, hB_dec]\n      <;> norm_num\n      <;> aesop\n    rw [h\u2081]\n    have h\u2082 : \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0) + 7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc = 2 * \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc + 7 * \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc := by\n      -- Use linearity of the integral to split the integral of the sum into the sum of integrals\n      have h\u2083 : \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0) + 7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc = \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0)) \u2202\u03bc + \u222b x : \u03a9, (7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc := by\n        -- Prove that the integral of the sum is the sum of the integrals\n        have h\u2084 : \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0) + 7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc = \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0)) \u2202\u03bc + \u222b x : \u03a9, (7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc := by\n          -- Use the linearity of the integral for non-negative functions\n          have h\u2085 : \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0) + 7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc = \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0)) \u2202\u03bc + \u222b x : \u03a9, (7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc := by\n            -- Use the fact that the integral of the sum is the sum of the integrals\n            apply MeasureTheory.integral_add\n            \u00b7 -- Prove that 2 * (if x \u2208 A then 1 else 0) is integrable\n              have h\u2086 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 => (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0)) := by\n                -- Prove that 2 * (if x \u2208 A then 1 else 0) is measurable\n                have h\u2087 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 => (if x \u2208 A then (1 : \u211d) else 0 : \u211d)) := hA_measurable\n                exact Measurable.mul measurable_const h\u2087\n              -- Use the fact that the function is measurable and bounded to prove integrability\n              have h\u2088 : \u222b x : \u03a9, \u2016(2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d)\u2016 \u2202\u03bc < \u221e := by\n                -- Prove that the integral of the absolute value is finite\n                have h\u2089 : \u222b x : \u03a9, \u2016(2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d)\u2016 \u2202\u03bc = \u222b x : \u03a9, (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d) \u2202\u03bc := by\n                  -- Prove that the absolute value can be removed\n                  congr\n                  ext x\n                  split_ifs <;> simp_all [norm_of_nonneg, le_of_lt] <;> norm_num\n                  <;>\n                  (try { contradiction }) <;>\n                  (try { linarith }) <;>\n                  (try { positivity })\n                rw [h\u2089]\n                -- Prove that the integral is finite\n                have h\u2081\u2080 : \u222b x : \u03a9, (2 : \u211d) * (if x \u2208 A then (1 : \u211d) else 0 : \u211d) \u2202\u03bc = 2 * \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0 : \u211d) \u2202\u03bc := by\n                  -- Use the linearity of the integral\n                  rw [MeasureTheory.integral_mul_left]\n                rw [h\u2081\u2080]\n                have h\u2081\u2081 : \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0 : \u211d) \u2202\u03bc = \u03bc A := by\n                  -- Use the fact that the integral of the indicator function is the measure of A\n                  exact h_integral_A\n                rw [h\u2081\u2081]\n                -- Prove that the integral is finite\n                have h\u2081\u2082 : (2 : \u211d) * (\u03bc A : \u211d) < \u221e := by\n                  -- Prove that 2 * \u03bc A is finite\n                  have h\u2081\u2083 : (\u03bc A : \u211d) = 5 := by\n                    -- Use the given measure of A\n                    norm_cast at hA_measure \u22a2\n                    <;> simp_all\n                  rw [h\u2081\u2083]\n                  norm_num\n                  <;>\n                  (try { linarith }) <;>\n                  (try { positivity })\n                exact by\n                  simpa [h\u2081\u2083] using h\u2081\u2082\n              -- Use the fact that the integral of the absolute value is finite to prove integrability\n              exact (integrable_of_norm_integrable h\u2088)\n            \u00b7 -- Prove that 7 * (if x \u2208 B then 1 else 0) is integrable\n              have h\u2086 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 => (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0)) := by\n                -- Prove that 7 * (if x \u2208 B then 1 else 0) is measurable\n                have h\u2087 : MeasurableFun \u03a9 \u211d (fun x : \u03a9 => (if x \u2208 B then (1 : \u211d) else 0 : \u211d)) := hB_measurable\n                exact Measurable.mul measurable_const h\u2087\n              -- Use the fact that the function is measurable and bounded to prove integrability\n              have h\u2088 : \u222b x : \u03a9, \u2016(7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d)\u2016 \u2202\u03bc < \u221e := by\n                -- Prove that the integral of the absolute value is finite\n                have h\u2089 : \u222b x : \u03a9, \u2016(7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d)\u2016 \u2202\u03bc = \u222b x : \u03a9, (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d) \u2202\u03bc := by\n                  -- Prove that the absolute value can be removed\n                  congr\n                  ext x\n                  split_ifs <;> simp_all [norm_of_nonneg, le_of_lt] <;> norm_num\n                  <;>\n                  (try { contradiction }) <;>\n                  (try { linarith }) <;>\n                  (try { positivity })\n                rw [h\u2089]\n                -- Prove that the integral is finite\n                have h\u2081\u2080 : \u222b x : \u03a9, (7 : \u211d) * (if x \u2208 B then (1 : \u211d) else 0 : \u211d) \u2202\u03bc = 7 * \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0 : \u211d) \u2202\u03bc := by\n                  -- Use the linearity of the integral\n                  rw [MeasureTheory.integral_mul_left]\n                rw [h\u2081\u2080]\n                have h\u2081\u2081 : \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0 : \u211d) \u2202\u03bc = \u03bc B := by\n                  -- Use the fact that the integral of the indicator function is the measure of B\n                  exact h_integral_B\n                rw [h\u2081\u2081]\n                -- Prove that the integral is finite\n                have h\u2081\u2082 : (7 : \u211d) * (\u03bc B : \u211d) < \u221e := by\n                  -- Prove that 7 * \u03bc B is finite\n                  have h\u2081\u2083 : (\u03bc B : \u211d) = 3 := by\n                    -- Use the given measure of B\n                    norm_cast at hB_measure \u22a2\n                    <;> simp_all\n                  rw [h\u2081\u2083]\n                  norm_num\n                  <;>\n                  (try { linarith }) <;>\n                  (try { positivity })\n                exact by\n                  simpa [h\u2081\u2083] using h\u2081\u2082\n              -- Use the fact that the integral of the absolute value is finite to prove integrability\n              exact (integrable_of_norm_integrable h\u2088)\n          exact h\u2085\n        exact h\u2084\n      -- Use the linearity of the integral to split the integral of the sum into the sum of integrals\n      have h\u2085 : \u222b x : \u03a9, (2 * (if x \u2208 A then (1 : \u211d) else 0)) \u2202\u03bc = 2 * \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc := by\n        -- Use the linearity of the integral\n        rw [MeasureTheory.integral_mul_left]\n      have h\u2086 : \u222b x : \u03a9, (7 * (if x \u2208 B then (1 : \u211d) else 0)) \u2202\u03bc = 7 * \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc := by\n        -- Use the linearity of the integral\n        rw [MeasureTheory.integral_mul_left]\n      -- Combine the results to get the final equality\n      linarith\n    -- Combine the results to get the final equality\n    rw [h\u2082]\n    <;> simp_all\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : \u222b x : \u03a9, f x \u2202\u03bc = 31 := by\n    have h\u2081 : \u222b x : \u03a9, f x \u2202\u03bc = 2 * \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc + 7 * \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc := h_integral_f\n    rw [h\u2081]\n    have h\u2082 : \u222b x : \u03a9, (if x \u2208 A then (1 : \u211d) else 0) \u2202\u03bc = \u03bc A := h_integral_A\n    have h\u2083 : \u222b x : \u03a9, (if x \u2208 B then (1 : \u211d) else 0) \u2202\u03bc = \u03bc B := h_integral_B\n    rw [h\u2082, h\u2083]\n    have h\u2084 : (\u03bc A : \u211d) = 5 := by\n      norm_cast at hA_measure \u22a2\n      <;> simp_all\n    have h\u2085 : (\u03bc B : \u211d) = 3 := by\n      norm_cast at hB_measure \u22a2\n      <;> simp_all\n    rw [h\u2084, h\u2085]\n    <;> norm_num\n    <;> linarith\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Using the provided measures $\\mu(A) = 5$ and $\\mu(B) = 3$, this integral evaluates to $\\int_{\\Omega} f \\,d\\mu = 2 \\cdot 5 + 7 \\cdot 3 = 31$.", "statement": "We assume:\n\u2022 The measures are $\\mu(A) = 5$ and $\\mu(B) = 3$ [tc_2].\n\u2022 The integral of $f$ over $\\Omega$ is $\\int_{\\Omega} f \\,d\\mu = 2 \\cdot \\mu(A) + 7 \\cdot \\mu(B)$ [l1].\nTherefore, we conclude:\n\u2022 $\\int_{\\Omega} f \\,d\\mu = 31$ [l2].", "dependencies": ["tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) (A B : Set \u03a9) (f : \u03a9 \u2192 \u211d)\n  (h_disjoint : Disjoint A B)\n  (h_measurable_A : MeasurableSet A) (h_measurable_B : MeasurableSet B)\n  (h_f_simple : \u2203 (c\u2081 c\u2082 : \u211d), f = fun x => if x \u2208 A then c\u2081 else if x \u2208 B then c\u2082 else 0)\n  (tc_2 : \u03bc A = 5 \u2227 \u03bc B = 3)\n  (l1 : \u222b x, f x \u2202\u03bc = 2 * \u03bc A + 7 * \u03bc B) :\n  \u222b x, f x \u2202\u03bc = 31 := by sorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 22, "endLine": 13, "endColumn": 39, "data": "failed to synthesize\n  HAdd ENNReal ENNReal \u211d\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) (A B : Set \u03a9) (f : \u03a9 \u2192 \u211d)\n  (h_disjoint : Disjoint A B)\n  (h_measurable_A : MeasurableSet A) (h_measurable_B : MeasurableSet B)\n  (h_f_simple : \u2203 (c\u2081 c\u2082 : \u211d), f = fun x => if x \u2208 A then c\u2081 else if x \u2208 B then c\u2082 else 0)\n  (tc_2 : \u03bc A = 5 \u2227 \u03bc B = 3)\n  (l1 : \u222b x, f x \u2202\u03bc = 2 * \u03bc A + 7 * \u03bc B) :\n  \u222b x, f x \u2202\u03bc = 31 := by\n  have h_\u03bcA : \u03bc A = 5 := by\n    have h\u2081 : \u03bc A = 5 := tc_2.1\n    exact h\u2081\n  \n  have h_\u03bcB : \u03bc B = 3 := by\n    have h\u2081 : \u03bc B = 3 := tc_2.2\n    exact h\u2081\n  \n  have h_sum : (2 : \u211d\u22650\u221e) * \u03bc A + 7 * \u03bc B = 31 := by\n    have h\u2082 : \u03bc A = 5 := h_\u03bcA\n    have h\u2083 : \u03bc B = 3 := h_\u03bcB\n    rw [h\u2082, h\u2083]\n    <;> norm_num [ENNReal.mul_eq_zero, ENNReal.add_eq_zero_iff]\n    <;>\n    simp_all [ENNReal.ofReal_add, ENNReal.ofReal_mul, ENNReal.ofReal_ofNat]\n    <;>\n    norm_num\n    <;>\n    simp_all [ENNReal.add_eq_zero_iff]\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  have h_main : \u222b x, f x \u2202\u03bc = 31 := by\n    have h\u2082 : ( (\u222b x, f x \u2202\u03bc : \u211d) : \u211d\u22650\u221e) = (2 * \u03bc A + 7 * \u03bc B : \u211d\u22650\u221e) := by\n      norm_cast at l1 \u22a2 <;>\n      simp_all [MeasureTheory.integral_eq_zero_of_ae_stronglyMeasurable]\n      <;>\n      try norm_num\n      <;>\n      try linarith\n    have h\u2083 : ( (\u222b x, f x \u2202\u03bc : \u211d) : \u211d\u22650\u221e) = 31 := by\n      calc\n        ( (\u222b x, f x \u2202\u03bc : \u211d) : \u211d\u22650\u221e) = (2 * \u03bc A + 7 * \u03bc B : \u211d\u22650\u221e) := h\u2082\n        _ = 31 := by\n          have h\u2084 : (2 : \u211d\u22650\u221e) * \u03bc A + 7 * \u03bc B = 31 := h_sum\n          norm_cast at h\u2084 \u22a2\n          <;> simp_all [ENNReal.mul_eq_zero, ENNReal.add_eq_zero_iff]\n          <;>\n          simp_all [ENNReal.ofReal_add, ENNReal.ofReal_mul, ENNReal.ofReal_ofNat]\n          <;>\n          norm_num\n          <;>\n          simp_all [ENNReal.add_eq_zero_iff]\n          <;>\n          norm_num\n          <;>\n          linarith\n    have h\u2084 : 0 \u2264 (\u222b x, f x \u2202\u03bc : \u211d) := by\n      by_contra h\n      have h\u2085 : (\u222b x, f x \u2202\u03bc : \u211d) < 0 := by linarith\n      have h\u2086 : ( (\u222b x, f x \u2202\u03bc : \u211d) : \u211d\u22650\u221e) = 0 := by\n        simp [Real.toNNReal_of_nonpos (by linarith : (\u222b x, f x \u2202\u03bc : \u211d) \u2264 0)]\n      rw [h\u2086] at h\u2083\n      norm_num at h\u2083\n      <;> simp_all (config := {decide := true})\n    have h\u2085 : (\u222b x, f x \u2202\u03bc : \u211d) = 31 := by\n      have h\u2086 : ( (\u222b x, f x \u2202\u03bc : \u211d) : \u211d\u22650\u221e) = (31 : \u211d\u22650\u221e) := by\n        simpa using h\u2083\n      have h\u2087 : (\u222b x, f x \u2202\u03bc : \u211d) = 31 := by\n        rw [\u2190 ENNReal.coe_inj] at h\u2086\n        <;>\n        (try norm_num at h\u2086 \u22a2) <;>\n        (try simp_all [ENNReal.coe_eq_zero]) <;>\n        (try linarith) <;>\n        (try\n          {\n            norm_cast at h\u2086 \u22a2 <;>\n            simp_all [ENNReal.coe_eq_zero] <;>\n            linarith\n          }) <;>\n        (try\n          {\n            simp_all [ENNReal.coe_eq_zero] <;>\n            linarith\n          }) <;>\n        (try\n          {\n            norm_num at h\u2086 \u22a2 <;>\n            simp_all [ENNReal.coe_eq_zero] <;>\n            linarith\n          })\n      exact h\u2087\n    norm_cast at h\u2085 \u22a2\n    <;> simp_all [MeasureTheory.integral_eq_zero_of_ae_stronglyMeasurable]\n    <;>\n    try norm_num\n    <;>\n    try linarith\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The integral over the subset $A \\cup B$ is equivalent to the integral of $f \\cdot \\mathbf{1}_{A \\cup B}$ over $\\Omega$,", "statement": "We assume:\n\u2022 $A, B$ are measurable sets, so $A \\cup B$ is measurable [tc_1].\n\u2022 $f$ is a simple function and thus measurable [tc_3].\nTherefore, we conclude:\n\u2022 The integral of $f$ over $A \\cup B$ is equal to the integral of $f \\cdot \\mathbf{1}_{A \\cup B}$ over $\\Omega$: $\\int_{A \\cup B} f \\,d\\mu = \\int_{\\Omega} f \\cdot \\mathbf{1}_{A \\cup B} \\,d\\mu$ [l3].", "dependencies": ["tc_1", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B) :\n  let f : \u03a9 \u2192 \u211d := fun x => if x \u2208 A then 2 else if x \u2208 B then 7 else 0\n  \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) \u2202\u03bc := by sorry", "lean_pass": false, "error_msg": [{"line": 10, "column": 49, "endLine": 10, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 28, "endLine": 10, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 37, "endLine": 11, "endColumn": 63, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nopen Classical\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) \n  (h_disjoint : Disjoint A B) :\n  let f : \u03a9 \u2192 \u211d := fun x => if x \u2208 A then 2 else if x \u2208 B then 7 else 0\n  \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) \u2202\u03bc := by\n  intro f\n  have h_main : (\u222b x in A \u222a B, f x \u2202\u03bc) = \u222b x, (if x \u2208 (A \u222a B) then f x else 0) \u2202\u03bc := by\n    rfl\n  \n  have h_identity : \u2200 (x : \u03a9), (if x \u2208 (A \u222a B) then f x else 0 : \u211d) = f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) := by\n    intro x\n    by_cases hx : x \u2208 A \u222a B\n    \u00b7 -- Case: x \u2208 A \u222a B\n      have h\u2081 : (if x \u2208 (A \u222a B) then f x else 0 : \u211d) = f x := by\n        simp [hx]\n      have h\u2082 : (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) : \u211d) = f x := by\n        simp [hx]\n        <;>\n        (try { norm_num }) <;>\n        (try { ring_nf }) <;>\n        (try { simp_all [f] }) <;>\n        (try { aesop })\n      linarith\n    \u00b7 -- Case: x \u2209 A \u222a B\n      have h\u2081 : (if x \u2208 (A \u222a B) then f x else 0 : \u211d) = 0 := by\n        simp [hx]\n      have h\u2082 : (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) : \u211d) = 0 := by\n        simp [hx]\n        <;>\n        (try { norm_num }) <;>\n        (try { ring_nf }) <;>\n        (try { simp_all [f] }) <;>\n        (try { aesop })\n      linarith\n  \n  have h_integral_congr : \u222b x, (if x \u2208 (A \u222a B) then f x else 0 : \u211d) \u2202\u03bc = \u222b x, f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) \u2202\u03bc := by\n    have h\u2081 : (\u222b x : \u03a9, (if x \u2208 (A \u222a B) then f x else 0 : \u211d) \u2202\u03bc) = \u222b x : \u03a9, (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0)) \u2202\u03bc := by\n      -- Use the fact that the integrands are equal everywhere to show the integrals are equal\n      have h\u2082 : \u2200 x : \u03a9, (if x \u2208 (A \u222a B) then f x else 0 : \u211d) = f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) := h_identity\n      -- Apply the integral congruence lemma to show the integrals are equal\n      calc\n        (\u222b x : \u03a9, (if x \u2208 (A \u222a B) then f x else 0 : \u211d) \u2202\u03bc) = \u222b x : \u03a9, (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0)) \u2202\u03bc := by\n          -- Use the fact that the integrands are equal everywhere\n          apply MeasureTheory.integral_congr\n          intro x\n          rw [h\u2082 x]\n        _ = \u222b x : \u03a9, (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0)) \u2202\u03bc := by rfl\n    -- Simplify the right-hand side to match the desired form\n    calc\n      \u222b x, (if x \u2208 (A \u222a B) then f x else 0 : \u211d) \u2202\u03bc = \u222b x : \u03a9, (f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0)) \u2202\u03bc := by rw [h\u2081]\n      _ = \u222b x, f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) \u2202\u03bc := by simp [MeasureTheory.integral_congr]\n  \n  have h_final : \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) \u2202\u03bc := by\n    calc\n      \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, (if x \u2208 (A \u222a B) then f x else 0) \u2202\u03bc := by rw [h_main]\n      _ = \u222b x, f x * (if x \u2208 (A \u222a B) then (1 : \u211d) else 0) \u2202\u03bc := by rw [h_integral_congr]\n      _ = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) \u2202\u03bc := by\n        congr\n        <;>\n        ext x\n        <;>\n        simp [Set.mem_union]\n        <;>\n        by_cases hx : x \u2208 A <;> by_cases hx' : x \u2208 B <;>\n        simp_all [f]\n        <;>\n        norm_num\n        <;>\n        aesop\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 16, "column": 4, "endLine": 16, "endColumn": 7, "data": "tactic 'rfl' failed, the left-hand side\n  \u222b (x : \u03a9) in A \u222a B, f x \u2202\u03bc\nis not definitionally equal to the right-hand side\n  \u222b (x : \u03a9), if x \u2208 A \u222a B then f x else 0 \u2202\u03bc\n\u03a9 : Type u_1\ninst\u271d : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\nA B : Set \u03a9\nhA : MeasurableSet A\nhB : MeasurableSet B\nh_disjoint : Disjoint A B\nf : \u03a9 \u2192 \u211d := fun x => if x \u2208 A then 2 else if x \u2208 B then 7 else 0\n\u22a2 \u222b (x : \u03a9) in A \u222a B, f x \u2202\u03bc = \u222b (x : \u03a9), if x \u2208 A \u222a B then f x else 0 \u2202\u03bc"}, {"line": 52, "column": 16, "endLine": 52, "endColumn": 44, "data": "unknown identifier 'MeasureTheory.integral_congr'"}, {"line": 53, "column": 10, "endLine": 53, "endColumn": 17, "data": "no goals to be solved"}, {"line": 59, "column": 73, "endLine": 59, "endColumn": 101, "data": "unknown identifier 'MeasureTheory.integral_congr'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "since the function $f$ is zero everywhere outside of $A \\cup B$, we have $f \\cdot \\mathbf{1}_{A \\cup B} = f$,", "statement": "We assume:\n\u2022 $f$ is a simple function defined as $f = 2 \\cdot \\mathbf{1}_A + 7 \\cdot \\mathbf{1}_B$ [tc_3].\nTherefore, we conclude:\n\u2022 The support of $f$ is contained in $A \\cup B$, which implies $f \\cdot \\mathbf{1}_{A \\cup B} = f$ [l4].", "dependencies": ["tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 {\u03b1 : Type*} \n  (A B : Set \u03b1)\n  (f : \u03b1 \u2192 \u211d) (hf : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0)) :\n  \u2200 x, f x * (if x \u2208 A \u222a B then 1 else 0) = f x := by sorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 {\u03b1 : Type*} \n  (A B : Set \u03b1)\n  (f : \u03b1 \u2192 \u211d) (hf : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0)) :\n  \u2200 x, f x * (if x \u2208 A \u222a B then 1 else 0) = f x := by\n  intro x\n  have h_main : f x * (if x \u2208 A \u222a B then 1 else 0) = f x := by\n    letI := Classical.decPred (\u00b7 \u2208 A)\n    letI := Classical.decPred (\u00b7 \u2208 B)\n    by_cases hx : x \u2208 A \u222a B\n    \u00b7 -- Case: x \u2208 A \u222a B\n      have h\u2081 : (if x \u2208 A \u222a B then (1 : \u211d) else (0 : \u211d)) = 1 := by\n        simp [hx]\n      rw [h\u2081]\n      <;>\n      ring_nf\n      <;>\n      simp_all [hf]\n      <;>\n      (try norm_num) <;>\n      (try ring_nf at *) <;>\n      (try simp_all) <;>\n      (try norm_num at *) <;>\n      (try linarith)\n    \u00b7 -- Case: x \u2209 A \u222a B\n      have h\u2081 : (if x \u2208 A \u222a B then (1 : \u211d) else (0 : \u211d)) = 0 := by\n        simp [hx]\n      rw [h\u2081]\n      have h\u2082 : f x = 0 := by\n        have h\u2083 : x \u2209 A := by\n          intro h\n          have h\u2084 : x \u2208 A \u222a B := Or.inl h\n          contradiction\n        have h\u2084 : x \u2209 B := by\n          intro h\n          have h\u2085 : x \u2208 A \u222a B := Or.inr h\n          contradiction\n        have h\u2085 : f x = 2 * (if x \u2208 A then (1 : \u211d) else (0 : \u211d)) + 7 * (if x \u2208 B then (1 : \u211d) else (0 : \u211d)) := by\n          apply hf\n        rw [h\u2085]\n        have h\u2086 : (if x \u2208 A then (1 : \u211d) else (0 : \u211d)) = 0 := by\n          split_ifs <;> simp_all\n          <;> tauto\n        have h\u2087 : (if x \u2208 B then (1 : \u211d) else (0 : \u211d)) = 0 := by\n          split_ifs <;> simp_all\n          <;> tauto\n        rw [h\u2086, h\u2087]\n        <;> norm_num\n      rw [h\u2082]\n      <;> ring_nf\n      <;> simp_all [hf]\n      <;> (try norm_num) <;>\n      (try ring_nf at *) <;>\n      (try simp_all) <;>\n      (try norm_num at *) <;>\n      (try linarith)\n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 6, "column": 36, "endLine": 6, "endColumn": 58, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 6, "column": 67, "endLine": 6, "endColumn": 89, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 7, "column": 14, "endLine": 7, "endColumn": 40, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 23, "endLine": 9, "endColumn": 49, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 10, "endLine": 16, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  if x \u2208 A \u222a B then 1 else 0\ncase pos\n\u03b1 : Type u_1\nA B : Set \u03b1\nf : \u03b1 \u2192 \u211d\nhf : \u2200 (x : \u03b1), f x = 2 * sorry + 7 * sorry\nx : \u03b1\nthis\u271d : DecidablePred fun x => x \u2208 A := Classical.decPred fun x => x \u2208 A\nthis : DecidablePred fun x => x \u2208 B := Classical.decPred fun x => x \u2208 B\nhx : x \u2208 A \u222a B\nh\u2081 : (if x \u2208 A \u222a B then 1 else 0) = 1\n\u22a2 f x * sorry = f x"}, {"line": 30, "column": 10, "endLine": 30, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  if x \u2208 A \u222a B then 1 else 0\ncase neg\n\u03b1 : Type u_1\nA B : Set \u03b1\nf : \u03b1 \u2192 \u211d\nhf : \u2200 (x : \u03b1), f x = 2 * sorry + 7 * sorry\nx : \u03b1\nthis\u271d : DecidablePred fun x => x \u2208 A := Classical.decPred fun x => x \u2208 A\nthis : DecidablePred fun x => x \u2208 B := Classical.decPred fun x => x \u2208 B\nhx : x \u2209 A \u222a B\nh\u2081 : (if x \u2208 A \u222a B then 1 else 0) = 0\n\u22a2 f x * sorry = f x"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the function definition and the final equality conclusion, but it omits the intermediate claim about support containment that is explicitly mentioned in the natural language. While the mathematical content is equivalent (the equality can be proven directly from the function definition), the natural language presents a two-step logical argument (support containment \u2192 equality) that is not fully reflected in the Lean statement. This represents a minor structural difference in how the logical reasoning is presented.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the function definition and the final equality conclusion, but it omits the intermediate claim about support containment that is explicitly mentioned in the natural language. While the mathematical content is equivalent (the equality can be proven directly from the function definition), the natural language presents a two-step logical argument (support containment \u2192 equality) that is not fully reflected in the Lean statement. This represents a minor structural difference in how the logical reasoning is presented.']"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "which means $\\int_{A \\cup B} f \\,d\\mu = \\int_{\\Omega} f \\,d\\mu$.", "statement": "We assume:\n\u2022 $\\int_{A \\cup B} f \\,d\\mu = \\int_{\\Omega} f \\cdot \\mathbf{1}_{A \\cup B} \\,d\\mu$ [l3].\n\u2022 $f \\cdot \\mathbf{1}_{A \\cup B} = f$ [l4].\nTherefore, we conclude:\n\u2022 $\\int_{A \\cup B} f \\,d\\mu = \\int_{\\Omega} f \\,d\\mu$ [l5].", "dependencies": ["l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 {\u03b1 : Type*} \n  (A B : Set \u03b1) \n  (f : \u03b1 \u2192 \u211d)\n  (h_disjoint : Disjoint A B)\n  (h_measure_A : (5 : \u211d) = 5)\n  (h_measure_B : (3 : \u211d) = 3)\n  (h_simple_f : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0))\n  (l3 : \u222b x in A \u222a B, f x = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0))\n  (l4 : \u2200 x, f x * (if x \u2208 A \u222a B then 1 else 0) = f x) :\n  \u222b x in A \u222a B, f x = \u222b x, f x := by sorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 32, "endLine": 13, "endColumn": 54, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 63, "endLine": 13, "endColumn": 85, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 8, "endLine": 14, "endColumn": 25, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 40, "endLine": 14, "endColumn": 66, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 28, "endLine": 14, "endColumn": 67, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 20, "endLine": 15, "endColumn": 46, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 2, "endLine": 16, "endColumn": 19, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 22, "endLine": 16, "endColumn": 30, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 {\u03b1 : Type*} \n  (A B : Set \u03b1) \n  (f : \u03b1 \u2192 \u211d)\n  (h_disjoint : Disjoint A B)\n  (h_measure_A : (5 : \u211d) = 5)\n  (h_measure_B : (3 : \u211d) = 3)\n  (h_simple_f : \u2200 x, f x = 2 * (if x \u2208 A then 1 else 0) + 7 * (if x \u2208 B then 1 else 0))\n  (l3 : \u222b x in A \u222a B, f x = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0))\n  (l4 : \u2200 x, f x * (if x \u2208 A \u222a B then 1 else 0) = f x) :\n  \u222b x in A \u222a B, f x = \u222b x, f x := by\n  have h_integral : \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) = \u222b x, f x := by\n    have h\u2081 : (fun x => f x * (if x \u2208 A \u222a B then 1 else 0)) = (fun x => f x) := by\n      funext x\n      rw [l4 x]\n    -- Since the functions are equal, their integrals are equal\n    calc\n      \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) = \u222b x, (fun x => f x * (if x \u2208 A \u222a B then 1 else 0)) x := rfl\n      _ = \u222b x, (fun x => f x) x := by rw [h\u2081]\n      _ = \u222b x, f x := rfl\n  \n  have h_final : \u222b x in A \u222a B, f x = \u222b x, f x := by\n    calc\n      \u222b x in A \u222a B, f x = \u222b x, f x * (if x \u2208 A \u222a B then 1 else 0) := by rw [l3]\n      _ = \u222b x, f x := by rw [h_integral]\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 32, "endLine": 10, "endColumn": 54, "data": "failed to synthesize\n  Decidable (x \u2208 A)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 63, "endLine": 10, "endColumn": 85, "data": "failed to synthesize\n  Decidable (x \u2208 B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 8, "endLine": 11, "endColumn": 25, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 40, "endLine": 11, "endColumn": 66, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 28, "endLine": 11, "endColumn": 67, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 12, "column": 20, "endLine": 12, "endColumn": 46, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 2, "endLine": 13, "endColumn": 19, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 22, "endLine": 13, "endColumn": 30, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 32, "endLine": 14, "endColumn": 58, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 20, "endLine": 14, "endColumn": 59, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 62, "endLine": 14, "endColumn": 70, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 31, "endLine": 15, "endColumn": 57, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 18, "endLine": 20, "endColumn": 44, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 6, "endLine": 20, "endColumn": 45, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 70, "endLine": 20, "endColumn": 96, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 48, "endLine": 20, "endColumn": 100, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 21, "column": 10, "endLine": 21, "endColumn": 31, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 22, "column": 10, "endLine": 22, "endColumn": 18, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 24, "column": 17, "endLine": 24, "endColumn": 34, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 24, "column": 37, "endLine": 24, "endColumn": 45, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 26, "column": 6, "endLine": 26, "endColumn": 23, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 26, "column": 38, "endLine": 26, "endColumn": 64, "data": "failed to synthesize\n  Decidable (x \u2208 A \u222a B)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 26, "column": 26, "endLine": 26, "endColumn": 65, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 27, "column": 10, "endLine": 27, "endColumn": 18, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03b1\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 27, "column": 29, "endLine": 27, "endColumn": 39, "data": "unknown identifier 'h_integral'"}, {"line": 27, "column": 29, "endLine": 27, "endColumn": 39, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.4729\n\u03b1 : Type u_1\nA B : Set \u03b1\nf : \u03b1 \u2192 \u211d\nh_disjoint : Disjoint A B\nh_measure_A : 5 = 5\nh_measure_B : 3 = 3\nh_simple_f : \u2200 (x : \u03b1), f x = 2 * sorry + 7 * sorry\nl3 : \u222b (x : \u03b1) in A \u222a B, f x = \u222b (x : \u03b1), f x * sorry\nl4 : \u2200 (x : \u03b1), f x * sorry = f x\n\u22a2 \u222b (x : \u03b1), f x * sorry = \u222b (x : \u03b1), f x"}, {"line": 29, "column": 8, "endLine": 29, "endColumn": 15, "data": "unknown identifier 'h_final'"}, {"line": 13, "column": 34, "endLine": 29, "endColumn": 15, "data": "unsolved goals\ncase refine_2.refine_3\n\u03b1 : Type u_1\nA B : Set \u03b1\nf : \u03b1 \u2192 \u211d\nh_disjoint : Disjoint A B\nh_measure_A : 5 = 5\nh_measure_B : 3 = 3\nh_simple_f : \u2200 (x : \u03b1), f x = 2 * sorry + 7 * sorry\nl3 : \u222b (x : \u03b1) in A \u222a B, f x = \u222b (x : \u03b1), f x * sorry\nl4 : \u2200 (x : \u03b1), f x * sorry = f x\nh_final : \u222b (x : \u03b1) in A \u222a B, f x = \u222b (x : \u03b1), f x\n\u22a2 MeasureTheory.MeasureSpace \u03b1\n\ncase refine_3\n\u03b1 : Type u_1\nA B : Set \u03b1\nf : \u03b1 \u2192 \u211d\nh_disjoint : Disjoint A B\nh_measure_A : 5 = 5\nh_measure_B : 3 = 3\nh_simple_f : \u2200 (x : \u03b1), f x = 2 * sorry + 7 * sorry\nl3 : \u222b (x : \u03b1) in A \u222a B, f x = \u222b (x : \u03b1), f x * sorry\nl4 : \u2200 (x : \u03b1), f x * sorry = f x\nh_integral : \u222b (x : \u03b1), f x * sorry = \u222b (x : \u03b1), f x\n\u22a2 \u222b (x : \u03b1) in A \u222a B, f x = \u222b (x : \u03b1), f x"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By combining our results, we conclude that $\\int_{A \\cup B} f \\,d\\mu = 31$.", "statement": "We assume:\n\u2022 $\\int_{\\Omega} f \\,d\\mu = 31$ [l2].\n\u2022 $\\int_{A \\cup B} f \\,d\\mu = \\int_{\\Omega} f \\,d\\mu$ [l5].\nTherefore, we conclude:\n\u2022 $\\int_{A \\cup B} f \\,d\\mu = 31$ [ts_1].", "dependencies": ["l2", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen MeasureTheory\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : Measure \u03a9) \n  (A B : Set \u03a9) \n  (f : \u03a9 \u2192 \u211d) \n  (l2 : \u222b x, f x \u2202\u03bc = 31)\n  (l5 : \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, f x \u2202\u03bc) :\n  \u222b x in A \u222a B, f x \u2202\u03bc = 31 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (A B : Set \u03a9) \n  (f : \u03a9 \u2192 \u211d) \n  (l2 : \u222b x, f x \u2202\u03bc = 31)\n  (l5 : \u222b x in A \u222a B, f x \u2202\u03bc = \u222b x, f x \u2202\u03bc) :\n  \u222b x in A \u222a B, f x \u2202\u03bc = 31 := by\n  have h_main : \u222b x in A \u222a B, f x \u2202\u03bc = 31 := by\n    rw [l5]\n    rw [l2]\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The mathematical context and variable declarations correctly establish the measure-theoretic framework needed for the integration statements.", "The first assumption l2 is perfectly captured using standard Lean measure theory notation for integration over the entire space.", "The second assumption l5 correctly formalizes integration over the union A \u222a B using Lean's restricted integration notation.", "The conclusion ts_1 uses consistent notation and correctly states the target equality to be proven.", "The logical structure perfectly preserves the deductive reasoning: l5 states the integral over A \u222a B equals the integral over \u03a9, l2 gives the value of the integral over \u03a9, so by transitivity the integral over A \u222a B equals 31."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

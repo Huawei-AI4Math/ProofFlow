@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for any positive real numbers $a, b, c, d, e$ such that $a+b+c+d+e=5$, the following inequality holds: $a b c + b c d + c d e + d e a + e a b \leq 5$.
+
+Proof: Let $a, b, c, d, e > 0$ with $a+b+c+d+e=5$. Define $P = abc+bcd+cde+dea+eab$. We can rewrite $P$ as $P = e(a+c)(b+d) + bc(a+d-e)$. By the AM–GM inequality, $(a+c)(b+d) \le \left(	frac{a+b+c+d}{2}ight)^2 = 	frac{(5-e)^2}{4}$, and thus $e(a+c)(b+d) \le 	frac{e(5-e)^2}{4}$. Similarly, applying AM–GM to three variables gives $bc(a+d-e) \le \left(	frac{a+b+c+d-e}{3}ight)^3 = 	frac{(5-2e)^3}{27}$. Therefore, $P \le rac{e(5-e)^2}{4} + rac{(5-2e)^3}{27}.$ Expanding the numerator yields $P \le rac{-5e^3 - 30e^2 + 75e + 500}{108}$. To finish, we check that this is at most $5$, which is equivalent to showing $(e-1)^2(e+8) \ge 0$. Since $e>0$, both factors are nonnegative, so the inequality holds. Hence, we conclude that $abc+bcd+cde+dea+eab \le 5$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let a, b, c, d, e > 0", "statement": "Premise:\n\u2022 Let $a, b, c, d, e$ be positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c d e : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly declares a, b, c, d, e as real numbers and explicitly states they are all positive through the conjunction 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e, which perfectly captures the natural language condition"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "with a+b+c+d+e=5", "statement": "Premise:\n\u2022 Let $a, b, c, d, e$ be positive real numbers [tc_1] such that $a+b+c+d+e=5$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (a b c d e : \u211d) \n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5) :\n  a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c, d, e are positive real numbers through the type declaration and positivity constraint", "The sum condition a + b + c + d + e = 5 is perfectly matched in both versions", "The natural language explicitly states this is just a premise with no conclusions, but the Lean formalization introduces a significant mathematical conclusion (an inequality involving products of the variables) that is not present in the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that a, b, c, d, e are positive real numbers through the type declaration and positivity constraint', 'The sum condition a + b + c + d + e = 5 is perfectly matched in both versions', 'The natural language explicitly states this is just a premise with no conclusions, but the Lean formalization introduces a significant mathematical conclusion (an inequality involving products of the variables) that is not present in the natural language statement']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Define $P = abc+bcd+cde+dea+eab$.", "statement": "Definition:\n\u2022 Let $P = abc+bcd+cde+dea+eab$, where $a, b, c, d, e$ are positive real numbers [tc_1] with $a+b+c+d+e=5$ [tc_2] [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 (a b c d e : \u211d) \n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5) :\n  a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c, d, e are positive real numbers through the type declaration and positivity constraint", "The sum constraint a + b + c + d + e = 5 is identical in both versions", "The natural language defines P as equal to the expression abc+bcd+cde+dea+eab, but the Lean formalization states that this expression is less than or equal to 5. This changes the meaning from a definition to an inequality theorem"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that a, b, c, d, e are positive real numbers through the type declaration and positivity constraint', 'The sum constraint a + b + c + d + e = 5 is identical in both versions', 'The natural language defines P as equal to the expression abc+bcd+cde+dea+eab, but the Lean formalization states that this expression is less than or equal to 5. This changes the meaning from a definition to an inequality theorem']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "We can rewrite $P$ as $P = e(a+c)(b+d) + bc(a+d-e)$.", "statement": "We assume:\n\u2022 $P = abc+bcd+cde+dea+eab$ [def_1]\nTherefore, we conclude:\n\u2022 $P = e(a+c)(b+d) + bc(a+d-e)$ [l1].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a b c d e : \u211d) :\n  let P := a * b * c + b * c * d + c * d * e + d * e * a + e * a * b\n  P = e * (a + c) * (b + d) + b * c * (a + d - e) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a b c d e : \u211d) :\n  let P := a * b * c + b * c * d + c * d * e + d * e * a + e * a * b\n  P = e * (a + c) * (b + d) + b * c * (a + d - e) := by\n  intro P\n  have h_P_def : P = a * b * c + b * c * d + c * d * e + d * e * a + e * a * b := by\n    dsimp only [P]\n    <;> ring\n    <;> rfl\n  \n  have h_main : a * b * c + b * c * d + c * d * e + d * e * a + e * a * b = e * (a + c) * (b + d) + b * c * (a + d - e) := by\n    have h1 : e * (a + c) * (b + d) = e * (a + c) * (b + d) := rfl\n    have h2 : b * c * (a + d - e) = b * c * (a + d - e) := rfl\n    calc\n      a * b * c + b * c * d + c * d * e + d * e * a + e * a * b\n        = a * b * c + b * c * d + c * d * e + d * e * a + e * a * b := by rfl\n      _ = e * (a + c) * (b + d) + b * c * (a + d - e) := by\n        -- Expand the right-hand side and simplify\n        ring_nf\n        <;>\n        (try\n          {\n            nlinarith [sq_nonneg (a + b + c + d + e), sq_nonneg (a - b), sq_nonneg (a - c), sq_nonneg (a - d), sq_nonneg (a - e),\n              sq_nonneg (b - c), sq_nonneg (b - d), sq_nonneg (b - e), sq_nonneg (c - d), sq_nonneg (c - e), sq_nonneg (d - e)]\n          })\n        <;>\n        (try\n          {\n            linarith [sq_nonneg (a + b + c + d + e), sq_nonneg (a - b), sq_nonneg (a - c), sq_nonneg (a - d), sq_nonneg (a - e),\n              sq_nonneg (b - c), sq_nonneg (b - d), sq_nonneg (b - e), sq_nonneg (c - d), sq_nonneg (c - e), sq_nonneg (d - e)]\n          })\n        <;>\n        (try\n          {\n            nlinarith\n          })\n        <;>\n        (try\n          {\n            linarith\n          })\n        <;>\n        (try\n          {\n            ring_nf at *\n            <;>\n            linarith\n          })\n  \n  have h_final : P = e * (a + c) * (b + d) + b * c * (a + d - e) := by\n    rw [h_P_def]\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The definition of P is correctly translated from natural language to Lean, with all five terms (abc, bcd, cde, dea, eab) properly represented using explicit multiplication operators.", "The theorem statement correctly captures the algebraic identity, with proper parenthesization and operator precedence that maintains the mathematical meaning.", "The Lean formalization appropriately declares all variables as real numbers, which is consistent with the mathematical context and adds helpful type information not explicitly stated in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By the AM\u2013GM inequality, $(a+c)(b+d) \\le \\left(\tfrac{a+b+c+d}{2}ight)^2$", "statement": "We assume:\n\u2022 $a,b,c,d$ are positive real numbers, which implies $a+c > 0$ and $b+d > 0$ [tc_1]\nTherefore, we conclude:\n\u2022 By the AM-GM inequality, $(a+c)(b+d) \\le \\left(\\frac{(a+c)+(b+d)}{2}\\right)^2 = \\left(\\frac{a+b+c+d}{2}\\right)^2$ [l2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c d : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (hd : 0 < d) :\n  (a + c) * (b + d) \u2264 ((a + b + c + d) / 2)^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c d : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (hd : 0 < d) :\n  (a + c) * (b + d) \u2264 ((a + b + c + d) / 2)^2 := by\n  have h\u2081 : 0 \u2264 (a + c) := by\n    linarith [ha, hc]\n  \n  have h\u2082 : 0 \u2264 (b + d) := by\n    linarith [hb, hd]\n  \n  have h\u2083 : (a + c + (b + d))^2 \u2265 4 * (a + c) * (b + d) := by\n    have h\u2083\u2081 : 0 \u2264 (a + c - (b + d))^2 := by nlinarith\n    nlinarith [sq_nonneg (a + c - (b + d))]\n  \n  have h\u2084 : ((a + b + c + d) / 2)^2 \u2265 (a + c) * (b + d) := by\n    have h\u2084\u2081 : (a + c + (b + d))^2 \u2265 4 * (a + c) * (b + d) := h\u2083\n    have h\u2084\u2082 : ((a + b + c + d) / 2)^2 = (a + c + (b + d))^2 / 4 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2084\u2082]\n    nlinarith [h\u2084\u2081]\n  \n  have h\u2085 : (a + c) * (b + d) \u2264 ((a + b + c + d) / 2)^2 := by\n    linarith [h\u2084]\n  \n  exact h\u2085", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and positivity assumptions are correctly captured in Lean with the appropriate types and constraints.", "While the intermediate conclusion about a+c > 0 and b+d > 0 is not explicitly stated in Lean, it is logically derivable from the given assumptions and doesn't affect the main theorem statement.", "The main inequality is perfectly translated from natural language to Lean, correctly applying AM-GM inequality to the terms (a+c) and (b+d), with the algebraic simplification properly represented."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "... $= \tfrac{(5-e)^2}{4}$", "statement": "We assume:\n\u2022 $a+b+c+d+e=5$ [tc_2]\n\u2022 $(a+c)(b+d) \\le \\left(\\frac{a+b+c+d}{2}\\right)^2$ [l2]\nTherefore, we conclude:\n\u2022 $(a+c)(b+d) \\le \\frac{(5-e)^2}{4}$ [l3].", "dependencies": ["tc_2", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c d e : \u211d) \n  (h_sum : a + b + c + d + e = 5)\n  (h_ineq : (a + c) * (b + d) \u2264 ((a + b + c + d) / 2)^2) :\n  (a + c) * (b + d) \u2264 (5 - e)^2 / 4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c d e : \u211d) \n  (h_sum : a + b + c + d + e = 5)\n  (h_ineq : (a + c) * (b + d) \u2264 ((a + b + c + d) / 2)^2) :\n  (a + c) * (b + d) \u2264 (5 - e)^2 / 4 := by\n  have h_sum_abcd : a + b + c + d = 5 - e := by\n    have h1 : a + b + c + d + e = 5 := h_sum\n    have h2 : a + b + c + d = 5 - e := by linarith\n    exact h2\n  \n  have h_main : (a + c) * (b + d) \u2264 ((5 - e) / 2)^2 := by\n    have h1 : (a + c) * (b + d) \u2264 ((a + b + c + d) / 2) ^ 2 := h_ineq\n    have h2 : a + b + c + d = 5 - e := h_sum_abcd\n    have h3 : ((a + b + c + d) / 2) ^ 2 = ((5 - e) / 2) ^ 2 := by\n      rw [h2]\n      <;> ring_nf\n    rw [h3] at h1\n    linarith\n  \n  have h_final : (a + c) * (b + d) \u2264 (5 - e)^2 / 4 := by\n    have h1 : (a + c) * (b + d) \u2264 ((5 - e) / 2) ^ 2 := h_main\n    have h2 : ((5 - e) / 2) ^ 2 = (5 - e) ^ 2 / 4 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h2] at h1\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization excellently captures all components of the natural language statement. The variable declarations, both assumptions (tc_2 and l2), and the conclusion (l3) are all correctly translated. The logical structure of the deductive argument is preserved, with the premises serving as hypotheses and the conclusion as the theorem goal. The mathematical notation is appropriately converted to Lean syntax while maintaining semantic equivalence."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "and thus $e(a+c)(b+d) \\le \tfrac{e(5-e)^2}{4}$.", "statement": "We assume:\n\u2022 $e$ is a positive real number [tc_1]\n\u2022 $(a+c)(b+d) \\le \\frac{(5-e)^2}{4}$ [l3]\nTherefore, we conclude:\n\u2022 $e(a+c)(b+d) \\le \\frac{e(5-e)^2}{4}$ [l4].", "dependencies": ["tc_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (a b c d e : \u211d) \n  (tc_1 : 0 < e)\n  (l3 : (a + c) * (b + d) \u2264 (5 - e)^2 / 4) :\n  e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (a b c d e : \u211d) \n  (tc_1 : 0 < e)\n  (l3 : (a + c) * (b + d) \u2264 (5 - e)^2 / 4) :\n  e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4 := by\n  have h_assoc : e * (a + c) * (b + d) = e * ((a + c) * (b + d)) := by\n    ring\n    <;>\n    linarith\n  \n  have h_mul_ineq : e * ((a + c) * (b + d)) \u2264 e * ((5 - e)^2 / 4) := by\n    have h\u2081 : (a + c) * (b + d) \u2264 (5 - e) ^ 2 / 4 := l3\n    have h\u2082 : 0 < e := tc_1\n    -- Multiply both sides of the inequality by e (positive, so direction preserved)\n    have h\u2083 : e * ((a + c) * (b + d)) \u2264 e * ((5 - e) ^ 2 / 4) := by\n      -- Use the fact that multiplying by a positive number preserves the inequality\n      nlinarith\n    exact h\u2083\n  \n  have h_final : e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4 := by\n    have h\u2081 : e * (a + c) * (b + d) = e * ((a + c) * (b + d)) := h_assoc\n    have h\u2082 : e * ((a + c) * (b + d)) \u2264 e * ((5 - e)^2 / 4) := h_mul_ineq\n    have h\u2083 : e * ((5 - e)^2 / 4) = e * (5 - e)^2 / 4 := by\n      ring\n    have h\u2084 : e * (a + c) * (b + d) \u2264 e * ((5 - e)^2 / 4) := by\n      linarith\n    have h\u2085 : e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4 := by\n      linarith\n    exact h\u2085\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the mathematical content and logical structure of the natural language statement. All variables are properly typed as real numbers, the positivity condition on e is correctly expressed, the premise inequality is faithfully represented, and the conclusion follows the same mathematical logic. The theorem structure appropriately reflects the assumption-conclusion relationship from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Similarly, applying AM\u2013GM to three variables gives $bc(a+d-e) \\le \\left(\tfrac{a+b+c+d-e}{3}ight)^3$", "statement": "We assume:\n\u2022 $b, c$ are positive real numbers [tc_1]\n\u2022 (Unstated proof assumption) $a, d, e$ are positive real numbers such that $a+d-e \\ge 0$\nTherefore, we conclude:\n\u2022 By the AM-GM inequality for three variables, $bc(a+d-e) \\le \\left(\\frac{b+c+(a+d-e)}{3}\\right)^3 = \\left(\\frac{a+b+c+d-e}{3}\\right)^3$ [l5].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c d e : \u211d)\n  (h1 : 0 < b \u2227 0 < c)\n  (h2 : 0 < a \u2227 0 < d \u2227 0 < e \u2227 a + d - e \u2265 0) :\n  b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c d e : \u211d)\n  (h1 : 0 < b \u2227 0 < c)\n  (h2 : 0 < a \u2227 0 < d \u2227 0 < e \u2227 a + d - e \u2265 0) :\n  b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3 := by\n  have h_nonneg_b : 0 \u2264 b := by\n    linarith [h1.1]\n  \n  have h_nonneg_c : 0 \u2264 c := by\n    linarith [h1.2]\n  \n  have h_nonneg_z : 0 \u2264 a + d - e := by\n    linarith [h2.2.2.2]\n  \n  have h_main_ineq : (b + c + (a + d - e)) ^ 3 \u2265 27 * (b * c * (a + d - e)) := by\n    have h3 : 0 \u2264 b := by linarith\n    have h4 : 0 \u2264 c := by linarith\n    have h5 : 0 \u2264 a + d - e := by linarith\n    have h6 : 0 \u2264 b * c := by positivity\n    have h7 : 0 \u2264 b * (a + d - e) := by positivity\n    have h8 : 0 \u2264 c * (a + d - e) := by positivity\n    nlinarith [sq_nonneg (b - c), sq_nonneg (b - (a + d - e)), sq_nonneg (c - (a + d - e)),\n      sq_nonneg (b + c - 2 * (a + d - e)), sq_nonneg (b + (a + d - e) - 2 * c),\n      sq_nonneg (c + (a + d - e) - 2 * b), mul_nonneg h3 (sq_nonneg (b - c)),\n      mul_nonneg h4 (sq_nonneg (b - (a + d - e))), mul_nonneg h5 (sq_nonneg (c - (a + d - e))),\n      mul_nonneg h3 (sq_nonneg (c - (a + d - e))), mul_nonneg h4 (sq_nonneg (b - (a + d - e))),\n      mul_nonneg h5 (sq_nonneg (b - c))]\n  \n  have h_final : b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3 := by\n    have h\u2083 : (a + b + c + d - e) = (b + c + (a + d - e)) := by ring\n    have h\u2084 : ((a + b + c + d - e) / 3) ^ 3 = ((b + c + (a + d - e)) / 3) ^ 3 := by\n      rw [h\u2083]\n      <;> ring_nf\n    rw [h\u2084]\n    have h\u2085 : 0 \u2264 (b + c + (a + d - e)) := by linarith\n    have h\u2086 : (b + c + (a + d - e)) ^ 3 \u2265 27 * (b * c * (a + d - e)) := h_main_ineq\n    have h\u2087 : ((b + c + (a + d - e)) / 3) ^ 3 = (b + c + (a + d - e)) ^ 3 / 27 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2087]\n    have h\u2088 : (b + c + (a + d - e)) ^ 3 / 27 \u2265 b * c * (a + d - e) := by\n      have h\u2089 : (b + c + (a + d - e)) ^ 3 \u2265 27 * (b * c * (a + d - e)) := h_main_ineq\n      have h\u2081\u2080 : (b + c + (a + d - e)) ^ 3 / 27 \u2265 (27 * (b * c * (a + d - e))) / 27 := by\n        linarith\n      have h\u2081\u2081 : (27 * (b * c * (a + d - e))) / 27 = b * c * (a + d - e) := by\n        ring_nf\n        <;> field_simp\n        <;> ring_nf\n      linarith\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations and positivity constraints for b, c are correctly captured in hypothesis h1", "Additional positivity constraints for a, d, e and the constraint a+d-e \u2265 0 are correctly captured in hypothesis h2", "The AM-GM inequality conclusion is mathematically identical between natural language and Lean formalization", "The overall logical structure and mathematical meaning are completely preserved, with all assumptions and conclusions properly formalized"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "... $= \tfrac{(5-2e)^3}{27}$.", "statement": "We assume:\n\u2022 $a,b,c,d,e$ are real numbers with $a+b+c+d+e=5$ [tc_2]\n\u2022 $bc(a+d-e) \\le \\left(\\frac{a+b+c+d-e}{3}\\right)^3$ [l5]\nTherefore, we conclude:\n\u2022 $bc(a+d-e) \\le \\frac{(5-2e)^3}{27}$ [l6].", "dependencies": ["tc_2", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a b c d e : \u211d)\n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5)\n  (h_l5 : b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3) :\n  b * c * (a + d - e) \u2264 (5 - 2 * e) ^ 3 / 27 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a b c d e : \u211d)\n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5)\n  (h_l5 : b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3) :\n  b * c * (a + d - e) \u2264 (5 - 2 * e) ^ 3 / 27 := by\n  have h_sum_abcd_minus_e : a + b + c + d - e = 5 - 2 * e := by\n    have h1 : a + b + c + d = 5 - e := by\n      linarith\n    have h2 : a + b + c + d - e = 5 - e - e := by linarith\n    linarith\n  \n  have h_main : ((a + b + c + d - e) / 3) ^ 3 = (5 - 2 * e) ^ 3 / 27 := by\n    rw [h_sum_abcd_minus_e]\n    <;> ring_nf\n    <;> field_simp [pow_three]\n    <;> ring_nf\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : b * c * (a + d - e) \u2264 (5 - 2 * e) ^ 3 / 27 := by\n    have h1 : b * c * (a + d - e) \u2264 ((a + b + c + d - e) / 3) ^ 3 := h_l5\n    have h2 : ((a + b + c + d - e) / 3) ^ 3 = (5 - 2 * e) ^ 3 / 27 := h_main\n    have h3 : b * c * (a + d - e) \u2264 (5 - 2 * e) ^ 3 / 27 := by\n      linarith\n    exact h3\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly capture all five real number variables from the natural language.", "The sum constraint a+b+c+d+e=5 is perfectly translated. The additional positivity constraints in Lean are extra conditions not mentioned in natural language but don't contradict it.", "The inequality assumption [l5] is correctly formalized with equivalent mathematical expressions using appropriate Lean notation for multiplication, division, and exponentiation.", "The conclusion [l6] perfectly matches the natural language target inequality, with (5-2e)\u00b3/27 correctly represented.", "The overall logical structure correctly captures the deductive reasoning from assumptions to conclusion as presented in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Therefore, $P \\le \frac{e(5-e)^2}{4} + \frac{(5-2e)^3}{27}.$", "statement": "We assume:\n\u2022 $P = e(a+c)(b+d) + bc(a+d-e)$ [l1]\n\u2022 $e(a+c)(b+d) \\le \\frac{e(5-e)^2}{4}$ [l4]\n\u2022 $bc(a+d-e) \\le \\frac{(5-2e)^3}{27}$ [l6]\nTherefore, we conclude:\n\u2022 $P \\le \\frac{e(5-e)^2}{4} + \\frac{(5-2e)^3}{27}$ [l7].", "dependencies": ["l1", "l4", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a b c d e : \u211d)\n  (l1 : let P := e * (a + c) * (b + d) + b * c * (a + d - e); P = P)\n  (l4 : e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4)\n  (l6 : b * c * (a + d - e) \u2264 (5 - 2 * e)^3 / 27) :\n  e * (a + c) * (b + d) + b * c * (a + d - e) \u2264 e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a b c d e : \u211d)\n  (l1 : let P := e * (a + c) * (b + d) + b * c * (a + d - e); P = P)\n  (l4 : e * (a + c) * (b + d) \u2264 e * (5 - e)^2 / 4)\n  (l6 : b * c * (a + d - e) \u2264 (5 - 2 * e)^3 / 27) :\n  e * (a + c) * (b + d) + b * c * (a + d - e) \u2264 e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 := by\n  have h_main : e * (a + c) * (b + d) + b * c * (a + d - e) \u2264 e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 := by\n    -- Use the given inequalities l4 and l6 to bound each term and then add them together.\n    have h1 : e * (a + c) * (b + d) \u2264 e * (5 - e) ^ 2 / 4 := l4\n    have h2 : b * c * (a + d - e) \u2264 (5 - 2 * e) ^ 3 / 27 := l6\n    -- Add the two inequalities to get the desired result.\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical content from the natural language. The definition of P, both inequalities l4 and l6, and the conclusion l7 are all accurately represented. The use of explicit multiplication operators and the direct substitution of P's definition in the conclusion are mathematically equivalent to the natural language version. The logical structure of assumptions leading to a conclusion is properly maintained through Lean's theorem format."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Expanding the numerator yields $P \\le \frac{-5e^3 - 30e^2 + 75e + 500}{108}$.", "statement": "We assume:\n\u2022 $e$ is a real number\nTherefore, we conclude:\n\u2022 The algebraic identity $\\frac{e(5-e)^2}{4} + \\frac{(5-2e)^3}{27} = \\frac{-5e^3 - 30e^2 + 75e + 500}{108}$ holds [l8].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (e : \u211d) :\n  e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 = (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (e : \u211d) :\n  e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 = (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 := by\n  have h1 : e * (5 - e) ^ 2 / 4 = (25 * e - 10 * e ^ 2 + e ^ 3) / 4 := by\n    have h\u2081 : e * (5 - e) ^ 2 = 25 * e - 10 * e ^ 2 + e ^ 3 := by\n      ring_nf\n      <;>\n      nlinarith [sq_nonneg (e - 5)]\n    rw [h\u2081]\n    <;>\n    ring_nf\n  \n  have h2 : (5 - 2 * e) ^ 3 / 27 = (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3) / 27 := by\n    have h\u2082 : (5 - 2 * e) ^ 3 = 125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3 := by\n      ring_nf\n    rw [h\u2082]\n    <;>\n    ring_nf\n  \n  have h3 : e * (5 - e) ^ 2 / 4 + (5 - 2 * e) ^ 3 / 27 = (27 * (25 * e - 10 * e ^ 2 + e ^ 3) + 4 * (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3)) / 108 := by\n    rw [h1, h2]\n    have h\u2083 : (25 * e - 10 * e ^ 2 + e ^ 3) / 4 + (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3) / 27 = (27 * (25 * e - 10 * e ^ 2 + e ^ 3) + 4 * (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3)) / 108 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> nlinarith [sq_nonneg (e - 5)]\n    linarith\n  \n  have h4 : (27 * (25 * e - 10 * e ^ 2 + e ^ 3) + 4 * (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3)) / 108 = (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 := by\n    have h\u2084 : 27 * (25 * e - 10 * e ^ 2 + e ^ 3) + 4 * (125 - 150 * e + 60 * e ^ 2 - 8 * e ^ 3) = -5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500 := by\n      ring_nf\n      <;>\n      nlinarith [sq_nonneg (e - 5)]\n    rw [h\u2084]\n    <;>\n    ring_nf\n  \n  have h5 : e * (5 - e) ^ 2 / 4 + (5 - 2 * e) ^ 3 / 27 = (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 := by\n    linarith\n  \n  exact h5", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures both the assumption (e is a real number) and the conclusion (the algebraic identity). The mathematical expressions are accurately translated from mathematical notation to Lean syntax, with proper operator precedence and parenthesization. The logical structure is preserved by making the assumption a parameter of the theorem."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "Therefore, $P \\le \frac{e(5-e)^2}{4} + \frac{(5-2e)^3}{27}.$ Expanding the numerator yields $P \\le \frac{-5e^3 - 30e^2 + 75e + 500}{108}$.", "statement": "We assume:\n\u2022 $P \\le \\frac{e(5-e)^2}{4} + \\frac{(5-2e)^3}{27}$ [l7]\n\u2022 $\\frac{e(5-e)^2}{4} + \\frac{(5-2e)^3}{27} = \\frac{-5e^3 - 30e^2 + 75e + 500}{108}$ [l8]\nTherefore, we conclude:\n\u2022 $P \\le \\frac{-5e^3 - 30e^2 + 75e + 500}{108}$ [l9].", "dependencies": ["l7", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9\n  (e : \u211d)\n  (P : \u211d)\n  (l7 : P \u2264 e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27)\n  (l8 : e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 = (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108) :\n  P \u2264 (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9\n  (e : \u211d)\n  (P : \u211d)\n  (l7 : P \u2264 e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27)\n  (l8 : e * (5 - e)^2 / 4 + (5 - 2 * e)^3 / 27 = (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108) :\n  P \u2264 (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 := by\n  have h_main : P \u2264 (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 := by\n    calc\n      P \u2264 e * (5 - e) ^ 2 / 4 + (5 - 2 * e) ^ 3 / 27 := l7\n      _ = (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 := by rw [l8]\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations are appropriately formalized with explicit type annotations for real numbers, which is standard and necessary in Lean.", "Assumption l7 is correctly translated with proper operator precedence and explicit multiplication symbols.", "Assumption l8 (the equality) is accurately formalized with all mathematical expressions correctly converted to Lean syntax.", "The conclusion l9 perfectly matches the natural language statement with correct mathematical notation.", "The overall logical structure as a theorem with hypotheses and conclusion correctly captures the transitive reasoning presented in natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l10": {"id": "l10", "natural_language": "To finish, we check that this is at most $5$, which is equivalent to showing $(e-1)^2(e+8) \\ge 0$.", "statement": "We assume:\n\u2022 $e$ is a real number\nTherefore, we conclude:\n\u2022 The inequality $\\frac{-5e^3 - 30e^2 + 75e + 500}{108} \\le 5$ is equivalent to the inequality $(e-1)^2(e+8) \\ge 0$ [l10].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l10 (e : \u211d) : \n  ((-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) \u2194 \n  ((e - 1)^2 * (e + 8) \u2265 0) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l10 (e : \u211d) : \n  ((-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) \u2194 \n  ((e - 1)^2 * (e + 8) \u2265 0) := by\n  have h_main : ((-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1)^2 * (e + 8) \u2265 0) := by\n    constructor\n    \u00b7 -- Prove the forward direction: if (-5e\u00b3 - 30e\u00b2 + 75e + 500)/108 \u2264 5, then (e - 1)\u00b2(e + 8) \u2265 0\n      intro h\n      have h\u2081 : -5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500 \u2264 540 := by\n        -- Multiply both sides by 108 to eliminate the denominator\n        have h\u2082 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5 := h\n        have h\u2083 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) \u2264 5 * 108 := by\n          linarith\n        linarith\n      have h\u2082 : -5 * e ^ 3 - 30 * e ^ 2 + 75 * e - 40 \u2264 0 := by linarith\n      have h\u2083 : -5 * (e ^ 3 + 6 * e ^ 2 - 15 * e + 8) \u2264 0 := by linarith\n      have h\u2084 : (e - 1) ^ 2 * (e + 8) \u2265 0 := by\n        -- Use the factored form of the cubic polynomial\n        have h\u2085 : e ^ 3 + 6 * e ^ 2 - 15 * e + 8 = (e - 1) ^ 2 * (e + 8) := by\n          ring\n        have h\u2086 : -5 * (e ^ 3 + 6 * e ^ 2 - 15 * e + 8) \u2264 0 := h\u2083\n        have h\u2087 : -5 * ((e - 1) ^ 2 * (e + 8)) \u2264 0 := by\n          rw [h\u2085] at h\u2086\n          exact h\u2086\n        -- Divide both sides by -5 (and reverse the inequality)\n        have h\u2088 : (e - 1) ^ 2 * (e + 8) \u2265 0 := by\n          nlinarith [sq_nonneg (e - 1)]\n        exact h\u2088\n      exact h\u2084\n    \u00b7 -- Prove the reverse direction: if (e - 1)\u00b2(e + 8) \u2265 0, then (-5e\u00b3 - 30e\u00b2 + 75e + 500)/108 \u2264 5\n      intro h\n      have h\u2081 : (e - 1) ^ 2 * (e + 8) \u2265 0 := h\n      have h\u2082 : -5 * (e ^ 3 + 6 * e ^ 2 - 15 * e + 8) \u2264 0 := by\n        -- Use the factored form of the cubic polynomial\n        have h\u2083 : e ^ 3 + 6 * e ^ 2 - 15 * e + 8 = (e - 1) ^ 2 * (e + 8) := by\n          ring\n        have h\u2084 : -5 * (e ^ 3 + 6 * e ^ 2 - 15 * e + 8) = -5 * ((e - 1) ^ 2 * (e + 8)) := by\n          rw [h\u2083]\n          <;> ring\n        rw [h\u2084]\n        -- Use the fact that (e - 1)\u00b2 \u2265 0 and (e + 8) \u2265 0 or \u2264 0 appropriately\n        nlinarith [sq_nonneg (e - 1)]\n      have h\u2083 : -5 * e ^ 3 - 30 * e ^ 2 + 75 * e - 40 \u2264 0 := by linarith\n      have h\u2084 : -5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500 \u2264 540 := by linarith\n      have h\u2085 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5 := by\n        -- Divide both sides by 108\n        have h\u2086 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5 := by\n          rw [div_le_iff (by norm_num)]\n          linarith\n        exact h\u2086\n      exact h\u2085\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declaration correctly captures that e is a real number using Lean's real number type \u211d.", "The mathematical expressions on both sides of the equivalence are accurately translated, with all coefficients, operations, and inequality symbols matching the natural language.", "The logical structure using biconditional (\u2194) correctly represents the equivalence relationship stated in natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l11": {"id": "l11", "natural_language": "Since $e>0$, both factors are nonnegative, so the inequality holds.", "statement": "We assume:\n\u2022 $e$ is a positive real number [tc_1]\nTherefore, we conclude:\n\u2022 $(e-1)^2(e+8) \\ge 0$ [l11].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l11 (e : \u211d) (h_e_pos : 0 < e) : (e - 1)^2 * (e + 8) \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l11 (e : \u211d) (h_e_pos : 0 < e) : (e - 1)^2 * (e + 8) \u2265 0 := by\n  have h1 : (e - 1)^2 \u2265 0 := by\n    -- Prove that the square of any real number is non-negative.\n    nlinarith [sq_nonneg (e - 1)]\n  \n  have h2 : e + 8 \u2265 0 := by\n    -- Since e is positive, e + 8 is at least 8, which is non-negative.\n    linarith\n  \n  have h3 : (e - 1)^2 * (e + 8) \u2265 0 := by\n    -- The product of two non-negative numbers is non-negative.\n    have h4 : (e - 1)^2 \u2265 0 := h1\n    have h5 : e + 8 \u2265 0 := h2\n    nlinarith\n  \n  exact h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The variable e is properly declared as a real number with the positivity constraint (0 < e), and the mathematical expression (e-1)\u00b2(e+8) \u2265 0 is accurately represented using equivalent Lean notation. The logical structure of premise leading to conclusion is preserved in the theorem statement format."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l12": {"id": "l12", "natural_language": "To finish, we check that this is at most $5$, which is equivalent to showing $(e-1)^2(e+8) \\ge 0$. Since $e>0$, both factors are nonnegative, so the inequality holds.", "statement": "We assume:\n\u2022 The inequality $\\frac{-5e^3 - 30e^2 + 75e + 500}{108} \\le 5$ is equivalent to $(e-1)^2(e+8) \\ge 0$ [l10]\n\u2022 $(e-1)^2(e+8) \\ge 0$ [l11]\nTherefore, we conclude:\n\u2022 $\\frac{-5e^3 - 30e^2 + 75e + 500}{108} \\le 5$ [l12].", "dependencies": ["l10", "l11"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l12 (e : \u211d) (h_e_pos : 0 < e)\n  (l10 : ((-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1)^2 * (e + 8) \u2265 0))\n  (l11 : (e - 1)^2 * (e + 8) \u2265 0) :\n  (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l12 (e : \u211d) (h_e_pos : 0 < e)\n  (l10 : ((-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1)^2 * (e + 8) \u2265 0))\n  (l11 : (e - 1)^2 * (e + 8) \u2265 0) :\n  (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5 := by\n  have h_main : (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5 := by\n    have h\u2081 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1) ^ 2 * (e + 8) \u2265 0) := l10\n    have h\u2082 : (e - 1) ^ 2 * (e + 8) \u2265 0 := l11\n    have h\u2083 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5 := by\n      -- Use the equivalence to deduce the desired inequality from h\u2082\n      have h\u2084 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) := by\n        -- Since (e - 1)^2 * (e + 8) \u2265 0 is true, we can use the equivalence to get the other side\n        have h\u2085 : ((e - 1) ^ 2 * (e + 8) \u2265 0) \u2192 ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) := by\n          intro h\n          -- Use the forward direction of the equivalence\n          have h\u2086 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1) ^ 2 * (e + 8) \u2265 0) := l10\n          have h\u2087 : ((e - 1) ^ 2 * (e + 8) \u2265 0) := h\n          have h\u2088 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) := by\n            -- Use the equivalence to get the desired inequality\n            have h\u2089 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) \u2194 ((e - 1) ^ 2 * (e + 8) \u2265 0) := l10\n            have h\u2081\u2080 : ((e - 1) ^ 2 * (e + 8) \u2265 0) := h\u2087\n            -- Use the backward direction of the equivalence\n            have h\u2081\u2081 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) := by\n              rw [h\u2089] at *\n              exact h\u2081\u2080\n            exact h\u2081\u2081\n          exact h\u2088\n        -- Apply the implication to h\u2082\n        have h\u2086 : ((e - 1) ^ 2 * (e + 8) \u2265 0) := h\u2082\n        have h\u2087 : ((-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5) := h\u2085 h\u2086\n        exact h\u2087\n      exact h\u2084\n    exact h\u2083\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The equivalence statement l10 is correctly formalized using the biconditional operator, with accurate mathematical expressions", "The assumption l11 is directly and accurately translated from the natural language inequality", "The conclusion l12 correctly states the target inequality as the theorem's goal", "The logical structure properly captures the modus ponens reasoning: from equivalence and one direction, conclude the other direction. The additional constraint h_e_pos is acceptable extra context"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Hence, we conclude that $abc+bcd+cde+dea+eab \\le 5$.", "statement": "We assume:\n\u2022 $P = abc+bcd+cde+dea+eab$ [def_1]\n\u2022 $P \\le \\frac{-5e^3 - 30e^2 + 75e + 500}{108}$ [l9]\n\u2022 $\\frac{-5e^3 - 30e^2 + 75e + 500}{108} \\le 5$ [l12]\nTherefore, we conclude:\n\u2022 $abc+bcd+cde+dea+eab \\le 5$ [ts_1].", "dependencies": ["def_1", "l9", "l12"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c d e : \u211d) \n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5)\n  (h_bound : a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108)\n  (h_ineq : (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) :\n  a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c d e : \u211d) \n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < d \u2227 0 < e)\n  (h_sum : a + b + c + d + e = 5)\n  (h_bound : a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108)\n  (h_ineq : (-5 * e^3 - 30 * e^2 + 75 * e + 500) / 108 \u2264 5) :\n  a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 5 := by\n  have h_main : a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 5 := by\n    have h\u2081 : a * b * c + b * c * d + c * d * e + d * e * a + e * a * b \u2264 (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 := h_bound\n    have h\u2082 : (-5 * e ^ 3 - 30 * e ^ 2 + 75 * e + 500) / 108 \u2264 5 := h_ineq\n    -- Use the transitivity of the \u2264 relation to combine the two inequalities\n    linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. The definition P = abc+bcd+cde+dea+eab is represented accurately, both inequalities l9 and l12 are properly formalized with correct expressions and inequality directions, and the conclusion ts_1 follows logically. The additional hypotheses (positivity constraints and sum constraint) provide helpful context without contradicting the natural language statements. The logical structure of using transitivity of inequalities to conclude the final result is properly set up."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l10", "label": "l10", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l11", "label": "l11", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l12", "label": "l12", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l11", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l10", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l11", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l12", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

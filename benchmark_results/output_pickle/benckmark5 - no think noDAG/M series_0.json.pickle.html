@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence such that $a_n = \frac{1}{n(n+1)}$ for all $n \in \mathbb{N}$. Let the series be $\sum_{n=1}^{\infty} a_n$. The sum of this series is $1$.
+
+Proof: The term $a_n$ can be expressed using partial fraction decomposition. We can write $\frac{1}{n(n+1)} = \frac{A}{n} + \frac{B}{n+1}$. To find $A$ and $B$, we set $1 = A(n+1) + B(n)$. By setting $n=0$, we find $1 = A(1) + B(0)$, so $A=1$. By setting $n=-1$, we find $1 = A(0) + B(-1)$, so $1 = -B$, which means $B=-1$. Therefore, $a_n = \frac{1}{n} - \frac{1}{n+1}$. The partial sum of the series is $S_N = \sum_{n=1}^N a_n = \sum_{n=1}^N (\frac{1}{n} - \frac{1}{n+1})$. This is a telescoping sum. Expanding the sum, we get $S_N = (\frac{1}{1} - \frac{1}{2}) + (\frac{1}{2} - \frac{1}{3}) + (\frac{1}{3} - \frac{1}{4}) + \dots + (\frac{1}{N} - \frac{1}{N+1})$. The intermediate terms cancel out, leaving $S_N = 1 - \frac{1}{N+1}$. The sum of the series is the limit of the partial sums as $N$ approaches infinity. Thus, $\sum_{n=1}^{\infty} a_n = \lim_{N 	o \infty} S_N = \lim_{N 	o \infty} (1 - \frac{1}{N+1})$. Since $\lim_{N 	o \infty} \frac{1}{N+1} = 0$, the sum of the series is $1 - 0 = 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$.", "statement": "Premise:\n\u2022 $(a_n)$ is a sequence of real numbers such that for all $n \\in \\mathbb{N}$ (positive integers), $a_n = \\frac{1}{n(n+1)}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'a : \u2115 \u2192 \u211d' correctly captures that (a_n) is a sequence of real numbers indexed by natural numbers.", "The Lean condition 'tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1))' perfectly matches the natural language condition. The 'n > 0' constraint correctly captures that \u2115 refers to positive integers, and the formula 1 / (n * (n + 1)) is equivalent to 1/(n(n+1)).", "The conclusion is essentially the same as condition 2 - it restates that the sequence is defined by the explicit formula. The Lean formalization captures this through the same tc_1 condition."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "We can write $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$. To find $A$ and $B$, we set $1 = A(n+1) + B(n)$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence of real numbers such that for all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n(n+1)}$ [tc_1].\nTherefore, we conclude:\n\u2022 For the partial fraction decomposition $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$, the coefficients A and B must satisfy the identity $1 = A(n+1) + B(n)$ for all n where the expressions are defined [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (A B : \u211d)\n  (n : \u211d) :\n  1 = A * (n + 1) + B * n := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (A B : \u211d)\n  (n : \u211d)\n  (hn : n \u2260 0)\n  (hn1 : n + 1 \u2260 0) :\n  1 = A * (n + 1) + B * n := by\n  have h : 1 / (n * (n + 1)) = 1/n - 1/(n + 1) := by\n    field_simp\n    ring\n  have : 1 = A * (n + 1) + B * n \u2194 1 = (A + B) * n + A := by ring\n  rw [this]\n  have hA : A = 1 := by\n    have h1 := h (n := 1)\n    simp [tc_1 1 (by norm_num)] at h1\n    field_simp at h1\n    linear_combination h1\n  have hB : A + B = 0 := by\n    have hn := h\n    field_simp at hn\n    linear_combination hn\n  rw [hA] at hB \u22a2\n  simp [hB]\n  norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 4, "endLine": 15, "endColumn": 8, "data": "no goals to be solved"}, {"line": 19, "column": 17, "endLine": 19, "endColumn": 25, "data": "invalid argument name 'n' for function"}, {"line": 26, "column": 4, "endLine": 26, "endColumn": 22, "data": "ring failed, ring expressions not equal\na : \u2115 \u2192 \u211d\ntc_1 : \u2200 n > 0, a n = 1 / (\u2191n * (\u2191n + 1))\nA B n : \u211d\nhn\u271d : n \u2260 0\nhn1 : n + 1 \u2260 0\nh : 1 / (n * (n + 1)) = 1 / n - 1 / (n + 1)\nthis : 1 = A * (n + 1) + B * n \u2194 1 = (A + B) * n + A\nhA : A = 1\nhn : True\n\u22a2 A + B = 0"}, {"line": 29, "column": 2, "endLine": 29, "endColumn": 10, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition is correctly formalized with an appropriate additional constraint n > 0 to avoid division by zero.", "The identity statement is presented as an arbitrary claim about any real numbers A, B, and n, rather than as a conclusion derived from the partial fraction decomposition of the sequence. The Lean formalization fails to capture that this identity should follow from the premise and should hold for specific values of the coefficients.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The sequence definition is correctly formalized with an appropriate additional constraint n > 0 to avoid division by zero.', 'The identity statement is presented as an arbitrary claim about any real numbers A, B, and n, rather than as a conclusion derived from the partial fraction decomposition of the sequence. The Lean formalization fails to capture that this identity should follow from the premise and should hold for specific values of the coefficients.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By setting $n=0$, we find $1 = A(1) + B(0)$, so $A=1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence of real numbers such that for all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n(n+1)}$ [tc_1];\n\u2022 For the partial fraction decomposition $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$, the coefficients A and B must satisfy the identity $1 = A(n+1) + B(n)$ [l1].\nTherefore, we conclude:\n\u2022 The coefficient A is 1 [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (A B : \u211d)\n  (l1 : \u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) :\n  A = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (A B : \u211d)\n  (l1 : \u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) :\n  A = 1 := by\n  have h1 := l1 (-1)\n  simp at h1\n  have h2 := l1 0\n  simp at h2\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0.45, "semantic_feedback": ["The sequence definition adds an extra condition 'n > 0' not explicitly stated in the natural language, though this is mathematically reasonable to avoid division by zero.", "The identity condition uses real numbers (n_val : \u211d) instead of natural numbers as implied by the natural language context, and uses a different variable name. While more general, this deviates from the stated assumption.", "The conclusion A = 1 is perfectly captured.", "Overall, the Lean formalization captures the essential logical structure but introduces minor deviations in the domain restrictions and variable types that weren't explicitly stated in the natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.45, below threshold 0.6.\nScorer feedback: [\"The sequence definition adds an extra condition 'n > 0' not explicitly stated in the natural language, though this is mathematically reasonable to avoid division by zero.\", 'The identity condition uses real numbers (n_val : \u211d) instead of natural numbers as implied by the natural language context, and uses a different variable name. While more general, this deviates from the stated assumption.', 'The conclusion A = 1 is perfectly captured.', \"Overall, the Lean formalization captures the essential logical structure but introduces minor deviations in the domain restrictions and variable types that weren't explicitly stated in the natural language.\"]"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "By setting $n=-1$, we find $1 = A(0) + B(-1)$, so $1 = -B$, which means $B=-1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence of real numbers such that for all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n(n+1)}$ [tc_1];\n\u2022 The coefficients A and B must satisfy the identity $1 = A(n+1) + B(n)$ [l1];\n\u2022 The coefficient A is 1 [l2].\nTherefore, we conclude:\n\u2022 The coefficient B is -1 [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n_val : \u2115, n_val > 0 \u2192 a n_val = 1 / (n_val * (n_val + 1)))\n  (A B : \u211d)\n  (l1 : \u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val)\n  (l2 : A = 1) :\n  B = -1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n_val : \u2115, n_val > 0 \u2192 a n_val = 1 / (n_val * (n_val + 1)))\n  (A B : \u211d)\n  (l1 : \u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val)\n  (l2 : A = 1) :\n  B = -1 := by\n  have h : \u2200 n_val : \u211d, 1 = 1 * (n_val + 1) + B * n_val := by\n    intro n_val\n    rw [l2] at l1\n    exact l1 n_val\n  have h' := h (-1)\n  simp at h'\n  linarith [h']", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0.6, "semantic_feedback": ["The Lean formalization adds the condition 'n_val > 0' which is not explicitly stated in the natural language, though it's mathematically reasonable to avoid division by zero.", "The natural language doesn't specify the domain for the variable in the identity, while Lean explicitly quantifies over real numbers. This is a reasonable interpretation but adds specificity not in the original.", "The coefficient A being 1 is perfectly captured.", "The conclusion that B equals -1 is perfectly captured.", "The overall logical structure and dependencies between assumptions and conclusion are correctly preserved."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.6, below threshold 0.6.\nScorer feedback: [\"The Lean formalization adds the condition 'n_val > 0' which is not explicitly stated in the natural language, though it's mathematically reasonable to avoid division by zero.\", \"The natural language doesn't specify the domain for the variable in the identity, while Lean explicitly quantifies over real numbers. This is a reasonable interpretation but adds specificity not in the original.\", 'The coefficient A being 1 is perfectly captured.', 'The conclusion that B equals -1 is perfectly captured.', 'The overall logical structure and dependencies between assumptions and conclusion are correctly preserved.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Therefore, $a_n = \\frac{1}{n} - \\frac{1}{n+1}$.", "statement": "We assume:\n\u2022 For all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n(n+1)}$ [tc_1];\n\u2022 The coefficients A and B for the partial fraction decomposition satisfy $1 = A(n+1) + B(n)$ [l1];\n\u2022 The coefficient A is 1 [l2];\n\u2022 The coefficient B is -1 [l3].\nTherefore, we conclude:\n\u2022 For all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l4].", "dependencies": ["tc_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (n : \u2115)\n  (n_pos : n > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : 1 = A * (n + 1) + B * n)\n  (l2 : A = 1)\n  (l3 : B = -1) :\n  a n = 1 / n - 1 / (n + 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (n : \u2115)\n  (n_pos : n > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : 1 = A * (n + 1) + B * n)\n  (l2 : A = 1)\n  (l3 : B = -1) :\n  a n = 1 / n - 1 / (n + 1) := by\n  have h : n * (n + 1) \u2260 0 := by\n    apply mul_ne_zero\n    \u00b7 exact Nat.cast_ne_zero.mpr (Ne.symm (Nat.pos_iff_ne_zero.mp n_pos))\n    \u00b7 exact Nat.cast_ne_zero.mpr (Nat.succ_ne_zero n)\n  rw [tc_1 n n_pos]\n  rw [l2, l3] at l1\n  simp at l1\n  field_simp [h]\n  rw [div_sub_div_same]\n  simp\n  rw [\u2190 l1]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 42, "endLine": 17, "endColumn": 72, "data": "application type mismatch\n  Ne.symm (Nat.pos_iff_ne_zero.mp n_pos)\nargument\n  Nat.pos_iff_ne_zero.mp n_pos\nhas type\n  n \u2260 0 : Prop\nbut is expected to have type\n  0 \u2260 n : Prop"}, {"line": 23, "column": 6, "endLine": 23, "endColumn": 22, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition is correctly formalized. The added positivity constraint n > 0 is a reasonable mathematical clarification to avoid division by zero, which is implicit in the natural language context.", "The partial fraction constraint equation is exactly preserved in the Lean formalization with equivalent mathematical meaning.", "Coefficient A = 1 is directly and correctly translated.", "Coefficient B = -1 is directly and correctly translated.", "The conclusion about the partial fraction decomposition is mathematically equivalent between natural language and Lean.", "The explicit positivity constraint and conditional structure in Lean appropriately handles the mathematical domain restrictions that are implicit in the natural language version.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l4 :\n  \u2203 (a : \u2115 \u2192 \u211d) (A B : \u211d) (n : \u2115) (n_pos : n > 0),\n    (\u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1))) \u2227\n    (1 = A * (n + 1) + B * n) \u2227\n    (A = 1) \u2227\n    (B = -1) \u2227\n    \u00ac(a n = 1 / n - 1 / (n + 1)) := by\n  use fun n => if n = 1 then 1/2 else 1 / (n * (n + 1)), 1, -1, 1, zero_lt_one\n  constructor\n  \u00b7 intro n hn\n    split_ifs with h\n    \u00b7 simp [h]\n    \u00b7 rfl\n  constructor\n  \u00b7 simp\n  constructor\n  \u00b7 rfl\n  constructor\n  \u00b7 rfl\n  \u00b7 simp [zero_lt_one]\n    norm_num"}, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "The partial sum of the series is $S_N = \\sum_{n=1}^N a_n$.", "statement": "We assume:\n\u2022 For all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l4].\nDefinition:\n\u2022 The N-th partial sum of the series is defined as $S_N = \\sum_{n=1}^N a_n$ [def_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l4 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / n - 1 / (n + 1))\n  (def_1 : \u2200 N : \u2115, N > 0 \u2192 \u2211 n in Finset.range N.succ, a n = (Finset.range N.succ).sum (fun n => a n))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The mathematical formula matches perfectly, but the Lean version adds the constraint n > 0, while the natural language states 'for all n \u2208 \u2115' without this restriction. In standard mathematical practice, when dealing with fractions like 1/n, it's often implicitly assumed that n \u2260 0, so this is a minor structural difference that doesn't change the essential meaning.", "The Lean definition is a tautological statement that says a sum equals itself, which doesn't capture the intended meaning of defining S_N as the N-th partial sum. The natural language defines S_N as a specific notation for the partial sum, but the Lean version doesn't actually define S_N as a separate entity - it just states that a sum equals the same sum written differently. This misses the key logical component of defining the partial sum notation."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The mathematical formula matches perfectly, but the Lean version adds the constraint n > 0, while the natural language states 'for all n \u2208 \u2115' without this restriction. In standard mathematical practice, when dealing with fractions like 1/n, it's often implicitly assumed that n \u2260 0, so this is a minor structural difference that doesn't change the essential meaning.\", \"The Lean definition is a tautological statement that says a sum equals itself, which doesn't capture the intended meaning of defining S_N as the N-th partial sum. The natural language defines S_N as a specific notation for the partial sum, but the Lean version doesn't actually define S_N as a separate entity - it just states that a sum equals the same sum written differently. This misses the key logical component of defining the partial sum notation.\"]"}, "type": "definition"}, "l5": {"id": "l5", "natural_language": "The partial sum of the series is $S_N = \\sum_{n=1}^N a_n = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$.", "statement": "We assume:\n\u2022 For all $n \\in \\mathbb{N}$, $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l4];\n\u2022 The N-th partial sum is $S_N = \\sum_{n=1}^N a_n$ [def_1].\nTherefore, we conclude:\n\u2022 $S_N = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$ [l5].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u211d)\n  (N : \u2115)\n  (N_pos : N > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l4 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / n - 1 / (n + 1))\n  (def_1 : \u2200 N_val : \u2115, N_val > 0 \u2192 \u2211 n in Finset.range N_val.succ, a n = (Finset.range N_val.succ).sum (fun n => a n)):\n  (\u2211 n in Finset.range N.succ, a n) = (\u2211 n in Finset.range N.succ, (1 / n - 1 / (n + 1))) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u211d)\n  (N : \u2115)\n  (N_pos : N > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l4 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / n - 1 / (n + 1))\n  (def_1 : \u2200 N_val : \u2115, N_val > 0 \u2192 \u2211 n in Finset.range N_val.succ, a n = (Finset.range N_val.succ).sum (fun n => a n)):\n  (\u2211 n in Finset.range N.succ, a n) = (\u2211 n in Finset.range N.succ, (1 / n - 1 / (n + 1))) := by\n  simp_rw [l4]\n  congr\n  ext n\n  cases n\n  simp\n  have hn : n.succ > 0 := by simp\n  rw [l4 n.succ hn]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 11, "endLine": 13, "endColumn": 13, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the main mathematical content, but has minor structural issues. The indexing with Finset.range N.succ includes n=0 which isn't handled by the definition l4, and def_1 is a tautological statement rather than a proper definition. The extra assumption tc_1 is not mentioned in the natural language. However, the core logical meaning and the conclusion are correctly formalized.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization correctly captures the main mathematical content, but has minor structural issues. The indexing with Finset.range N.succ includes n=0 which isn't handled by the definition l4, and def_1 is a tautological statement rather than a proper definition. The extra assumption tc_1 is not mentioned in the natural language. However, the core logical meaning and the conclusion are correctly formalized.\"]"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "This is a telescoping sum. Expanding the sum, we get $S_N = (\\frac{1}{1} - \\frac{1}{2}) + (\\frac{1}{2} - \\frac{1}{3}) + (\\frac{1}{3} - \\frac{1}{4}) + \\dots + (\\frac{1}{N} - \\frac{1}{N+1})$. The intermediate terms cancel out, leaving $S_N = 1 - \\frac{1}{N+1}$.", "statement": "We assume:\n\u2022 The N-th partial sum is $S_N = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$ [l5].\nTherefore, we conclude:\n\u2022 $S_N = 1 - \\frac{1}{N+1}$ [l6].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u211d)\n  (N : \u2115)\n  (N_pos : N > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 (A B : \u211d) (n_val : \u211d), 1 = A * (n_val + 1) + B * n_val)\n  (l2 : \u2200 (A B : \u211d), (\u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) \u2192 A = 1)\n  (l3 : \u2200 (A B : \u211d), (\u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) \u2192 (A = 1) \u2192 B = -1)\n  (l4 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / n - 1 / (n + 1))\n  (def_1 : \u2200 N_val : \u2115, N_val > 0 \u2192 \u2211 n in Finset.range N_val.succ, a n = (Finset.range N_val.succ).sum (fun n => a n))\n  (l5 : (\u2211 n in Finset.range N.succ, a n) = (\u2211 n in Finset.range N.succ, (1 / n - 1 / (n + 1)))) :\n  (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u211d)\n  (N : \u2115)\n  (N_pos : N > 0)\n  (tc_1 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 (A B : \u211d) (n_val : \u211d), 1 = A * (n_val + 1) + B * n_val)\n  (l2 : \u2200 (A B : \u211d), (\u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) \u2192 A = 1)\n  (l3 : \u2200 (A B : \u211d), (\u2200 n_val : \u211d, 1 = A * (n_val + 1) + B * n_val) \u2192 (A = 1) \u2192 B = -1)\n  (l4 : \u2200 n : \u2115, n > 0 \u2192 a n = 1 / n - 1 / (n + 1))\n  (def_1 : \u2200 N_val : \u2115, N_val > 0 \u2192 \u2211 n in Finset.range N_val.succ, a n = (Finset.range N_val.succ).sum (fun n => a n))\n  (l5 : (\u2211 n in Finset.range N.succ, a n) = (\u2211 n in Finset.range N.succ, (1 / n - 1 / (n + 1)))) :\n  (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1) := by\n  rw [l5]\n  have h : \u2200 n \u2208 Finset.range N.succ, n > 0 \u2192 (1 / (n : \u211d) - 1 / (n + 1)) = a n := by\n    intro n hn hn_pos\n    exact (l4 n hn_pos).symm\n  rw [Finset.sum_sub_distrib]\n  have sum_eq : \u2211 n in Finset.range N.succ, 1 / (n : \u211d) - \u2211 n in Finset.range N.succ, 1 / (n + 1 : \u211d) = \n      1 - 1 / (N + 1 : \u211d) := by\n    rw [Finset.sum_range_div, Finset.sum_range_div_shift]\n    simp [Nat.cast_add, Nat.cast_one]\n  exact sum_eq", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 21, "column": 6, "endLine": 21, "endColumn": 28, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u2211 x \u2208 ?m.2193, (?m.2194 x - ?m.2195 x)\na : \u2115 \u2192 \u211d\nN : \u2115\nN_pos : N > 0\ntc_1 : \u2200 n > 0, a n = 1 / (\u2191n * (\u2191n + 1))\nl1 : \u2200 (A B n_val : \u211d), 1 = A * (n_val + 1) + B * n_val\nl2 : \u2200 (A B : \u211d), (\u2200 (n_val : \u211d), 1 = A * (n_val + 1) + B * n_val) \u2192 A = 1\nl3 : \u2200 (A B : \u211d), (\u2200 (n_val : \u211d), 1 = A * (n_val + 1) + B * n_val) \u2192 A = 1 \u2192 B = -1\nl4 : \u2200 n > 0, a n = 1 / \u2191n - 1 / (\u2191n + 1)\ndef_1 : \u2200 N_val > 0, \u2211 n \u2208 Finset.range N_val.succ, a n = \u2211 n \u2208 Finset.range N_val.succ, a n\nl5 : \u2211 n \u2208 Finset.range N.succ, a n = \u2191(\u2211 n \u2208 Finset.range N.succ, (1 / n - 1 / (n + 1)))\nh : \u2200 n \u2208 Finset.range N.succ, n > 0 \u2192 1 / \u2191n - 1 / (\u2191n + 1) = a n\n\u22a2 \u2191(\u2211 n \u2208 Finset.range N.succ, (1 / n - 1 / (n + 1))) = 1 - 1 / (\u2191N + 1)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The assumption about the N-th partial sum has a major inconsistency. The natural language specifies the sum from n=1 to N, but the Lean code uses Finset.range N.succ which includes n=0. This introduces division by zero (1/0) and fundamentally changes the mathematical meaning of the sum.", "The conclusion correctly translates the mathematical statement S_N = 1 - 1/(N+1) into proper Lean syntax, maintaining the same mathematical meaning.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The assumption about the N-th partial sum has a major inconsistency. The natural language specifies the sum from n=1 to N, but the Lean code uses Finset.range N.succ which includes n=0. This introduces division by zero (1/0) and fundamentally changes the mathematical meaning of the sum.', 'The conclusion correctly translates the mathematical statement S_N = 1 - 1/(N+1) into proper Lean syntax, maintaining the same mathematical meaning.']"}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "The sum of the series is the limit of the partial sums as $N$ approaches infinity.", "statement": "We assume:\n\u2022 The N-th partial sum is $S_N = 1 - \\frac{1}{N+1}$ [l6].\nDefinition:\n\u2022 The sum of the series $\\sum_{n=1}^{\\infty} a_n$ is defined as $\\lim_{N \\to \\infty} S_N$ [def_2].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a : \u2115 \u2192 \u211d)\n  (l6 : \u2200 (N : \u2115), N > 0 \u2192 (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1))\n  (def_2 : HasSum (fun n : \u2115 => a (n + 1)) 1)", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization uses `\u2211 n in Finset.range N.succ, a n` which sums from n=0 to N (since Finset.range N.succ = {0,1,...,N}), while the mathematical notation $S_N$ typically refers to the N-th partial sum starting from n=1. However, the indexing difference is manageable and the core mathematical relationship is preserved.", "The Lean formalization uses `HasSum (fun n : \u2115 => a (n + 1)) 1` which states that the series sums to 1, but this is not what the natural language says. The natural language only defines what the sum means (as a limit), without specifying its value. The Lean version introduces a conclusion (that the sum equals 1) that is not present in the natural language statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization uses `\u2211 n in Finset.range N.succ, a n` which sums from n=0 to N (since Finset.range N.succ = {0,1,...,N}), while the mathematical notation $S_N$ typically refers to the N-th partial sum starting from n=1. However, the indexing difference is manageable and the core mathematical relationship is preserved.', 'The Lean formalization uses `HasSum (fun n : \u2115 => a (n + 1)) 1` which states that the series sums to 1, but this is not what the natural language says. The natural language only defines what the sum means (as a limit), without specifying its value. The Lean version introduces a conclusion (that the sum equals 1) that is not present in the natural language statement.']"}, "type": "definition"}, "l7": {"id": "l7", "natural_language": "Thus, $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$.", "statement": "We assume:\n\u2022 The N-th partial sum is $S_N = 1 - \\frac{1}{N+1}$ [l6];\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N$ [def_2].\nTherefore, we conclude:\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$ [l7].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1", "l5", "l6", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u211d)\n  (l6 : \u2200 (N : \u2115), N > 0 \u2192 (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1))\n  (def_2 : HasSum (fun n : \u2115 => a (n + 1)) 1) :\n  (\u2211' (n : \u2115), a (n + 1)) = (Filter.Tendsto.lim (tendsto_nhds_of_eventually_eq_atTop (fun N : \u2115 => 1 - 1 / (N + 1)) (fun N => 1 - 1 / (N + 1)))) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 29, "endLine": 9, "endColumn": 143, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  Tendsto\nhas type\n  (?m.1017 \u2192 ?m.1018) \u2192 Filter ?m.1017 \u2192 Filter ?m.1018 \u2192 Prop"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u211d)\n  (l6 : \u2200 (N : \u2115), N > 0 \u2192 (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1))\n  (def_2 : HasSum (fun n : \u2115 => a (n + 1)) 1) :\n  (\u2211' (n : \u2115), a (n + 1)) = 1 := by\n  have : Tendsto (fun N : \u2115 => 1 - 1 / (N + 1)) atTop (\ud835\udcdd 1) := by\n    refine Tendsto.sub_const ?_ 1\n    exact tendsto_const_nhds\n    simp only [one_div]\n    exact tendsto_one_div_add_atTop_nhds_0_nat\n  rw [\u2190HasSum.tsum_eq def_2]\n  apply tendsto_nhds_unique (HasSum.tendsto_sum_nat def_2)\n  convert this\n  ext N\n  exact l6 N (zero_lt_succ N)", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 11, "endLine": 11, "endColumn": 33, "data": "failed to synthesize\n  ContinuousSub \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 4, "endLine": 11, "endColumn": 33, "data": "type mismatch\n  Tendsto.sub_const ?m.1497 1\nhas type\n  Tendsto (fun x => ?m.1495 x - 1) ?m.1496 (\ud835\udcdd (?m.1494 - 1)) : Prop\nbut is expected to have type\n  Tendsto (fun N => 1 - 1 / (N + 1)) atTop (\ud835\udcdd 1) : Prop"}, {"line": 16, "column": 2, "endLine": 16, "endColumn": 58, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Since $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$,", "statement": "We assume:\n\u2022 all previous steps.\nTherefore, we conclude:\n\u2022 $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$ [l8].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1", "l5", "l6", "def_2", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (a : \u2115 \u2192 \u211d)\n  (l6 : \u2200 (N : \u2115), N > 0 \u2192 (\u2211 n in Finset.range N.succ, a n) = 1 - 1 / (N + 1))\n  (def_2 : HasSum (fun n : \u2115 => a (n + 1)) 1)\n  (l7 : (\u2211' (n : \u2115), a (n + 1)) = (1 - (0 : \u211d))) :\n  Tendsto (fun (N : \u2115) => 1 / ((N : \u211d) + 1)) atTop 0 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 10, "column": 51, "endLine": 10, "endColumn": 52, "data": "failed to synthesize\n  OfNat (Filter \u211d) 0\nnumerals are polymorphic in Lean, but the numeral `0` cannot be used in a context where the expected type is\n  Filter \u211d\ndue to the absence of the instance above\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8 : Tendsto (fun (N : \u2115) => 1 / (N + 1)) atTop (\ud835\udcdd 0) := by\n  simp_rw [\u2190 one_div]\n  apply Tendsto.const_div (tendsto_nat_cast_atTop_atTop (\u211d := \u211d)) tendsto_const_nhds\n  simp only [ne_eq, Nat.cast_eq_zero, not_false_eq_true, add_eq_zero, one_ne_zero, or_self]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 7, "column": 58, "endLine": 7, "endColumn": 61, "data": "unexpected token ':='; expected ')', ',' or ':'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "the sum of the series is $1 - 0 = 1$.", "statement": "We assume:\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$ [l7];\n\u2022 $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$ [l8].\nTherefore, we conclude:\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = 1$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "def_1", "l5", "l6", "def_2", "l7", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d)\n  (l7 : HasSum a (1 - 0))\n  (l8 : Filter.Tendsto (fun N : \u2115 => 1 / (N + 1)) Filter.atTop (nhds 0)) :\n  HasSum a 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d)\n  (l7 : HasSum a (1 - 0))\n  (l8 : Filter.Tendsto (fun N : \u2115 => 1 / (N + 1)) Filter.atTop (nhds 0)) :\n  HasSum a 1 := by\n  simp only [sub_zero] at l7\n  exact l7", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": ["The natural language states that the sum equals a limit expression 'lim_{N \u2192 \u221e} (1 - 1/(N+1))', but the Lean formalization directly assumes 'HasSum a (1 - 0)' which is just 'HasSum a 1'. This completely bypasses the limit calculation that connects the limit expression to the value 1, making the mathematical reasoning circular rather than demonstrating the logical flow from limit to sum.", "The Lean formalization correctly captures the limit statement using Filter.Tendsto with the appropriate function, target space (atTop), and limit value (0).", "The conclusion correctly states that the series has sum 1 using HasSum, which properly represents the infinite series sum.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language states that the sum equals a limit expression 'lim_{N \u2192 \u221e} (1 - 1/(N+1))', but the Lean formalization directly assumes 'HasSum a (1 - 0)' which is just 'HasSum a 1'. This completely bypasses the limit calculation that connects the limit expression to the value 1, making the mathematical reasoning circular rather than demonstrating the logical flow from limit to sum.\", 'The Lean formalization correctly captures the limit statement using Filter.Tendsto with the appropriate function, target space (atTop), and limit value (0).', 'The conclusion correctly states that the series has sum 1 using HasSum, which properly represents the infinite series sum.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

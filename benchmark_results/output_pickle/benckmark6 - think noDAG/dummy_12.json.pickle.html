@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: If a nonempty set S of real numbers is bounded above, then sup S is the unique real number β such that (a) x ≤ β for all x in S; (b) if ε > 0, there is an x₀ in S such that x₀ > β − ε.
+
+Proof: We first show that β = sup S has properties (a) and (b). Since β is an upper bound of S, it satisfies (a). Since any real number a < β can be written as β − ε with ε > 0, (b) just says no number less than β is an upper bound. Now, suppose β₁ < β₂ and β₂ has property (b); taking ε = β₂ − β₁, there’s x₀ in S with x₀ > β₁, so β₁ fails (a). Thus, uniqueness holds.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "If a nonempty set S of real numbers is bounded above", "statement": "Premise:\n\u2022 S is a nonempty set of real numbers that is bounded above [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (S : Set \u211d)\n(tc_1 : S.Nonempty \u2227 BddAbove S)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that S is a nonempty set of real numbers through the type declaration (S : Set \u211d) and the S.Nonempty condition in the conjunction.", "The Lean formalization correctly captures the bounded above condition using BddAbove S, which is the standard Lean notation for a set being bounded above."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "We first show that \u03b2 = sup S has properties (a) and (b). Since \u03b2 is an upper bound of S, it satisfies (a).", "statement": "We assume:\n\u2022 S is a nonempty set of real numbers that is bounded above [tc_1].\nTherefore, we conclude:\n\u2022 The supremum of S, denoted sup S, satisfies property (a): for all x in S, x \u2264 sup S [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (S : Set \u211d)\n  (h : S.Nonempty \u2227 BddAbove S) :\n  \u2200 x \u2208 S, x \u2264 sSup S := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (S : Set \u211d)\n  (h : S.Nonempty \u2227 BddAbove S) :\n  \u2200 x \u2208 S, x \u2264 sSup S := by\n  have h\u2081 : S.Nonempty := by\n    exact h.1\n  \n  have h\u2082 : BddAbove S := by\n    exact h.2\n  \n  intro x hx\n  have h\u2083 : x \u2264 sSup S := by\n    -- Use the property that the supremum is an upper bound for the set\n    have h\u2084 : x \u2264 sSup S := by\n      apply le_csSup h\u2082\n      <;> aesop\n    exact h\u2084\n  \n  exact h\u2083", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization accurately captures all components of the natural language statement. The set S is properly typed as a set of real numbers, the assumptions of nonemptiness and boundedness above are correctly expressed using S.Nonempty and BddAbove S, and the conclusion about the supremum property is precisely formalized using the universal quantifier and Lean's sSup notation. The logical structure from assumptions to conclusion is maintained perfectly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Since any real number a < \u03b2 can be written as \u03b2 \u2212 \u03b5 with \u03b5 > 0, (b) just says no number less than \u03b2 is an upper bound.", "statement": "We assume:\n\u2022 S is a nonempty set of real numbers that is bounded above [tc_1];\n\u2022 The supremum of S, denoted sup S, satisfies property (a) [l1].\nTherefore, we conclude:\n\u2022 The supremum of S, sup S, satisfies property (b): if \u03b5 > 0, there is an x\u2080 in S such that x\u2080 > sup S \u2212 \u03b5 [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (S : Set \u211d)\n  (h : S.Nonempty \u2227 BddAbove S)\n  (\u03b5 : \u211d) (h\u03b5 : \u03b5 > 0) :\n  \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (S : Set \u211d)\n  (h : S.Nonempty \u2227 BddAbove S)\n  (\u03b5 : \u211d) (h\u03b5 : \u03b5 > 0) :\n  \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5 := by\n  have h\u2081 : sSup S - \u03b5 < sSup S := by\n    linarith [h\u03b5]\n  \n  have h\u2082 : \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5 := by\n    by_contra h\u2083\n    -- Assume the contrary: \u00ac(\u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5)\n    have h\u2084 : \u2200 x \u2208 S, \u00acx > sSup S - \u03b5 := by\n      intro x hx\n      intro h\u2085\n      -- If x > sSup S - \u03b5, then \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5, contradicting h\u2083\n      have h\u2086 : \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5 := \u27e8x, hx, h\u2085\u27e9\n      exact h\u2083 h\u2086\n    -- Convert h\u2084 into \u2200 x \u2208 S, x \u2264 sSup S - \u03b5\n    have h\u2085 : \u2200 x \u2208 S, x \u2264 sSup S - \u03b5 := by\n      intro x hx\n      have h\u2086 : \u00acx > sSup S - \u03b5 := h\u2084 x hx\n      by_contra h\u2087\n      -- If x > sSup S - \u03b5, then we have a contradiction with h\u2086\n      have h\u2088 : x > sSup S - \u03b5 := by\n        by_contra h\u2089\n        -- If x is not > sSup S - \u03b5, then x \u2264 sSup S - \u03b5\n        have h\u2081\u2080 : x \u2264 sSup S - \u03b5 := by linarith\n        exact h\u2087 h\u2081\u2080\n      exact h\u2086 h\u2088\n    -- Since S is bounded above by sSup S - \u03b5, we have sSup S \u2264 sSup S - \u03b5\n    have h\u2086 : sSup S \u2264 sSup S - \u03b5 := by\n      apply csSup_le h.1\n      intro x hx\n      exact h\u2085 x hx\n    -- This leads to a contradiction because \u03b5 > 0\n    linarith [h\u03b5]\n  \n  exact h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The set S assumptions are correctly formalized with appropriate types and conditions (nonempty and bounded above).", "The supremum notation sSup S is the standard Lean representation of sup S, maintaining semantic equivalence.", "The conclusion perfectly captures the conditional statement structure and the existence claim with the correct inequality."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Now, suppose \u03b2\u2081 < \u03b2\u2082 and \u03b2\u2082 has property (b); taking \u03b5 = \u03b2\u2082 \u2212 \u03b2\u2081, there\u2019s x\u2080 in S with x\u2080 > \u03b2\u2081, so \u03b2\u2081 fails (a).", "statement": "We assume:\n\u2022 S is a nonempty set of real numbers that is bounded above [tc_1];\n\u2022 The supremum of S, sup S, satisfies property (a) [l1];\n\u2022 The supremum of S, sup S, satisfies property (b) [l2].\nTherefore, we conclude:\n\u2022 If two real numbers, \u03b2\u2081 and \u03b2\u2082, both satisfy properties (a) and (b), then the assumption \u03b2\u2081 < \u03b2\u2082 leads to a contradiction because it implies that \u03b2\u2081 does not satisfy property (a) [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (S : Set \u211d)\n  (h_S : S.Nonempty \u2227 BddAbove S)\n  (\u03b2\u2081 \u03b2\u2082 : \u211d)\n  (h_a1 : \u2200 x \u2208 S, x \u2264 \u03b2\u2081)\n  (h_b1 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2\u2081 - \u03b5)\n  (h_a2 : \u2200 x \u2208 S, x \u2264 \u03b2\u2082)\n  (h_b2 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2\u2082 - \u03b5)\n  (h_lt : \u03b2\u2081 < \u03b2\u2082) :\n  False := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (S : Set \u211d)\n  (h_S : S.Nonempty \u2227 BddAbove S)\n  (\u03b2\u2081 \u03b2\u2082 : \u211d)\n  (h_a1 : \u2200 x \u2208 S, x \u2264 \u03b2\u2081)\n  (h_b1 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2\u2081 - \u03b5)\n  (h_a2 : \u2200 x \u2208 S, x \u2264 \u03b2\u2082)\n  (h_b2 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2\u2082 - \u03b5)\n  (h_lt : \u03b2\u2081 < \u03b2\u2082) :\n  False := by\n  have h_epsilon_pos : (\u03b2\u2082 - \u03b2\u2081) / 2 > 0 := by\n    have h\u2081 : \u03b2\u2082 - \u03b2\u2081 > 0 := by linarith\n    have h\u2082 : (\u03b2\u2082 - \u03b2\u2081) / 2 > 0 := by linarith\n    exact h\u2082\n  \n  have h_exists_x0 : \u2203 (x\u2080 : \u211d), x\u2080 \u2208 S \u2227 x\u2080 > (\u03b2\u2081 + \u03b2\u2082) / 2 := by\n    have h\u2081 : \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2\u2082 - (\u03b2\u2082 - \u03b2\u2081) / 2 := by\n      apply h_b2\n      <;> linarith\n    obtain \u27e8x\u2080, hx\u2080, hx\u2080'\u27e9 := h\u2081\n    refine' \u27e8x\u2080, hx\u2080, _\u27e9\n    -- We need to show that x\u2080 > (\u03b2\u2081 + \u03b2\u2082) / 2\n    have h\u2082 : x\u2080 > \u03b2\u2082 - (\u03b2\u2082 - \u03b2\u2081) / 2 := hx\u2080'\n    have h\u2083 : \u03b2\u2082 - (\u03b2\u2082 - \u03b2\u2081) / 2 = (\u03b2\u2081 + \u03b2\u2082) / 2 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> linarith\n    rw [h\u2083] at h\u2082\n    linarith\n  \n  have h_x0_le_\u03b2\u2081 : \u2200 (x\u2080 : \u211d), x\u2080 \u2208 S \u2192 x\u2080 \u2264 \u03b2\u2081 := by\n    intro x\u2080 hx\u2080\n    exact h_a1 x\u2080 hx\u2080\n  \n  have h_contradiction : \u03b2\u2082 < \u03b2\u2081 := by\n    obtain \u27e8x\u2080, hx\u2080, hx\u2080'\u27e9 := h_exists_x0\n    have h\u2081 : x\u2080 \u2264 \u03b2\u2081 := h_x0_le_\u03b2\u2081 x\u2080 hx\u2080\n    have h\u2082 : x\u2080 > (\u03b2\u2081 + \u03b2\u2082) / 2 := hx\u2080'\n    have h\u2083 : (\u03b2\u2081 + \u03b2\u2082) / 2 < \u03b2\u2081 := by linarith\n    have h\u2084 : \u03b2\u2082 < \u03b2\u2081 := by linarith\n    exact h\u2084\n  \n  have h_false : False := by\n    linarith\n  \n  exact h_false", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": ["The set S and its properties (nonempty and bounded above) are correctly formalized in Lean.", "Properties (a) and (b) are correctly captured as the upper bound property and least upper bound property respectively. The Lean formalization uses a more general approach with \u03b2\u2081 and \u03b2\u2082 rather than explicitly referencing sup S, but this captures the same mathematical content.", "The contradiction argument is properly formalized - the assumption \u03b2\u2081 < \u03b2\u2082 when both satisfy supremum properties leads to False, which matches the natural language description.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Thus, uniqueness holds.", "statement": "We assume:\n\u2022 S is a nonempty set of real numbers that is bounded above [tc_1];\n\u2022 The supremum of S, sup S, satisfies property (a) [l1];\n\u2022 The supremum of S, sup S, satisfies property (b) [l2];\n\u2022 If two real numbers, \u03b2\u2081 and \u03b2\u2082, both satisfy properties (a) and (b), then the assumption \u03b2\u2081 < \u03b2\u2082 leads to a contradiction [l3].\nTherefore, we conclude:\n\u2022 sup S is the unique real number \u03b2 such that (a) x \u2264 \u03b2 for all x in S; (b) if \u03b5 > 0, there is an x\u2080 in S such that x\u2080 > \u03b2 \u2212 \u03b5 [ts_1].", "dependencies": ["tc_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (S : Set \u211d)\n  (h_S : S.Nonempty \u2227 BddAbove S)\n  (h_l1 : \u2200 x \u2208 S, x \u2264 sSup S)\n  (h_l2 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5) :\n  \u2200 \u03b2 : \u211d, (\u2200 x \u2208 S, x \u2264 \u03b2) \u2227 (\u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2 - \u03b5) \u2192 \u03b2 = sSup S := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (S : Set \u211d)\n  (h_S : S.Nonempty \u2227 BddAbove S)\n  (h_l1 : \u2200 x \u2208 S, x \u2264 sSup S)\n  (h_l2 : \u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > sSup S - \u03b5) :\n  \u2200 \u03b2 : \u211d, (\u2200 x \u2208 S, x \u2264 \u03b2) \u2227 (\u2200 \u03b5 > 0, \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2 - \u03b5) \u2192 \u03b2 = sSup S := by\n  intro \u03b2 h\u03b2\n  have h\u2081 : sSup S \u2264 \u03b2 := by\n    have h\u2081\u2081 : BddAbove S := h_S.2\n    have h\u2081\u2082 : S.Nonempty := h_S.1\n    have h\u2081\u2083 : \u2200 x \u2208 S, x \u2264 \u03b2 := h\u03b2.1\n    -- Use the property that the supremum is less than or equal to any upper bound\n    have h\u2081\u2084 : sSup S \u2264 \u03b2 := csSup_le h\u2081\u2082 h\u2081\u2083\n    exact h\u2081\u2084\n  \n  have h\u2082 : \u03b2 \u2264 sSup S := by\n    by_contra h\n    -- Assume \u03b2 > sSup S\n    have h\u2082\u2081 : \u03b2 > sSup S := by linarith\n    -- Set \u03b5 = \u03b2 - sSup S > 0\n    have h\u2082\u2082 : 0 < \u03b2 - sSup S := by linarith\n    -- Use the second condition on \u03b2 with \u03b5 = \u03b2 - sSup S\n    have h\u2082\u2083 : \u2203 x\u2080 \u2208 S, x\u2080 > \u03b2 - (\u03b2 - sSup S) := h\u03b2.2 (\u03b2 - sSup S) h\u2082\u2082\n    obtain \u27e8x\u2080, hx\u2080, hx\u2080'\u27e9 := h\u2082\u2083\n    -- Simplify \u03b2 - (\u03b2 - sSup S) to sSup S\n    have h\u2082\u2084 : x\u2080 > sSup S := by linarith\n    -- But by h_l1, x\u2080 \u2264 sSup S, which is a contradiction\n    have h\u2082\u2085 : x\u2080 \u2264 sSup S := h_l1 x\u2080 hx\u2080\n    linarith\n  \n  have h_main : \u03b2 = sSup S := by\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language premise. The set S is properly defined as nonempty and bounded above, properties (a) and (b) are correctly formalized for sSup S, and the uniqueness conclusion is properly stated. While the natural language mentions a proof by contradiction approach for uniqueness, the Lean formalization uses a direct implication which is logically equivalent and mathematically valid. All essential mathematical content is preserved."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

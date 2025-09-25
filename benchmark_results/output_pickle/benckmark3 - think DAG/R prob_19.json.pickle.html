@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ be a continuous random variable with a probability density function (PDF) given by $f(x) = kx^2$ for $x \in [0, 2]$ and $f(x) = 0$ otherwise. Then, the expected value of $X$ is $E[X] = \frac{3}{2}$ and the variance of $X$ is $Var(X) = \frac{3}{20}$.
+
+Proof: From the definition of a PDF, the total probability must be 1, so we have the condition $\int_0^2 kx^2 \,dx = 1$. By solving the integral, we find $k[\frac{x^3}{3}]_0^2 = 1$, which gives $k(\frac{8}{3}) = 1$ and therefore $k = \frac{3}{8}$. The expected value is defined as $E[X] = \int_0^2 x f(x) \,dx$. Substituting our function and the derived value of $k$, the integral for the expected value becomes $E[X] = \int_0^2 x (\frac{3}{8}x^2) \,dx = \frac{3}{8} \int_0^2 x^3 \,dx$. Evaluating this integral gives the expected value $E[X] = \frac{3}{8} [\frac{x^4}{4}]_0^2 = \frac{3}{2}$. Similarly, the second moment is defined as $E[X^2] = \int_0^2 x^2 f(x) \,dx$. Substituting the function and $k$, this becomes $E[X^2] = \int_0^2 x^2 (\frac{3}{8}x^2) \,dx = \frac{3}{8} \int_0^2 x^4 \,dx$. The result of this integral is $E[X^2] = \frac{3}{8} [\frac{x^5}{5}]_0^2 = \frac{12}{5}$. The variance is defined by the formula $Var(X) = E[X^2] - (E[X])^2$. Using our computed values for $E[X^2]$ and $E[X]$, the variance is $Var(X) = \frac{12}{5} - (\frac{3}{2})^2 = \frac{3}{20}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ be a continuous random variable with a probability density function (PDF) given by $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise.", "statement": "Premise:\n\u2022 $X$ is a continuous random variable with a probability density function (PDF) $f(x)$ given by $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 2 then k * x^2 else 0\n    (\u222b x in Set.Icc 0 2, f x = 1) \u2227\n    (\u222b x in Set.Icc 0 2, x * f x = 3/2) \u2227\n    (\u222b x in Set.Icc 0 2, x^2 * f x - (\u222b x in Set.Icc 0 2, x * f x)^2 = 3/20) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language mentions X as a continuous random variable with PDF f(x), but the Lean formalization only defines the function f without explicitly declaring X as a random variable. However, the PDF concept is implicitly captured through the normalization condition.", "The Lean formalization correctly captures f(x) = kx^2 for x \u2208 [0,2] using 'k * x^2' within the conditional statement and Set.Icc 0 2 for the interval [0,2].", "The Lean formalization correctly captures f(x) = 0 otherwise using the 'else 0' part of the conditional statement.", "The natural language conclusion simply restates the piecewise definition already given in the conditions, but the Lean formalization introduces completely new conclusions about integrals (normalization, expected value, and variance) that are not mentioned anywhere in the natural language statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language mentions X as a continuous random variable with PDF f(x), but the Lean formalization only defines the function f without explicitly declaring X as a random variable. However, the PDF concept is implicitly captured through the normalization condition.', \"The Lean formalization correctly captures f(x) = kx^2 for x \u2208 [0,2] using 'k * x^2' within the conditional statement and Set.Icc 0 2 for the interval [0,2].\", \"The Lean formalization correctly captures f(x) = 0 otherwise using the 'else 0' part of the conditional statement.\", 'The natural language conclusion simply restates the piecewise definition already given in the conditions, but the Lean formalization introduces completely new conclusions about integrals (normalization, expected value, and variance) that are not mentioned anywhere in the natural language statement.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the definition of a PDF, the total probability must be 1, so we have the condition $\\int_0^2 kx^2 \\,dx = 1$.", "statement": "We assume:\n\u2022 $X$ is a continuous random variable with a PDF $f(x) = kx^2$ for $x \\in [0, 2]$ and $f(x) = 0$ otherwise [tc_1].\nTherefore, we conclude:\n\u2022 The integral of the PDF over its support is equal to 1, leading to the equation $\\int_0^2 kx^2 \\,dx = 1$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 2 then k * x^2 else 0\n    (\u222b x in Set.Icc 0 2, f x = 1) \u2227\n    (\u222b x in Set.Icc 0 2, x * f x = 3/2) \u2227\n    (\u222b x in Set.Icc 0 2, x^2 * f x - (\u222b x in Set.Icc 0 2, x * f x)^2 = 3/20) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 2 then k * x^2 else 0\n    (\u222b x in Set.Icc 0 2, f x = 1) \u2227\n    (\u222b x in Set.Icc 0 2, x * f x = 3/2) \u2227\n    (\u222b x in Set.Icc 0 2, x^2 * f x - (\u222b x in Set.Icc 0 2, x * f x)^2 = 3/20) := by\n  have h_main : \u2203 (k : \u211d), (\u222b x in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then k * x ^ 2 else 0 : \u211d)) = 1 \u2227 (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then k * x ^ 2 else 0 : \u211d)) = 3 / 2 \u2227 (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then k * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then k * x ^ 2 else 0 : \u211d)) ^ 2) = 3 / 20 := by\n    use 3 / 8\n    constructor\n    \u00b7 -- First goal: \u222b x in Set.Icc 0 2, (if x \u2208 Set.Icc 0 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = 1\n      have h\u2081 : (\u222b x in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 1 := by\n        -- Use the fact that the integral over [0, 2] is the same as the interval integral from 0 to 2 for continuous functions\n        have h\u2082 : (\u222b x in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2 := by\n          -- Use the fact that the function is continuous and the interval is [0, 2]\n          have h\u2083 : (\u222b x in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 2 := by\n            -- The piecewise function is equal to (3 / 8 : \u211d) * x ^ 2 on [0, 2]\n            have h\u2084 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = (3 / 8 : \u211d) * x ^ 2 := by\n              intro x hx\n              simp [hx]\n            -- Use the set_integral_congr lemma to replace the integrand\n            have h\u2085 : (\u222b x in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 2) := by\n              apply MeasureTheory.set_integral_congr (by measurability) h\u2084\n            exact h\u2085\n          rw [h\u2083]\n          -- The integral over [0, 2] is the same as the interval integral from 0 to 2\n          have h\u2086 : (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 2) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2 := by\n            -- Use the fact that the function is continuous and the interval is [0, 2]\n            simp [MeasureTheory.integral_Icc_eq_integral_Ioc]\n            <;>\n            simp_all [intervalIntegral.integral_of_le, le_of_lt]\n            <;>\n            norm_num\n            <;>\n            linarith\n          rw [h\u2086]\n        rw [h\u2082]\n        -- Compute the interval integral\n        have h\u2083 : (\u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2) = 1 := by\n          -- Use the fundamental theorem of calculus to compute the integral\n          norm_num [mul_comm]\n          <;>\n          ring_nf\n          <;>\n          norm_num\n          <;>\n          linarith\n        rw [h\u2083]\n      exact h\u2081\n    \u00b7 constructor\n      \u00b7 -- Second goal: \u222b x in Set.Icc 0 2, (x : \u211d) * (if x \u2208 Set.Icc 0 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = 3 / 2\n        have h\u2081 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 3 / 2 := by\n          -- Use the fact that the integral over [0, 2] is the same as the interval integral from 0 to 2 for continuous functions\n          have h\u2082 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3 := by\n            -- Use the fact that the function is continuous and the interval is [0, 2]\n            have h\u2083 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3 := by\n              -- The piecewise function is equal to (3 / 8 : \u211d) * x ^ 3 on [0, 2]\n              have h\u2084 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = (3 / 8 : \u211d) * x ^ 3 := by\n                intro x hx\n                have h\u2085 : x \u2208 Set.Icc (0 : \u211d) 2 := hx\n                have h\u2086 : 0 \u2264 x := by exact h\u2085.1\n                have h\u2087 : x \u2264 2 := by exact h\u2085.2\n                simp [h\u2085]\n                <;> ring_nf\n                <;> norm_num at *\n                <;> nlinarith\n              -- Use the set_integral_congr lemma to replace the integrand\n              have h\u2085 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3) := by\n                apply MeasureTheory.set_integral_congr (by measurability) h\u2084\n              exact h\u2085\n            rw [h\u2083]\n            -- The integral over [0, 2] is the same as the interval integral from 0 to 2\n            have h\u2086 : (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3 := by\n              -- Use the fact that the function is continuous and the interval is [0, 2]\n              simp [MeasureTheory.integral_Icc_eq_integral_Ioc]\n              <;>\n              simp_all [intervalIntegral.integral_of_le, le_of_lt]\n              <;>\n              norm_num\n              <;>\n              linarith\n            rw [h\u2086]\n          rw [h\u2082]\n          -- Compute the interval integral\n          have h\u2083 : (\u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3) = 3 / 2 := by\n            -- Use the fundamental theorem of calculus to compute the integral\n            norm_num [mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          rw [h\u2083]\n        exact h\u2081\n      \u00b7 -- Third goal: \u222b x in Set.Icc 0 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc 0 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc 0 2, (x : \u211d) * (if x \u2208 Set.Icc 0 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2 = 3 / 20\n        have h\u2081 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 3 / 2 := by\n          -- Use the fact that the integral over [0, 2] is the same as the interval integral from 0 to 2 for continuous functions\n          have h\u2082 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3 := by\n            -- Use the fact that the function is continuous and the interval is [0, 2]\n            have h\u2083 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3 := by\n              -- The piecewise function is equal to (3 / 8 : \u211d) * x ^ 3 on [0, 2]\n              have h\u2084 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = (3 / 8 : \u211d) * x ^ 3 := by\n                intro x hx\n                have h\u2085 : x \u2208 Set.Icc (0 : \u211d) 2 := hx\n                have h\u2086 : 0 \u2264 x := by exact h\u2085.1\n                have h\u2087 : x \u2264 2 := by exact h\u2085.2\n                simp [h\u2085]\n                <;> ring_nf\n                <;> norm_num at *\n                <;> nlinarith\n              -- Use the set_integral_congr lemma to replace the integrand\n              have h\u2085 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3) := by\n                apply MeasureTheory.set_integral_congr (by measurability) h\u2084\n              exact h\u2085\n            rw [h\u2083]\n            -- The integral over [0, 2] is the same as the interval integral from 0 to 2\n            have h\u2086 : (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 3) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3 := by\n              -- Use the fact that the function is continuous and the interval is [0, 2]\n              simp [MeasureTheory.integral_Icc_eq_integral_Ioc]\n              <;>\n              simp_all [intervalIntegral.integral_of_le, le_of_lt]\n              <;>\n              norm_num\n              <;>\n              linarith\n            rw [h\u2086]\n          rw [h\u2082]\n          -- Compute the interval integral\n          have h\u2083 : (\u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 3) = 3 / 2 := by\n            -- Use the fundamental theorem of calculus to compute the integral\n            norm_num [mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          rw [h\u2083]\n        have h\u2082 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 12 / 5 := by\n          -- Use the fact that the integral over [0, 2] is the same as the interval integral from 0 to 2 for continuous functions\n          have h\u2083 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n            -- Use the fact that the function is continuous and the interval is [0, 2]\n            have h\u2084 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by\n              -- The piecewise function is equal to (3 / 8 : \u211d) * x ^ 4 on [0, 2]\n              have h\u2085 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = (3 / 8 : \u211d) * x ^ 4 := by\n                intro x hx\n                have h\u2086 : x \u2208 Set.Icc (0 : \u211d) 2 := hx\n                have h\u2087 : 0 \u2264 x := by exact h\u2086.1\n                have h\u2088 : x \u2264 2 := by exact h\u2086.2\n                simp [h\u2086]\n                <;> ring_nf\n                <;> norm_num at *\n                <;> nlinarith\n              -- Use the set_integral_congr lemma to replace the integrand\n              have h\u2089 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4) := by\n                apply MeasureTheory.set_integral_congr (by measurability) h\u2085\n              exact h\u2089\n            rw [h\u2084]\n            -- The integral over [0, 2] is the same as the interval integral from 0 to 2\n            have h\u2085 : (\u222b x in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4) = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n              -- Use the fact that the function is continuous and the interval is [0, 2]\n              simp [MeasureTheory.integral_Icc_eq_integral_Ioc]\n              <;>\n              simp_all [intervalIntegral.integral_of_le, le_of_lt]\n              <;>\n              norm_num\n              <;>\n              linarith\n            rw [h\u2085]\n          rw [h\u2083]\n          -- Compute the interval integral\n          have h\u2084 : (\u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4) = 12 / 5 := by\n            -- Use the fundamental theorem of calculus to compute the integral\n            norm_num [mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          rw [h\u2084]\n        have h\u2083 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = 3 / 20 := by\n          have h\u2084 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2 := by\n            -- Split the integral of the difference into the difference of integrals\n            have h\u2085 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2 := by\n              have h\u2086 : (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) - (\u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2 := by\n                simp [MeasureTheory.integral_sub]\n                <;>\n                (try apply MeasureTheory.Integrable.sub) <;>\n                (try apply MeasureTheory.integrableOn_Icc_of_ae_stronglyMeasurable) <;>\n                (try apply Continuous.ae_stronglyMeasurable) <;>\n                (try continuity)\n                <;>\n                (try norm_num)\n                <;>\n                (try linarith)\n              rw [h\u2086]\n            rw [h\u2085]\n          rw [h\u2084]\n          -- Substitute the known values of the integrals\n          rw [h\u2082, h\u2081]\n          <;> norm_num\n        exact h\u2083\n  obtain \u27e8k, hk\u2081, hk\u2082, hk\u2083\u27e9 := h_main\n  refine' \u27e8k, _\u27e9\n  dsimp only\n  constructor\n  \u00b7 -- Prove that \u222b x in Set.Icc 0 2, f x = 1\n    simpa using hk\u2081\n  constructor\n  \u00b7 -- Prove that \u222b x in Set.Icc 0 2, x * f x = 3 / 2\n    simpa using hk\u2082\n  \u00b7 -- Prove that \u222b x in Set.Icc 0 2, x ^ 2 * f x - (\u222b x in Set.Icc 0 2, x * f x) ^ 2 = 3 / 20\n    simpa using hk\u2083", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 37, "column": 12, "endLine": 37, "endColumn": 20, "data": "linarith failed to find a contradiction\ncase h1.h\nh\u2083 : (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then 3 / 8 * x ^ 2 else 0) = \u222b (x : \u211d) in Set.Icc 0 2, 3 / 8 * x ^ 2\na\u271d : \u222b (x : \u211d) in Set.Ioc 0 2, 3 / 8 * x ^ 2 < 1\n\u22a2 False failed"}, {"line": 83, "column": 14, "endLine": 83, "endColumn": 22, "data": "linarith failed to find a contradiction\ncase h1.h\nh\u2083 :\n  (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x * (3 / 8 * x ^ 2) else 0) = \u222b (x : \u211d) in Set.Icc 0 2, 3 / 8 * x ^ 3\na\u271d : \u222b (x : \u211d) in Set.Ioc 0 2, 3 / 8 * x ^ 3 < 3 / 2\n\u22a2 False failed"}, {"line": 128, "column": 14, "endLine": 128, "endColumn": 22, "data": "linarith failed to find a contradiction\ncase h1.h\nh\u2083 :\n  (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x * (3 / 8 * x ^ 2) else 0) = \u222b (x : \u211d) in Set.Icc 0 2, 3 / 8 * x ^ 3\na\u271d : \u222b (x : \u211d) in Set.Ioc 0 2, 3 / 8 * x ^ 3 < 3 / 2\n\u22a2 False failed"}, {"line": 171, "column": 14, "endLine": 171, "endColumn": 22, "data": "linarith failed to find a contradiction\ncase h1.h\nh\u2081 : (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x * (3 / 8 * x ^ 2) else 0) = 3 / 2\nh\u2084 :\n  (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x ^ 2 * (3 / 8 * x ^ 2) else 0) =\n    \u222b (x : \u211d) in Set.Icc 0 2, 3 / 8 * x ^ 4\na\u271d : \u222b (x : \u211d) in Set.Ioc 0 2, 3 / 8 * x ^ 4 < 12 / 5\n\u22a2 False failed"}, {"line": 189, "column": 453, "endLine": 199, "endColumn": 30, "data": "unsolved goals\nh\u2081 : (\u222b (x : \u211d) in Set.Icc 0 2, x * if x \u2208 Set.Icc 0 2 then 3 / 8 * x ^ 2 else 0) = 3 / 2\nh\u2082 : (\u222b (x : \u211d) in Set.Icc 0 2, x ^ 2 * if x \u2208 Set.Icc 0 2 then 3 / 8 * x ^ 2 else 0) = 12 / 5\n\u22a2 \u222b (x : \u211d) in Set.Icc 0 2,\n      (if 0 \u2264 x \u2227 x \u2264 2 then x ^ 2 * (3 / 8 * x ^ 2) else 0) -\n        (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x * (3 / 8 * x ^ 2) else 0) ^ 2 =\n    (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x ^ 2 * (3 / 8 * x ^ 2) else 0) -\n      (\u222b (x : \u211d) in Set.Icc 0 2, if 0 \u2264 x \u2227 x \u2264 2 then x * (3 / 8 * x ^ 2) else 0) ^ 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PDF definition in Lean correctly captures the piecewise function described in natural language, with k*x^2 on [0,2] and 0 elsewhere.", "The normalization condition requiring the integral to equal 1 is properly formalized in Lean.", "The Lean formalization includes additional mathematically consistent conditions (expected value and variance calculations) that are not mentioned in the natural language, but this is acceptable as they don't contradict the given information and represent logical extensions of the probability distribution characterization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization : \u2203 k : \u211d, let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 2 then k * x^2 else 0; (\u222b x in Set.Icc 0 2, f x = 1) \u2227 (\u222b x in Set.Icc 0 2, x * f x = 3/2) \u2227 (\u222b x in Set.Icc 0 2, x^2 * f x - (\u222b x in Set.Icc 0 2, x * f x)^2 = 3/20) := by\n  have h_main : \u2203 (k : \u211d), (let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc (0 : \u211d) 2 then k * x ^ 2 else 0; (\u222b x in Set.Icc (0 : \u211d) 2, f x = 1) \u2227 (\u222b x in Set.Icc (0 : \u211d) 2, x * f x = 3 / 2) \u2227 (\u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x - (\u222b x in Set.Icc (0 : \u211d) 2, x * f x) ^ 2 = 3 / 20)) := by\n    use 3 / 8\n    dsimp only\n    have h\u2081 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 1 := by\n      have h\u2082 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2 := by\n        -- Prove that the integral over Set.Icc is the same as the interval integral\n        have h\u2083 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 2 := by\n          -- The condition x \u2208 Set.Icc (0 : \u211d) 2 is always true in the integral domain\n          congr\n          ext x\n          by_cases hx : x \u2208 Set.Icc (0 : \u211d) 2 <;> simp [hx]\n        rw [h\u2083]\n        -- Convert the integral over Set.Icc to an interval integral\n        have h\u2084 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 2 = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2 := by\n          -- Use the fact that the integral over Set.Icc is the same as the interval integral\n          simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2), Real.volume_Icc]\n          <;>\n          simp_all [MeasureTheory.integral_Icc_eq_integral_Ioc]\n          <;>\n          congr 1 <;>\n          ext1 x <;>\n          simp [Set.mem_Ioc, Set.mem_Icc] <;>\n          by_cases hx : x \u2264 2 <;>\n          by_cases hx' : 0 \u2264 x <;>\n          simp_all [hx, hx']\n          <;>\n          linarith\n        rw [h\u2084]\n      rw [h\u2082]\n      -- Compute the interval integral\n      norm_num [mul_comm]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    have h\u2082 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 3 / 2 := by\n      have h\u2083 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x ^ 2) := by\n        -- Prove that the integral over Set.Icc is the same as the interval integral\n        have h\u2084 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * ((3 / 8 : \u211d) * x ^ 2) := by\n          -- The condition x \u2208 Set.Icc (0 : \u211d) 2 is always true in the integral domain\n          congr\n          ext x\n          by_cases hx : x \u2208 Set.Icc (0 : \u211d) 2 <;> simp [hx]\n          <;>\n          ring_nf\n          <;>\n          norm_num\n          <;>\n          linarith\n        rw [h\u2084]\n        -- Convert the integral over Set.Icc to an interval integral\n        have h\u2085 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * ((3 / 8 : \u211d) * x ^ 2) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x ^ 2) := by\n          -- Use the fact that the integral over Set.Icc is the same as the interval integral\n          simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2), Real.volume_Icc]\n          <;>\n          simp_all [MeasureTheory.integral_Icc_eq_integral_Ioc]\n          <;>\n          congr 1 <;>\n          ext1 x <;>\n          simp [Set.mem_Ioc, Set.mem_Icc] <;>\n          by_cases hx : x \u2264 2 <;>\n          by_cases hx' : 0 \u2264 x <;>\n          simp_all [hx, hx']\n          <;>\n          linarith\n        rw [h\u2085]\n      rw [h\u2083]\n      -- Compute the interval integral\n      norm_num [mul_comm]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    have h\u2083 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = 3 / 20 := by\n      have h\u2084 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2) := by\n        -- Prove that the integral over Set.Icc is the same as the interval integral\n        have h\u2085 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * ((3 / 8 : \u211d) * x ^ 2) := by\n          -- The condition x \u2208 Set.Icc (0 : \u211d) 2 is always true in the integral domain\n          congr\n          ext x\n          by_cases hx : x \u2208 Set.Icc (0 : \u211d) 2 <;> simp [hx]\n          <;>\n          ring_nf\n          <;>\n          norm_num\n          <;>\n          linarith\n        rw [h\u2085]\n        -- Convert the integral over Set.Icc to an interval integral\n        have h\u2086 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * ((3 / 8 : \u211d) * x ^ 2) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2) := by\n          -- Use the fact that the integral over Set.Icc is the same as the interval integral\n          simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2), Real.volume_Icc]\n          <;>\n          simp_all [MeasureTheory.integral_Icc_eq_integral_Ioc]\n          <;>\n          congr 1 <;>\n          ext1 x <;>\n          simp [Set.mem_Ioc, Set.mem_Icc] <;>\n          by_cases hx : x \u2264 2 <;>\n          by_cases hx' : 0 \u2264 x <;>\n          simp_all [hx, hx']\n          <;>\n          linarith\n        rw [h\u2086]\n      have h\u2085 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d) - (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2) = (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) - (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) ^ 2 := by\n        -- Split the integral into two parts\n        simp [intervalIntegral.integral_sub]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf) <;>\n        (try simp_all [mul_comm]) <;>\n        (try linarith)\n      rw [h\u2085]\n      have h\u2086 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = \u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2) := by\n        exact h\u2084\n      rw [h\u2086]\n      have h\u2087 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x * (if x \u2208 Set.Icc (0 : \u211d) 2 then (3 / 8 : \u211d) * x ^ 2 else 0 : \u211d)) = 3 / 2 := by\n        exact h\u2082\n      have h\u2088 : (\u222b (x : \u211d) in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2)) = 12 / 5 := by\n        -- Compute the interval integral\n        norm_num [mul_comm]\n        <;>\n        ring_nf\n        <;>\n        norm_num\n        <;>\n        linarith\n      rw [h\u2088, h\u2087]\n      <;>\n      norm_num\n      <;>\n      linarith\n    exact \u27e8h\u2081, h\u2082, h\u2083\u27e9\n  simpa using h_main"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By solving the integral, we find $k[\\frac{x^3}{3}]_0^2 = 1$,", "statement": "We assume:\n\u2022 $\\int_0^2 kx^2 \\,dx = 1$ [l1].\nTherefore, we conclude:\n\u2022 $k[\\frac{x^3}{3}]_0^2 = 1$ [l2].", "dependencies": ["l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    (\u222b x in (0 : \u211d)..(2 : \u211d), k * x^2 = 1) \u2227\n    (k * (8/3) = 1) \u2227\n    (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2) = 3/2) \u2227\n    (\u222b x in (0 : \u211d)..(2 : \u211d), x^2 * (k * x^2) - (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2))^2 = 3/20) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    (\u222b x in (0 : \u211d)..(2 : \u211d), k * x^2 = 1) \u2227\n    (k * (8/3) = 1) \u2227\n    (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2) = 3/2) \u2227\n    ((\u222b x in (0 : \u211d)..(2 : \u211d), x^2 * (k * x^2)) - (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2))^2 = 3/20) := by\n  have h_main : \u2203 (k : \u211d), (\u222b x in (0 : \u211d)..(2 : \u211d), k * x^2 = 1) \u2227 (k * (8/3) = 1) \u2227 (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2) = 3/2) \u2227 ((\u222b x in (0 : \u211d)..(2 : \u211d), x^2 * (k * x^2)) - (\u222b x in (0 : \u211d)..(2 : \u211d), x * (k * x^2))^2 = 3/20) := by\n    use 3 / 8\n    constructor\n    \u00b7 -- Prove \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 2 = 1\n      norm_num [mul_comm]\n      <;>\n      ring_nf\n      <;>\n      norm_num [integral_id, mul_comm]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    \u00b7 constructor\n      \u00b7 -- Prove (3 / 8 : \u211d) * (8 / 3 : \u211d) = 1\n        norm_num\n      \u00b7 constructor\n        \u00b7 -- Prove \u222b x in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x ^ 2) = 3 / 2\n          norm_num [mul_assoc]\n          <;>\n          ring_nf\n          <;>\n          norm_num [integral_id, mul_comm]\n          <;>\n          ring_nf\n          <;>\n          norm_num\n          <;>\n          linarith\n        \u00b7 -- Prove ((\u222b x in (0 : \u211d)..(2 : \u211d), x^2 * ((3 / 8 : \u211d) * x^2)) - (\u222b x in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x^2))^2) = 3 / 20\n          have h\u2081 : (\u222b x in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x ^ 2)) = 3 / 2 := by\n            norm_num [mul_assoc]\n            <;>\n            ring_nf\n            <;>\n            norm_num [integral_id, mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          have h\u2082 : (\u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2)) = 12 / 5 := by\n            norm_num [mul_assoc]\n            <;>\n            ring_nf\n            <;>\n            norm_num [integral_id, mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          have h\u2083 : ((\u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * ((3 / 8 : \u211d) * x ^ 2)) - (\u222b x in (0 : \u211d)..(2 : \u211d), x * ((3 / 8 : \u211d) * x ^ 2)) ^ 2) = 3 / 20 := by\n            rw [h\u2082, h\u2081]\n            <;> norm_num\n          exact h\u2083\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The first integral condition \u222b\u2080\u00b2 kx\u00b2 dx = 1 is correctly captured as (\u222b x in (0 : \u211d)..(2 : \u211d), k * x^2 = 1)", "The conclusion k[x\u00b3/3]\u2080\u00b2 = 1 is correctly represented as (k * (8/3) = 1), which is the proper evaluation of the antiderivative", "The Lean formalization includes additional probabilistic calculations (mean and variance) that extend beyond the natural language but are logically consistent with the setup. These extra components do not contradict the stated premises and conclusions."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "which gives $k(\\frac{8}{3}) = 1$", "statement": "We assume:\n\u2022 $k[\\frac{x^3}{3}]_0^2 = 1$ [l2].\nTherefore, we conclude:\n\u2022 $k(\\frac{8}{3}) = 1$ [l3].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (k : \u211d) \n  (h : \u222b x in (0:\u211d)..(2:\u211d), k * x^2 = 1) :\n  k * (8/3) = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (k : \u211d) \n  (h : \u222b x in (0:\u211d)..(2:\u211d), k * x^2 = 1) :\n  k * (8/3) = 1 := by\n  have h\u2081 : (\u222b x in (0:\u211d)..(2:\u211d), k * x^2 : \u211d) = k * (8/3 : \u211d) := by\n    have h\u2082 : (\u222b x in (0:\u211d)..(2:\u211d), k * x ^ 2 : \u211d) = k * \u222b x in (0:\u211d)..(2:\u211d), (x : \u211d) ^ 2 := by\n      -- Factor out the constant k from the integral\n      simp [intervalIntegral.integral_comp_mul_left (fun x => x ^ 2)]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      field_simp\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2082]\n    -- Compute the integral of x^2 from 0 to 2\n    have h\u2083 : (\u222b x in (0:\u211d)..(2:\u211d), (x : \u211d) ^ 2 : \u211d) = (8 / 3 : \u211d) := by\n      norm_num [integral_pow]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2083]\n    <;>\n    ring_nf\n    <;>\n    norm_num\n  \n  have h\u2082 : k * (8/3 : \u211d) = 1 := by\n    have h\u2083 : (\u222b x in (0:\u211d)..(2:\u211d), k * x ^ 2 : \u211d) = 1 := by\n      exact_mod_cast h\n    have h\u2084 : (\u222b x in (0:\u211d)..(2:\u211d), k * x ^ 2 : \u211d) = k * (8 / 3 : \u211d) := h\u2081\n    linarith\n  \n  exact_mod_cast h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption is mathematically equivalent - the antiderivative evaluation k[x\u00b3/3]\u2080\u00b2 equals the definite integral \u222b\u2080\u00b2 kx\u00b2 dx by the fundamental theorem of calculus", "The conclusion k(8/3) = 1 and k * (8/3) = 1 represent identical mathematical statements", "The logical structure correctly captures the deductive reasoning from the given assumption to the stated conclusion"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "and therefore $k = \\frac{3}{8}$.", "statement": "We assume:\n\u2022 $k(\\frac{8}{3}) = 1$ [l3].\nTherefore, we conclude:\n\u2022 $k = \\frac{3}{8}$ [l4].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (k : \u211d) (l3 : k * (8/3) = 1) : k = 3/8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (k : \u211d) (l3 : k * (8/3) = 1) : k = 3/8 := by\n  have h\u2081 : k = 3 / 8 := by\n    have h\u2082 : k * (8 / 3) * (3 / 8 : \u211d) = 1 * (3 / 8 : \u211d) := by\n      calc\n        k * (8 / 3) * (3 / 8 : \u211d) = (k * (8 / 3)) * (3 / 8 : \u211d) := by ring\n        _ = 1 * (3 / 8 : \u211d) := by rw [l3]\n        _ = 1 * (3 / 8 : \u211d) := by ring\n    -- Simplify both sides of the equation\n    have h\u2083 : k = 3 / 8 := by\n      calc\n        k = k * 1 := by ring\n        _ = k * ((8 / 3 : \u211d) * (3 / 8 : \u211d)) := by norm_num\n        _ = (k * (8 / 3 : \u211d)) * (3 / 8 : \u211d) := by ring\n        _ = 1 * (3 / 8 : \u211d) := by rw [l3]\n        _ = 3 / 8 := by norm_num\n    exact h\u2083\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical and logical content of the natural language. The use of multiplication notation k * (8/3) instead of function notation k(8/3) represents the same mathematical operation in this context where k is a scaling factor. The logical structure as a theorem with hypothesis l3 and conclusion k = 3/8 accurately reflects the deductive reasoning presented in the natural language. The mathematical relationship is correctly preserved."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "The expected value is defined as $E[X] = \\int_0^2 x f(x) \\,dx$.", "statement": "We assume:\n\u2022 $X$ is a continuous random variable with support on $[0, 2]$ [tc_1].\nDefinition:\n\u2022 The expected value of X is $E[X] = \\int_0^2 x f(x) \\,dx$ [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem probabilistic_characterization :\n  \u2203 k : \u211d, \n    let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 2 then k * x^2 else 0\n    (\u222b x in Set.Icc 0 2, f x = 1) \u2227\n    (\u222b x in Set.Icc 0 2, x * f x = 3/2) \u2227\n    (\u222b x in Set.Icc 0 2, x^2 * f x - (\u222b x in Set.Icc 0 2, x * f x)^2 = 3/20) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language describes a general continuous random variable on [0,2], but the Lean formalization specifies a particular probability density function f(x) = k*x\u00b2. The Lean version is much more specific than the general statement in natural language.", "The natural language gives the general definition of expected value E[X] = \u222b\u2080\u00b2 x f(x) dx, while the Lean formalization computes a specific numerical result (3/2) for the expected value of the particular distribution. The Lean version also includes additional properties (normalization and variance) not mentioned in the natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language describes a general continuous random variable on [0,2], but the Lean formalization specifies a particular probability density function f(x) = k*x\u00b2. The Lean version is much more specific than the general statement in natural language.', 'The natural language gives the general definition of expected value E[X] = \u222b\u2080\u00b2 x f(x) dx, while the Lean formalization computes a specific numerical result (3/2) for the expected value of the particular distribution. The Lean version also includes additional properties (normalization and variance) not mentioned in the natural language.']"}, "type": "definition"}, "l5": {"id": "l5", "natural_language": "Substituting our function and the derived value of $k$, the integral for the expected value becomes $E[X] = \\int_0^2 x (\\frac{3}{8}x^2) \\,dx = \\frac{3}{8} \\int_0^2 x^3 \\,dx$.", "statement": "We assume:\n\u2022 The PDF of X is $f(x) = kx^2$ on $[0,2]$ [tc_1].\n\u2022 $k = \\frac{3}{8}$ [l4].\n\u2022 The expected value is $E[X] = \\int_0^2 x f(x) \\,dx$ [def_1].\nTherefore, we conclude:\n\u2022 $E[X] = \\frac{3}{8} \\int_0^2 x^3 \\,dx$ [l5].", "dependencies": ["tc_1", "l4", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (k : \u211d) (f : \u211d \u2192 \u211d)\n  (hk : k = 3/8)\n  (hf : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2) :\n  \u222b x in Set.Icc 0 2, x * f x = (3/8) * \u222b x in Set.Icc 0 2, x^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (k : \u211d) (f : \u211d \u2192 \u211d)\n  (hk : k = 3/8)\n  (hf : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2) :\n  \u222b x in Set.Icc 0 2, x * f x = (3/8) * \u222b x in Set.Icc 0 2, x^3 := by\n  have h_main : \u222b x in (0 : \u211d)..2, x * f x = k * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := by\n    have h1 : \u222b x in (0 : \u211d)..2, x * f x = \u222b x in (0 : \u211d)..2, (k * (x : \u211d)^3) := by\n      -- Prove that x * f(x) = k * x^3 for x in [0, 2]\n      have h2 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, x * f x = k * (x : \u211d)^3 := by\n        intro x hx\n        have h3 : f x = k * x ^ 2 := hf x hx\n        rw [h3]\n        ring_nf\n        <;>\n        (try norm_num at hx \u22a2) <;>\n        (try linarith)\n      -- Use the fact that the integrands are equal to change the integral\n      have h4 : \u222b x in (0 : \u211d)..2, x * f x = \u222b x in (0 : \u211d)..2, (k * (x : \u211d)^3) := by\n        -- Use the interval integral congruence lemma\n        refine' intervalIntegral.integral_congr (fun x hx => _)\n        have h5 : x \u2208 Set.Icc (0 : \u211d) 2 := by\n          constructor <;> (try norm_num at hx \u22a2) <;> (try linarith)\n        have h6 : x * f x = k * (x : \u211d)^3 := h2 x h5\n        rw [h6]\n        <;>\n        (try norm_num at hx \u22a2) <;>\n        (try linarith)\n      rw [h4]\n    -- Factor out the constant k from the integral\n    have h5 : \u222b x in (0 : \u211d)..2, (k * (x : \u211d)^3) = k * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := by\n      -- Use the property of integrals to factor out the constant k\n      have h6 : \u222b x in (0 : \u211d)..2, (k * (x : \u211d)^3) = k * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := by\n        -- Use the linearity of the integral\n        simp [intervalIntegral.integral_comp_mul_left (fun x => (x : \u211d) ^ 3)]\n        <;>\n        (try ring_nf) <;>\n        (try norm_num) <;>\n        (try linarith)\n        <;>\n        (try\n          {\n            simp_all [mul_comm]\n            <;>\n            ring_nf\n            <;>\n            norm_num\n            <;>\n            linarith\n          })\n      rw [h6]\n    -- Combine the results\n    calc\n      \u222b x in (0 : \u211d)..2, x * f x = \u222b x in (0 : \u211d)..2, (k * (x : \u211d)^3) := h1\n      _ = k * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := h5\n  \n  have h_Icc_eq_Ioc : \u222b x in Set.Icc 0 2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := by\n    have h\u2081 : \u222b x in Set.Icc 0 2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := by\n      -- Prove that the function is continuous on [0, 2]\n      have h\u2082 : ContinuousOn (fun x : \u211d => x * f x) (Set.Icc 0 2) := by\n        -- Prove that f is continuous on [0, 2]\n        have h\u2083 : ContinuousOn f (Set.Icc 0 2) := by\n          have h\u2084 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x ^ 2 := hf\n          have h\u2085 : ContinuousOn (fun x : \u211d => k * x ^ 2) (Set.Icc 0 2) := by\n            apply ContinuousOn.mul\n            \u00b7 exact continuousOn_const\n            \u00b7 exact continuousOn_pow 2\n          have h\u2086 : ContinuousOn f (Set.Icc 0 2) := by\n            apply ContinuousOn.congr h\u2085\n            intro x hx\n            rw [h\u2084 x hx]\n          exact h\u2086\n        -- Prove that x \u21a6 x * f x is continuous on [0, 2]\n        have h\u2087 : ContinuousOn (fun x : \u211d => x * f x) (Set.Icc 0 2) := by\n          apply ContinuousOn.mul\n          \u00b7 exact continuousOn_id\n          \u00b7 exact h\u2083\n        exact h\u2087\n      -- Use the fact that the function is continuous to equate the integrals\n      have h\u2088 : \u222b x in Set.Icc 0 2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := by\n        -- Apply the measure theory lemma to equate the integrals\n        have h\u2089 : \u222b x in Set.Icc 0 2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := by\n          -- Use the fact that {0} has measure zero to equate the integrals\n          rw [MeasureTheory.integral_Icc_eq_integral_Ioc]\n          <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try\n            {\n              apply ContinuousOn.integrableOn_Icc\n              exact h\u2082\n            })\n        exact h\u2089\n      exact h\u2088\n    exact h\u2081\n  \n  have h_Ioc_eq_interval : \u222b x in Set.Ioc 0 2, x * f x = \u222b x in (0 : \u211d)..2, x * f x := by\n    have h\u2081 : \u222b x in (0 : \u211d)..2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := by\n      -- Use the definition of the interval integral to equate it with the integral over the Ioc set\n      simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2)]\n    -- Use the previously established equality to conclude the proof\n    linarith\n  \n  have h_set_to_interval : \u222b x in Set.Icc 0 2, x * f x = \u222b x in (0 : \u211d)..2, x * f x := by\n    calc\n      \u222b x in Set.Icc 0 2, x * f x = \u222b x in Set.Ioc 0 2, x * f x := h_Icc_eq_Ioc\n      _ = \u222b x in (0 : \u211d)..2, x * f x := h_Ioc_eq_interval\n  \n  have h_interval_to_set : \u222b x in (0 : \u211d)..2, (x : \u211d)^3 = \u222b x in Set.Icc 0 2, (x : \u211d)^3 := by\n    have h\u2081 : \u222b x in (0 : \u211d)..2, (x : \u211d)^3 = \u222b x in Set.Ioc 0 2, (x : \u211d)^3 := by\n      -- Use the definition of the interval integral to equate it with the integral over the Ioc set\n      simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2)]\n    have h\u2082 : \u222b x in Set.Ioc 0 2, (x : \u211d)^3 = \u222b x in Set.Icc 0 2, (x : \u211d)^3 := by\n      -- Use the fact that the integral over Icc is the same as over Ioc for continuous functions\n      have h\u2083 : \u222b x in Set.Icc 0 2, (x : \u211d)^3 = \u222b x in Set.Ioc 0 2, (x : \u211d)^3 := by\n        -- Apply the measure theory lemma to equate the integrals\n        rw [MeasureTheory.integral_Icc_eq_integral_Ioc]\n        <;>\n        (try norm_num) <;>\n        (try linarith) <;>\n        (try\n          {\n            apply ContinuousOn.integrableOn_Icc\n            continuity\n          })\n      -- Use the previously established equality to conclude the proof\n      linarith\n    -- Combine the two equalities to get the final result\n    calc\n      \u222b x in (0 : \u211d)..2, (x : \u211d)^3 = \u222b x in Set.Ioc 0 2, (x : \u211d)^3 := h\u2081\n      _ = \u222b x in Set.Icc 0 2, (x : \u211d)^3 := h\u2082\n  \n  have h_final : \u222b x in Set.Icc 0 2, x * f x = (3/8) * \u222b x in Set.Icc 0 2, x^3 := by\n    calc\n      \u222b x in Set.Icc 0 2, x * f x = \u222b x in (0 : \u211d)..2, x * f x := by rw [h_set_to_interval]\n      _ = k * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := by rw [h_main]\n      _ = (3 / 8 : \u211d) * \u222b x in (0 : \u211d)..2, (x : \u211d)^3 := by\n        rw [hk]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf) <;>\n        (try linarith)\n      _ = (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, (x : \u211d)^3 := by\n        rw [h_interval_to_set]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf) <;>\n        (try linarith)\n      _ = (3/8) * \u222b x in Set.Icc 0 2, x^3 := by\n        simp [pow_three]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf) <;>\n        (try linarith)\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The PDF definition is correctly formalized using universal quantification over the closed interval [0,2]", "The parameter value k = 3/8 is exactly represented in the hypothesis", "The expected value integral \u222b\u2080\u00b2 x f(x) dx is properly captured using Lean's interval integration notation", "The conclusion correctly shows the algebraic substitution result where x\u00b7f(x) becomes (3/8)x\u00b3", "The overall theorem structure logically connects all assumptions to derive the stated conclusion, maintaining the mathematical reasoning flow"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Evaluating this integral gives the expected value $E[X] = \\frac{3}{8} [\\frac{x^4}{4}]_0^2 = \\frac{3}{2}$.", "statement": "We assume:\n\u2022 $E[X] = \\frac{3}{8} \\int_0^2 x^3 \\,dx$ [l5].\nTherefore, we conclude:\n\u2022 $E[X] = \\frac{3}{2}$ [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (k : \u211d) (f : \u211d \u2192 \u211d)\n  (hk : k = 3/8)\n  (hf : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2)\n  (l5 : \u222b x in Set.Icc 0 2, x * f x = (3/8) * \u222b x in Set.Icc 0 2, x^3) :\n  \u222b x in Set.Icc 0 2, x * f x = 3/2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (k : \u211d) (f : \u211d \u2192 \u211d)\n  (hk : k = 3/8)\n  (hf : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2)\n  (l5 : \u222b x in Set.Icc 0 2, x * f x = (3/8) * \u222b x in Set.Icc 0 2, x^3) :\n  \u222b x in Set.Icc 0 2, x * f x = 3/2 := by\n  have h\u2080 : \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d)^3 = 4 := by\n    have h\u2080\u2081 : \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d)^3 = \u222b x in (0 : \u211d)..(2 : \u211d), (x : \u211d)^3 := by\n      have h\u2080\u2082 : \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d)^3 = \u222b x in Set.Ioc (0 : \u211d) 2, (x : \u211d)^3 := by\n        -- Use the fact that the integral over [a, b] is equal to the integral over (a, b] for continuous functions\n        apply MeasureTheory.integral_Icc_eq_integral_Ioc\n        <;>\n        (try continuity) <;>\n        (try apply Continuous.intervalIntegrable) <;>\n        (try continuity)\n      have h\u2080\u2083 : \u222b x in Set.Ioc (0 : \u211d) 2, (x : \u211d)^3 = \u222b x in (0 : \u211d)..(2 : \u211d), (x : \u211d)^3 := by\n        -- The integral over (a, b] is equal to the interval integral from a to b\n        simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2)]\n      linarith\n    -- Calculate the interval integral\n    have h\u2080\u2084 : \u222b x in (0 : \u211d)..(2 : \u211d), (x : \u211d)^3 = 4 := by\n      norm_num [integral_pow]\n      <;>\n      simp [pow_succ]\n      <;>\n      norm_num\n      <;>\n      linarith\n    -- Combine all the results\n    rw [h\u2080\u2081]\n    rw [h\u2080\u2084]\n    <;>\n    norm_num\n  \n  have h\u2081 : (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d)^3 = 3 / 2 := by\n    rw [h\u2080]\n    <;> norm_num\n    <;> linarith\n  \n  have h\u2082 : \u222b x in Set.Icc 0 2, x * f x = 3 / 2 := by\n    have h\u2083 : \u222b x in Set.Icc 0 2, x * f x = (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, (x : \u211d) ^ 3 := by\n      -- Use the given hypothesis `l5`\n      have h\u2084 : \u222b x in Set.Icc 0 2, x * f x = (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, (x : \u211d) ^ 3 := by\n        simpa [pow_three] using l5\n      exact h\u2084\n    have h\u2084 : (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, (x : \u211d) ^ 3 = 3 / 2 := by\n      -- Use the previously calculated result `h\u2081`\n      have h\u2085 : (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 3 = 3 / 2 := h\u2081\n      have h\u2086 : \u222b x in Set.Icc (0 : \u211d) 2, (x : \u211d) ^ 3 = \u222b x in Set.Icc 0 2, (x : \u211d) ^ 3 := by\n        norm_num\n      -- Simplify the expression to match the form in `h\u2081`\n      norm_num at h\u2085 \u22a2\n      <;>\n      (try simp_all) <;>\n      (try norm_num) <;>\n      (try linarith)\n      <;>\n      (try ring_nf at * <;> linarith)\n      <;>\n      (try simp_all [mul_comm])\n      <;>\n      (try norm_num)\n      <;>\n      (try linarith)\n    -- Combine the results to get the final answer\n    linarith\n  \n  exact h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical content. While it uses \u222b x * f x instead of E[X] notation, this is mathematically equivalent and more precise for continuous distributions. The additional context about the probability density function (k = 3/8, f(x) = k * x\u00b2) provides helpful formalization details without contradicting the natural language. The logical flow from assumption l5 to conclusion ts_1 is preserved correctly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}, "def_2": {"id": "def_2", "natural_language": "Similarly, the second moment is defined as $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$.", "statement": "We assume:\n\u2022 $X$ is a continuous random variable with support on $[0, 2]$ [tc_1].\nDefinition:\n\u2022 The second moment of X is $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$ [def_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_2 \n  (f : \u211d \u2192 \u211d) \n  (h_support : \u2200 x \u2209 Set.Icc 0 2, f x = 0)\n  (h_nonneg : \u2200 x \u2208 Set.Icc 0 2, f x \u2265 0)\n  (h_integral : \u222b x in Set.Icc 0 2, f x = 1) :\n  \u222b x in Set.Icc 0 2, x^2 * f x = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that X is a continuous random variable with support on [0,2]. The conditions h_support (density is zero outside [0,2]), h_nonneg (density is non-negative), and h_integral (density integrates to 1) are the standard mathematical requirements for a probability density function on [0,2]. These extra conditions are logically consistent and necessary for a proper formalization.", "The natural language states that the second moment IS the integral \u222b\u2080\u00b2 x\u00b2 f(x) dx (a definition), but the Lean formalization claims this integral EQUALS 1 (a specific numerical result). The natural language is defining what E[X\u00b2] means, while Lean is asserting a particular value for it. This is a fundamental logical difference between a definition and a theorem statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that X is a continuous random variable with support on [0,2]. The conditions h_support (density is zero outside [0,2]), h_nonneg (density is non-negative), and h_integral (density integrates to 1) are the standard mathematical requirements for a probability density function on [0,2]. These extra conditions are logically consistent and necessary for a proper formalization.', 'The natural language states that the second moment IS the integral \u222b\u2080\u00b2 x\u00b2 f(x) dx (a definition), but the Lean formalization claims this integral EQUALS 1 (a specific numerical result). The natural language is defining what E[X\u00b2] means, while Lean is asserting a particular value for it. This is a fundamental logical difference between a definition and a theorem statement.']"}, "type": "definition"}, "l6": {"id": "l6", "natural_language": "Substituting the function and $k$, this becomes $E[X^2] = \\int_0^2 x^2 (\\frac{3}{8}x^2) \\,dx = \\frac{3}{8} \\int_0^2 x^4 \\,dx$.", "statement": "We assume:\n\u2022 The PDF of X is $f(x) = kx^2$ on $[0,2]$ [tc_1].\n\u2022 $k = \\frac{3}{8}$ [l4].\n\u2022 The second moment is $E[X^2] = \\int_0^2 x^2 f(x) \\,dx$ [def_2].\nTherefore, we conclude:\n\u2022 $E[X^2] = \\frac{3}{8} \\int_0^2 x^4 \\,dx$ [l6].", "dependencies": ["tc_1", "l4", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (k : \u211d) \n  (f : \u211d \u2192 \u211d) \n  (tc_1 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2) \n  (l4 : k = 3/8) \n  (def_2 : \u2200 x \u2209 Set.Icc 0 2, f x = 0) :\n  \u222b x in Set.Icc 0 2, x^2 * f x = (3/8) * \u222b x in Set.Icc 0 2, x^4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (k : \u211d) \n  (f : \u211d \u2192 \u211d) \n  (tc_1 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2) \n  (l4 : k = 3/8) \n  (def_2 : \u2200 x \u2209 Set.Icc 0 2, f x = 0) :\n  \u222b x in Set.Icc 0 2, x^2 * f x = (3/8) * \u222b x in Set.Icc 0 2, x^4 := by\n  have h\u2081 : \u2200 (x : \u211d), x \u2208 Set.Icc (0 : \u211d) 2 \u2192 x^2 * f x = (3/8 : \u211d) * x^4 := by\n    intro x hx\n    have h\u2082 : f x = k * x ^ 2 := tc_1 x hx\n    rw [h\u2082]\n    have h\u2083 : k = 3 / 8 := l4\n    rw [h\u2083]\n    have h\u2084 : x \u2208 Set.Icc (0 : \u211d) 2 := hx\n    have h\u2085 : 0 \u2264 x := by exact hx.1\n    have h\u2086 : x \u2264 2 := by exact hx.2\n    ring_nf\n    <;>\n    (try norm_num) <;>\n    (try nlinarith)\n  \n  have h\u2082 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x^2 * f x = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x^4 := by\n    have h\u2083 : (\u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x^2 * f x) = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x^4 := by\n      -- Use the fact that the functions are equal on the interval [0, 2]\n      -- and apply the congruence property of integrals\n      have h\u2084 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, x ^ 2 * f x = (3 / 8 : \u211d) * x ^ 4 := h\u2081\n      -- Use the fact that the functions are equal on the interval to show that their integrals are equal\n      have h\u2085 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by\n        -- Use the fact that the functions are equal on the interval to show that their integrals are equal\n        calc\n          \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by\n            -- Use the fact that the functions are equal on the interval [0, 2]\n            apply Eq.symm\n            apply Eq.symm\n            -- Use the fact that the functions are equal on the interval [0, 2]\n            have h\u2086 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := rfl\n            -- Use the fact that the functions are equal on the interval [0, 2]\n            have h\u2087 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by\n              -- Use the fact that the functions are equal on the interval [0, 2]\n              apply integral_congr_ae\n              -- Use the fact that the functions are equal on the interval [0, 2]\n              have h\u2088 : \u2200\u1d50 (x : \u211d) \u2202volume.restrict (Set.Icc (0 : \u211d) 2), x ^ 2 * f x = (3 / 8 : \u211d) * x ^ 4 := by\n                filter_upwards [volume.restrict_mem_ae (Set.Icc (0 : \u211d) 2)] with x hx using h\u2081 x hx\n              -- Use the fact that the functions are equal on the interval [0, 2]\n              filter_upwards [h\u2088] with x hx using hx\n            -- Use the fact that the functions are equal on the interval [0, 2]\n            linarith\n          _ = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by rfl\n      -- Use the fact that the functions are equal on the interval to show that their integrals are equal\n      exact h\u2085\n    -- Use the fact that the functions are equal on the interval to show that their integrals are equal\n    exact h\u2083\n  \n  have h\u2083 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x^4 = (3/8 : \u211d) * \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x^4 := by\n    have h\u2084 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x ^ 4 = (3/8 : \u211d) * \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n      -- Factor out the constant (3/8) from the integral\n      have h\u2085 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x ^ 4 = (3/8 : \u211d) * \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n        -- Use the property of integrals that allows factoring out constants\n        have h\u2086 : \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3/8 : \u211d) * x ^ 4 = (3/8 : \u211d) * \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n          -- Apply the integral multiplication by a constant rule\n          simp [MeasureTheory.integral_mul_left]\n          <;>\n          (try norm_num) <;>\n          (try\n            {\n              apply Continuous.ae_stronglyMeasurable\n              continuity\n            })\n          <;>\n          (try\n            {\n              apply Continuous.ae_stronglyMeasurable\n              continuity\n            })\n        -- The result follows directly from the above step\n        exact h\u2086\n      -- The final result is obtained by the above steps\n      exact h\u2085\n    -- The final result is obtained by the above steps\n    exact h\u2084\n  \n  have h\u2084 : \u222b x in Set.Icc 0 2, x^2 * f x = (3/8) * \u222b x in Set.Icc 0 2, x^4 := by\n    calc\n      \u222b x in Set.Icc 0 2, x ^ 2 * f x = \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, (3 / 8 : \u211d) * x ^ 4 := by\n        rw [h\u2082]\n      _ = (3 / 8 : \u211d) * \u222b (x : \u211d) in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n        rw [h\u2083]\n      _ = (3 / 8) * \u222b x in Set.Icc 0 2, x ^ 4 := by\n        simp [Set.Icc]\n        <;>\n        norm_num\n        <;>\n        simp_all [Set.Icc]\n        <;>\n        norm_num\n        <;>\n        linarith\n  \n  exact h\u2084", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 43, "column": 20, "endLine": 43, "endColumn": 37, "data": "unknown identifier 'integral_congr_ae'"}, {"line": 45, "column": 14, "endLine": 45, "endColumn": 18, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The PDF definition is correctly formalized with the domain constraint, and the additional condition f(x)=0 outside [0,2] is mathematically appropriate for a PDF", "The parameter value k = 3/8 is directly and correctly represented", "The second moment definition is correctly captured using the integral expression, which is mathematically equivalent to the E[X\u00b2] notation", "The final conclusion correctly represents the mathematical relationship after substituting k and the PDF definition", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (k : \u211d) \n  (f : \u211d \u2192 \u211d) \n  (tc_1 : \u2200 x \u2208 Set.Icc 0 2, f x = k * x^2) \n  (l4 : k = 3/8) \n  (def_2 : \u2200 x \u2209 Set.Icc 0 2, f x = 0) :\n  \u222b x in Set.Icc 0 2, x^2 * f x = (3/8) * \u222b x in Set.Icc 0 2, x^4 := by\n  have h_main : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, x ^ 2 * f x = (3 / 8 : \u211d) * x ^ 4 := by\n    intro x hx\n    have h\u2081 : f x = k * x ^ 2 := tc_1 x hx\n    have h\u2082 : k = 3 / 8 := l4\n    rw [h\u2081, h\u2082]\n    <;> ring_nf\n    <;> norm_num at hx \u22a2\n    <;> nlinarith [hx.1, hx.2]\n  \n  have h_integral_congr : \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n    have h\u2081 : \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n      -- Use the fact that the functions are equal almost everywhere on [0, 2]\n      have h\u2082 : \u2200 x \u2208 Set.Icc (0 : \u211d) 2, x ^ 2 * f x = (3 / 8 : \u211d) * x ^ 4 := h_main\n      -- Use the integral congruence lemma to show that the integrals are equal\n      have h\u2083 : \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n        -- Use the fact that the functions are equal on [0, 2] to equate the integrals\n        have h\u2084 : \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by\n          -- Use the integral congruence lemma\n          refine' intervalIntegral.integral_congr (fun x hx => _)\n          -- Show that the functions are equal on [0, 2]\n          have h\u2085 : x \u2208 Set.Icc (0 : \u211d) 2 := by\n            constructor <;>\n            (try norm_num at hx \u22a2) <;>\n            (try linarith [hx.1, hx.2]) <;>\n            (try\n              {\n                cases' hx with hx\u2081 hx\u2082\n                constructor <;> linarith\n              })\n          have h\u2086 : x ^ 2 * f x = (3 / 8 : \u211d) * x ^ 4 := h\u2082 x h\u2085\n          linarith\n        exact h\u2084\n      exact h\u2083\n    exact h\u2081\n  \n  have h_integral_factor : \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 = (3 / 8 : \u211d) * \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 := by\n    have h\u2081 : \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 = (3 / 8 : \u211d) * \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 := by\n      -- Factor out the constant (3/8) from the integral\n      simp [intervalIntegral.integral_comp_mul_left (fun x => x ^ 4)]\n      <;> ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> norm_num\n      <;> linarith\n    -- The result follows directly from the above step\n    exact h\u2081\n  \n  have h_integral_Icc : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x := by\n    have h\u2081 : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x := by\n      -- Use the fact that the integral over the interval [a, b] is equal to the integral from a to b for continuous functions\n      simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 2)]\n    -- The result follows directly from the above step\n    exact h\u2081\n  \n  have h_integral_Icc' : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 = \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 := by\n    have h\u2081 : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 = \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 := by\n      simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 (2 : \u211d))]\n    -- The result follows directly from the above step\n    exact h\u2081\n  \n  have h_final : \u222b x in Set.Icc 0 2, x^2 * f x = (3/8) * \u222b x in Set.Icc 0 2, x^4 := by\n    have h\u2081 : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n      calc\n        \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 2 * f x := by rw [h_integral_Icc]\n        _ = \u222b x in (0 : \u211d)..(2 : \u211d), (3 / 8 : \u211d) * x ^ 4 := by rw [h_integral_congr]\n        _ = (3 / 8 : \u211d) * \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 := by rw [h_integral_factor]\n        _ = (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n          have h\u2082 : \u222b x in (0 : \u211d)..(2 : \u211d), x ^ 4 = \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by\n            rw [h_integral_Icc']\n          rw [h\u2082]\n        _ = (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by rfl\n    -- Convert the result back to the original variables\n    have h\u2082 : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x = (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := h\u2081\n    -- Simplify the expression to match the desired form\n    have h\u2083 : \u222b x in Set.Icc 0 2, x ^ 2 * f x = \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x := by simp [Set.Icc]\n    have h\u2084 : \u222b x in Set.Icc 0 2, x ^ 4 = \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by simp [Set.Icc]\n    -- Combine all the steps to get the final result\n    calc\n      \u222b x in Set.Icc 0 2, x ^ 2 * f x = \u222b x in Set.Icc (0 : \u211d) 2, x ^ 2 * f x := by rw [h\u2083]\n      _ = (3 / 8 : \u211d) * \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 := by rw [h\u2082]\n      _ = (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, x ^ 4 := by\n        have h\u2085 : \u222b x in Set.Icc (0 : \u211d) 2, x ^ 4 = \u222b x in Set.Icc 0 2, x ^ 4 := by simp [Set.Icc]\n        rw [h\u2085]\n      _ = (3 / 8 : \u211d) * \u222b x in Set.Icc 0 2, x ^ 4 := by rfl\n  \n  apply h_final"}, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "The result of this integral is $E[X^2] = \\frac{3}{8} [\\frac{x^5}{5}]_0^2 = \\frac{12}{5}$.", "statement": "We assume:\n\u2022 $E[X^2] = \\frac{3}{8} \\int_0^2 x^4 \\,dx$ [l6].\nTherefore, we conclude:\n\u2022 $E[X^2] = \\frac{12}{5}$ [l7].", "dependencies": ["l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (E_X2 : \u211d) \n  (l6 : E_X2 = (3/8) * \u222b x in (0:\u211d)..(2:\u211d), x^4) :\n  E_X2 = 12/5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (E_X2 : \u211d) \n  (l6 : E_X2 = (3/8) * \u222b x in (0:\u211d)..(2:\u211d), x^4) :\n  E_X2 = 12/5 := by\n  have h_integral : (\u222b x in (0:\u211d)..(2:\u211d), x^4 : \u211d) = 32/5 := by\n    -- Compute the integral of x^4 from 0 to 2\n    norm_num [integral_id, mul_comm]\n    <;>\n    ring_nf\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  have h_main : E_X2 = 12/5 := by\n    rw [l6]\n    rw [h_integral]\n    norm_num\n    <;>\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption is correctly formalized. The variable name E_X2 appropriately represents E[X^2], and the integral notation \u222b x in (0:\u211d)..(2:\u211d), x^4 correctly captures the definite integral from 0 to 2 of x^4. The coefficient 3/8 is preserved exactly.", "The conclusion E_X2 = 12/5 perfectly matches the natural language statement E[X^2] = 12/5, with consistent variable naming.", "The logical flow from assumption to conclusion is properly captured through Lean's theorem structure, where l6 serves as the hypothesis and the goal represents the conclusion to be proven.", "The mathematical relationship is sound - the integral \u222b\u2080\u00b2 x\u2074 dx evaluates to 32/5, so (3/8) \u00d7 (32/5) = 12/5. The Lean formalization correctly represents this mathematical computation that needs to be proven."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_3": {"id": "def_3", "natural_language": "The variance is defined by the formula $Var(X) = E[X^2] - (E[X])^2$.", "statement": "Definition:\n\u2022 The variance of a random variable X is given by the formula $Var(X) = E[X^2] - (E[X])^2$ [def_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_3 (X : Type*) [MeasurableSpace X] (\u03bc : ProbabilityMeasure X) (f : X \u2192 \u211d) :\n  \u2203 (Var : \u211d), Var = (\u222b x, f x ^ 2 \u2202\u03bc) - (\u222b x, f x \u2202\u03bc) ^ 2 := by sorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 51, "endLine": 7, "endColumn": 71, "data": "function expected at\n  ProbabilityMeasure\nterm has type\n  ?m.9"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "ts_2": {"id": "ts_2", "natural_language": "Using our computed values for $E[X^2]$ and $E[X]$, the variance is $Var(X) = \\frac{12}{5} - (\\frac{3}{2})^2 = \\frac{3}{20}$.", "statement": "We assume:\n\u2022 The expected value is $E[X] = \\frac{3}{2}$ [ts_1].\n\u2022 The second moment is $E[X^2] = \\frac{12}{5}$ [l7].\n\u2022 The variance is defined as $Var(X) = E[X^2] - (E[X])^2$ [def_3].\nTherefore, we conclude:\n\u2022 $Var(X) = \\frac{3}{20}$ [ts_2].", "dependencies": ["ts_1", "l7", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_2 \n  (E_X E_X2 Var_X : \u211d)\n  (ts_1 : E_X = 3/2)\n  (l7 : E_X2 = 12/5)\n  (def_3 : Var_X = E_X2 - (E_X)^2) :\n  Var_X = 3/20 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_2 \n  (E_X E_X2 Var_X : \u211d)\n  (ts_1 : E_X = 3/2)\n  (l7 : E_X2 = 12/5)\n  (def_3 : Var_X = E_X2 - (E_X)^2) :\n  Var_X = 3/20 := by\n  have h1 : (E_X)^2 = 9/4 := by\n    rw [ts_1]\n    norm_num\n    <;>\n    ring_nf at *\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  have h2 : Var_X = 3/20 := by\n    rw [def_3]\n    rw [l7]\n    rw [h1]\n    norm_num\n    <;>\n    ring_nf at *\n    <;>\n    norm_num\n    <;>\n    linarith\n  \n  rw [h2]\n  <;> norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations appropriately represent the mathematical objects E[X], E[X\u00b2], and Var(X) as real numbers", "Assumption ts_1 correctly captures E[X] = 3/2", "Assumption l7 correctly captures E[X\u00b2] = 12/5", "Definition def_3 correctly captures the variance formula Var(X) = E[X\u00b2] - (E[X])\u00b2", "The theorem goal correctly captures the conclusion Var(X) = 3/20, and the overall logical structure perfectly matches the natural language reasoning"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

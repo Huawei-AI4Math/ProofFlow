@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that if $x, y, z$ are positive real numbers satisfying $x^2 + y^2 + z^2 + 2xyz = 1$, then $xyz \leq \\frac{1}{8}$.
+
+Proof: Let $x, y, z > 0$ satisfy $x^2+y^2+z^2+2xyz=1$ and denote $P = xyz$. Then $x^2+y^2+z^2 = 1-2P$, and by AM–GM, $x^2+y^2+z^2 \ge 3(xyz)^{2/3} = 3P^{2/3}$. Combining these gives $1-2P \ge 3P^{2/3}$. Letting $t = P^{1/3}$, this becomes $1 - 2t^3 \ge 3t^2$, or equivalently $2t^3 + 3t^2 - 1 \le 0$. Factoring, we get $(2t-1)(t+1)^2 \le 0$, and since $t>0$, it follows that $2t-1 \le 0$, so $t \le rac{1}{2}$. Therefore $xyz = t^3 \le rac{1}{8}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $x, y, z > 0$", "statement": "Premise:\n\u2022 x, y, z are positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (x y z : \u211d)\n(tc_1 : 0 < x \u2227 0 < y \u2227 0 < z)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly declares x, y, z as real numbers and specifies they are positive through the condition 0 < x \u2227 0 < y \u2227 0 < z, which perfectly captures 'x, y, z are positive real numbers'", "Both the natural language and Lean formalization contain no conclusions, only premise conditions"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "satisfy $x^2+y^2+z^2+2xyz=1$", "statement": "Premise:\n\u2022 x, y, z are positive real numbers [tc_1]\n\u2022 $x^2 + y^2 + z^2 + 2xyz = 1$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem condition (x y z : \u211d) (h : 0 < x \u2227 0 < y \u2227 0 < z \u2227 x^2 + y^2 + z^2 + 2*x*y*z = 1) :\n  x*y*z \u2264 1/8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that x, y, z are positive real numbers through the conditions 0 < x \u2227 0 < y \u2227 0 < z", "The equation x^2 + y^2 + z^2 + 2xyz = 1 is perfectly represented in Lean as x^2 + y^2 + z^2 + 2*x*y*z = 1", "The natural language explicitly states there are no conclusions derived yet, but the Lean theorem introduces a new conclusion x*y*z \u2264 1/8 that is not mentioned in the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that x, y, z are positive real numbers through the conditions 0 < x \u2227 0 < y \u2227 0 < z', 'The equation x^2 + y^2 + z^2 + 2xyz = 1 is perfectly represented in Lean as x^2 + y^2 + z^2 + 2*x*y*z = 1', 'The natural language explicitly states there are no conclusions derived yet, but the Lean theorem introduces a new conclusion x*y*z \u2264 1/8 that is not mentioned in the natural language statement']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "denote $P = xyz$", "statement": "Definition:\n\u2022 Define a quantity P such that $P = xyz$ [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 (x y z : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1) :\n  x*y*z \u2264 1/8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language wants to define a quantity P, but the Lean formalization does not define any variable P at all. Instead it only declares x, y, z as real numbers.", "The natural language states P should equal xyz as a simple definition, but Lean introduces additional conditions (positivity constraints and a constraint equation) that are completely absent from the natural language statement.", "The natural language concludes with the definition P = xyz, but the Lean formalization concludes with an inequality x*y*z \u2264 1/8. These are fundamentally different types of conclusions - one is a definition, the other is an inequality theorem."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language wants to define a quantity P, but the Lean formalization does not define any variable P at all. Instead it only declares x, y, z as real numbers.', 'The natural language states P should equal xyz as a simple definition, but Lean introduces additional conditions (positivity constraints and a constraint equation) that are completely absent from the natural language statement.', 'The natural language concludes with the definition P = xyz, but the Lean formalization concludes with an inequality x*y*z \u2264 1/8. These are fundamentally different types of conclusions - one is a definition, the other is an inequality theorem.']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Then $x^2+y^2+z^2 = 1-2P$", "statement": "We assume:\n\u2022 $x^2 + y^2 + z^2 + 2xyz = 1$ [tc_2]\n\u2022 $P = xyz$ [def_1]\nTherefore, we conclude:\n\u2022 $x^2 + y^2 + z^2 = 1 - 2P$ [l1].", "dependencies": ["tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (x y z P : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1) :\n  x^2 + y^2 + z^2 = 1 - 2*P := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (x y z P : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1) :\n  x^2 + y^2 + z^2 = 1 - 2*P := by\n  have hsubstituted : x^2 + y^2 + z^2 + 2*P = 1 := by\n    have h1 : x ^ 2 + y ^ 2 + z ^ 2 + 2 * x * y * z = 1 := hconstraint\n    have h2 : P = x * y * z := hP\n    calc\n      x ^ 2 + y ^ 2 + z ^ 2 + 2 * P = x ^ 2 + y ^ 2 + z ^ 2 + 2 * (x * y * z) := by\n        rw [h2]\n        <;> ring\n      _ = 1 := by\n        linarith\n  \n  have hfinal : x^2 + y^2 + z^2 = 1 - 2*P := by\n    have h1 : x ^ 2 + y ^ 2 + z ^ 2 + 2 * P = 1 := hsubstituted\n    linarith\n  \n  exact hfinal", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical content from the natural language. The constraint equation, definition of P, and conclusion are all perfectly translated. The additional positivity constraint (hpos) is an extra logical detail that doesn't contradict the natural language and is acceptable under the evaluation criteria. All assumptions and the conclusion are properly formalized with correct mathematical equivalence."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "by AM\u2013GM, $x^2+y^2+z^2 \\ge 3(xyz)^{2/3} = 3P^{2/3}$", "statement": "We assume:\n\u2022 x, y, z are positive real numbers [tc_1]\n\u2022 $P = xyz$ [def_1]\nTherefore, we conclude:\n\u2022 $x^2 + y^2 + z^2 \\ge 3P^{2/3}$ [l2].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (x y z : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (P : \u211d) (hP : P = x * y * z) :\n  x^2 + y^2 + z^2 \u2265 3 * P^(2/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (x y z : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (P : \u211d) (hP : P = x * y * z) :\n  x^2 + y^2 + z^2 \u2265 3 * P^(2/3 : \u211d) := by\n  have h\u2081 : 0 < x * y * z := by\n    have hx : 0 < x := hpos.1\n    have hy : 0 < y := hpos.2.1\n    have hz : 0 < z := hpos.2.2\n    have hxy : 0 < x * y := mul_pos hx hy\n    have hxyz : 0 < x * y * z := mul_pos hxy hz\n    exact hxyz\n  \n  have h\u2082 : (x * y * z)^2 \u2264 ((x^2 + y^2 + z^2) / 3)^3 := by\n    have h3 : 0 \u2264 x ^ 2 := by positivity\n    have h4 : 0 \u2264 y ^ 2 := by positivity\n    have h5 : 0 \u2264 z ^ 2 := by positivity\n    have h6 : 0 \u2264 x ^ 2 * y ^ 2 := by positivity\n    have h7 : 0 \u2264 x ^ 2 * z ^ 2 := by positivity\n    have h8 : 0 \u2264 y ^ 2 * z ^ 2 := by positivity\n    -- Use the AM-GM inequality to prove the desired inequality\n    have h9 : x ^ 2 * y ^ 2 * z ^ 2 \u2264 ((x ^ 2 + y ^ 2 + z ^ 2) / 3) ^ 3 := by\n      nlinarith [sq_nonneg (x ^ 2 - y ^ 2), sq_nonneg (y ^ 2 - z ^ 2), sq_nonneg (z ^ 2 - x ^ 2),\n        sq_nonneg (x ^ 2 + y ^ 2 + z ^ 2)]\n    -- Simplify the left-hand side to (x * y * z)^2\n    have h10 : (x * y * z) ^ 2 = x ^ 2 * y ^ 2 * z ^ 2 := by ring\n    rw [h10]\n    exact h9\n  \n  have h\u2083 : ((x * y * z)^2 : \u211d) \u2265 0 := by positivity\n  \n  have h\u2084 : ((x^2 + y^2 + z^2) / 3 : \u211d) \u2265 0 := by\n    have h\u2085 : 0 \u2264 x ^ 2 + y ^ 2 + z ^ 2 := by\n      nlinarith [sq_nonneg x, sq_nonneg y, sq_nonneg z]\n    linarith\n  \n  have h\u2085 : ((x * y * z)^2 : \u211d)^(1 / 3 : \u211d) \u2264 ((x^2 + y^2 + z^2) / 3 : \u211d) := by\n    have h\u2085\u2081 : 0 \u2264 ((x * y * z) ^ 2 : \u211d) := by positivity\n    have h\u2085\u2082 : 0 \u2264 ((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) := by positivity\n    have h\u2085\u2083 : ((x * y * z) ^ 2 : \u211d) \u2264 (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d)) ^ 3 := by\n      exact_mod_cast h\u2082\n    -- Use the fact that the cube root function is increasing to take cube roots of both sides\n    have h\u2085\u2084 : ((x * y * z) ^ 2 : \u211d) ^ (1 / 3 : \u211d) \u2264 (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d)) := by\n      -- Use the property of real power functions to take cube roots\n      have h\u2085\u2085 : 0 \u2264 ((x * y * z) ^ 2 : \u211d) := by positivity\n      have h\u2085\u2086 : 0 \u2264 (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d)) := by positivity\n      -- Use the fact that the cube root function is increasing\n      calc\n        ((x * y * z) ^ 2 : \u211d) ^ (1 / 3 : \u211d) \u2264 (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) ^ 3) ^ (1 / 3 : \u211d) := by\n          gcongr <;> norm_num <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try nlinarith)\n        _ = (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d)) := by\n          -- Simplify the right-hand side\n          have h\u2085\u2087 : 0 \u2264 ((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) := by positivity\n          have h\u2085\u2088 : (((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) ^ 3) ^ (1 / 3 : \u211d) = ((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) := by\n            rw [\u2190 Real.rpow_nat_cast]\n            rw [\u2190 Real.rpow_mul] <;>\n            ring_nf <;>\n            norm_num <;>\n            (try positivity) <;>\n            (try linarith) <;>\n            (try nlinarith)\n          rw [h\u2085\u2088]\n    exact h\u2085\u2084\n  \n  have h\u2086 : (x * y * z : \u211d)^(2 / 3 : \u211d) = ((x * y * z)^2 : \u211d)^(1 / 3 : \u211d) := by\n    have h\u2086\u2081 : 0 < (x * y * z : \u211d) := by exact_mod_cast h\u2081\n    have h\u2086\u2082 : (x * y * z : \u211d) ^ (2 / 3 : \u211d) = ((x * y * z) ^ 2 : \u211d) ^ (1 / 3 : \u211d) := by\n      calc\n        (x * y * z : \u211d) ^ (2 / 3 : \u211d) = (x * y * z : \u211d) ^ (2 * (1 / 3 : \u211d)) := by ring_nf\n        _ = ((x * y * z : \u211d) ^ 2) ^ (1 / 3 : \u211d) := by\n          rw [\u2190 Real.rpow_nat_cast]\n          rw [\u2190 Real.rpow_mul] <;> ring_nf <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try positivity)\n          <;>\n          (try nlinarith)\n        _ = ((x * y * z) ^ 2 : \u211d) ^ (1 / 3 : \u211d) := by norm_cast\n    exact h\u2086\u2082\n  \n  have h\u2087 : (x * y * z : \u211d)^(2 / 3 : \u211d) \u2264 (x^2 + y^2 + z^2) / 3 := by\n    calc\n      (x * y * z : \u211d) ^ (2 / 3 : \u211d) = ((x * y * z) ^ 2 : \u211d) ^ (1 / 3 : \u211d) := by rw [h\u2086]\n      _ \u2264 ((x ^ 2 + y ^ 2 + z ^ 2) / 3 : \u211d) := by\n        -- Use the previously established inequality h\u2085\n        exact h\u2085\n  \n  have h\u2088 : x^2 + y^2 + z^2 \u2265 3 * (x * y * z)^(2 / 3 : \u211d) := by\n    have h\u2088\u2081 : (x * y * z : \u211d) ^ (2 / 3 : \u211d) \u2264 (x ^ 2 + y ^ 2 + z ^ 2) / 3 := h\u2087\n    have h\u2088\u2082 : 3 * (x * y * z : \u211d) ^ (2 / 3 : \u211d) \u2264 x ^ 2 + y ^ 2 + z ^ 2 := by\n      linarith\n    linarith\n  \n  have h\u2089 : x^2 + y^2 + z^2 \u2265 3 * P^(2 / 3 : \u211d) := by\n    have h\u2089\u2081 : P = x * y * z := hP\n    have h\u2089\u2082 : x^2 + y^2 + z^2 \u2265 3 * (x * y * z)^(2 / 3 : \u211d) := h\u2088\n    calc\n      x^2 + y^2 + z^2 \u2265 3 * (x * y * z)^(2 / 3 : \u211d) := h\u2089\u2082\n      _ = 3 * P^(2 / 3 : \u211d) := by\n        rw [h\u2089\u2081]\n        <;>\n        simp [hP]\n        <;>\n        ring_nf\n        <;>\n        norm_num\n        <;>\n        linarith\n  \n  exact h\u2089", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and positivity constraints are correctly formalized. The conjunction (0 < x \u2227 0 < y \u2227 0 < z) properly captures that all three variables are positive real numbers.", "The definition P = xyz is accurately translated to P = x * y * z with appropriate hypothesis naming (hP).", "The main inequality x\u00b2 + y\u00b2 + z\u00b2 \u2265 3P^(2/3) is precisely formalized with correct syntax for the fractional exponent and inequality symbol."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Combining these gives $1-2P \\ge 3P^{2/3}$.", "statement": "We assume:\n\u2022 $x^2 + y^2 + z^2 = 1 - 2P$ [l1]\n\u2022 $x^2 + y^2 + z^2 \\ge 3P^{2/3}$ [l2]\nTherefore, we conclude:\n\u2022 $1 - 2P \\ge 3P^{2/3}$ [l3].", "dependencies": ["l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (x y z P : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (l1 : x^2 + y^2 + z^2 = 1 - 2*P)\n  (l2 : x^2 + y^2 + z^2 \u2265 3 * P^(2/3 : \u211d)) :\n  1 - 2*P \u2265 3 * P^(2/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (x y z P : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (l1 : x^2 + y^2 + z^2 = 1 - 2*P)\n  (l2 : x^2 + y^2 + z^2 \u2265 3 * P^(2/3 : \u211d)) :\n  1 - 2*P \u2265 3 * P^(2/3 : \u211d) := by\n  have h_main : 1 - 2*P \u2265 3 * P^(2/3 : \u211d) := by\n    have h3 : 1 - 2 * P \u2265 3 * P ^ (2 / 3 : \u211d) := by\n      -- Use the given inequalities to directly conclude the result\n      linarith [l1, l2]\n    exact h3\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Premise l1 is exactly captured: x^2 + y^2 + z^2 = 1 - 2*P matches the natural language perfectly", "Premise l2 is exactly captured: the inequality x^2 + y^2 + z^2 \u2265 3 * P^(2/3) matches the natural language perfectly", "Conclusion l3 is exactly captured: 1 - 2*P \u2265 3 * P^(2/3) matches the natural language conclusion perfectly", "The logical structure and mathematical reasoning (transitivity through the common left-hand side) is preserved perfectly. Additional context conditions (hpos, hP, hconstraint) provide extra mathematical details without contradicting the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Letting $t = P^{1/3}$", "statement": "Definition:\n\u2022 Define a quantity t such that $t = P^{1/3}$ [def_2].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_2 (x y z : \u211d) (hpos : 0 < x \u2227 0 < y \u2227 0 < z) \n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1) :\n  let P := x * y * z\n  let t := P^(1/3 : \u211d)\n  t = P^(1/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language states 'P is given' as a simple condition, but the Lean formalization introduces extensive additional structure: P is explicitly defined as x*y*z where x, y, z are positive real numbers satisfying x\u00b2 + y\u00b2 + z\u00b2 + 2xyz = 1. These are significant mathematical constraints not mentioned in the natural language statement.", "The conclusion t = P^(1/3) is identical in both the natural language and Lean formalization."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language states 'P is given' as a simple condition, but the Lean formalization introduces extensive additional structure: P is explicitly defined as x*y*z where x, y, z are positive real numbers satisfying x\u00b2 + y\u00b2 + z\u00b2 + 2xyz = 1. These are significant mathematical constraints not mentioned in the natural language statement.\", 'The conclusion t = P^(1/3) is identical in both the natural language and Lean formalization.']"}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "this becomes $1 - 2t^3 \\ge 3t^2$", "statement": "We assume:\n\u2022 $1 - 2P \\ge 3P^{2/3}$ [l3]\n\u2022 $t = P^{1/3}$ [def_2]\n\u2022 x, y, z are positive real numbers [tc_1]\n\u2022 $P = xyz$ [def_1]\nTherefore, we conclude:\n\u2022 $1 - 2t^3 \\ge 3t^2$ [l4].", "dependencies": ["l3", "def_2", "tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (x y z P t : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (ht : t = P^(1/3 : \u211d))\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (h_l3 : 1 - 2*P \u2265 3 * P^(2/3 : \u211d)) :\n  1 - 2*t^3 \u2265 3*t^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (x y z P t : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hP : P = x * y * z)\n  (ht : t = P^(1/3 : \u211d))\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (h_l3 : 1 - 2*P \u2265 3 * P^(2/3 : \u211d)) :\n  1 - 2*t^3 \u2265 3*t^2 := by\n  have hP_pos : 0 < P := by\n    have hx : 0 < x := hpos.1\n    have hy : 0 < y := hpos.2.1\n    have hz : 0 < z := hpos.2.2\n    have hxyz : 0 < x * y * z := by positivity\n    rw [hP]\n    exact hxyz\n  \n  have ht_cubed : t^3 = P := by\n    have h\u2081 : t = P ^ (1 / 3 : \u211d) := ht\n    have h\u2082 : t ^ 3 = (P ^ (1 / 3 : \u211d)) ^ 3 := by rw [h\u2081]\n    have h\u2083 : (P ^ (1 / 3 : \u211d)) ^ 3 = P := by\n      have h\u2084 : P > 0 := hP_pos\n      have h\u2085 : (P : \u211d) ^ (1 / 3 : \u211d) > 0 := Real.rpow_pos_of_pos h\u2084 (1 / 3 : \u211d)\n      -- Use the property of exponents to simplify (P^(1/3))^3\n      have h\u2086 : (P : \u211d) ^ (1 / 3 : \u211d) > 0 := Real.rpow_pos_of_pos h\u2084 (1 / 3 : \u211d)\n      calc\n        (P ^ (1 / 3 : \u211d)) ^ 3 = P ^ ((1 / 3 : \u211d) * 3 : \u211d) := by\n          rw [\u2190 Real.rpow_nat_cast]\n          rw [\u2190 Real.rpow_mul] <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try positivity)\n          <;>\n          (try norm_num)\n        _ = P ^ (1 : \u211d) := by\n          norm_num\n        _ = P := by\n          simp [Real.rpow_one]\n    calc\n      t ^ 3 = (P ^ (1 / 3 : \u211d)) ^ 3 := by rw [h\u2082]\n      _ = P := by rw [h\u2083]\n  \n  have hP_rpow : P^(2/3 : \u211d) = t^2 := by\n    have h\u2081 : t = P ^ (1 / 3 : \u211d) := ht\n    have h\u2082 : P > 0 := hP_pos\n    have h\u2083 : t ^ 2 = (P ^ (1 / 3 : \u211d)) ^ 2 := by rw [h\u2081]\n    have h\u2084 : (P : \u211d) ^ (2 / 3 : \u211d) = (P : \u211d) ^ (2 / 3 : \u211d) := rfl\n    have h\u2085 : (P : \u211d) ^ (2 / 3 : \u211d) = (P : \u211d) ^ (2 / 3 : \u211d) := rfl\n    have h\u2086 : (P : \u211d) ^ (2 / 3 : \u211d) = (P : \u211d) ^ (2 / 3 : \u211d) := rfl\n    -- Use the property of exponents to show that P^(2/3) = (P^(1/3))^2\n    have h\u2087 : (P : \u211d) ^ (2 / 3 : \u211d) = (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) := by\n      norm_num\n      <;>\n      ring_nf\n      <;>\n      norm_num\n    have h\u2088 : (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) = ((P : \u211d) ^ (1 / 3 : \u211d)) ^ 2 := by\n      have h\u2088\u2081 : (P : \u211d) > 0 := by positivity\n      have h\u2088\u2082 : (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) = (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) := rfl\n      calc\n        (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) = (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) := rfl\n        _ = ((P : \u211d) ^ (1 / 3 : \u211d)) ^ 2 := by\n          have h\u2088\u2083 : (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) = ((P : \u211d) ^ (1 / 3 : \u211d)) ^ 2 := by\n            -- Use the property of exponents: a^(bc) = (a^b)^c\n            calc\n              (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) = (P : \u211d) ^ (2 * (1 / 3 : \u211d) : \u211d) := by ring_nf\n              _ = ((P : \u211d) ^ (1 / 3 : \u211d)) ^ 2 := by\n                rw [show (2 : \u211d) * (1 / 3 : \u211d) = (1 / 3 : \u211d) + (1 / 3 : \u211d) by ring]\n                rw [Real.rpow_add (by positivity)]\n                <;> ring_nf <;>\n                simp [Real.rpow_add, Real.rpow_mul, Real.rpow_nat_cast]\n                <;> field_simp\n                <;> ring_nf\n                <;> norm_num\n          rw [h\u2088\u2083]\n    calc\n      (P : \u211d) ^ (2 / 3 : \u211d) = (P : \u211d) ^ ((1 / 3 : \u211d) * 2 : \u211d) := by rw [h\u2087]\n      _ = ((P : \u211d) ^ (1 / 3 : \u211d)) ^ 2 := by rw [h\u2088]\n      _ = t ^ 2 := by\n        rw [ht]\n        <;>\n        ring_nf\n  \n  have h_main : 1 - 2*P \u2265 3*t^2 := by\n    have h\u2081 : 1 - 2 * P \u2265 3 * P ^ (2 / 3 : \u211d) := h_l3\n    have h\u2082 : P ^ (2 / 3 : \u211d) = t ^ 2 := hP_rpow\n    have h\u2083 : 3 * P ^ (2 / 3 : \u211d) = 3 * t ^ 2 := by rw [h\u2082]\n    linarith\n  \n  have h_final : 1 - 2*t^3 \u2265 3*t^2 := by\n    have h\u2081 : t ^ 3 = P := ht_cubed\n    have h\u2082 : 1 - 2 * P \u2265 3 * t ^ 2 := h_main\n    have h\u2083 : 1 - 2 * t ^ 3 \u2265 3 * t ^ 2 := by\n      calc\n        1 - 2 * t ^ 3 = 1 - 2 * P := by\n          rw [h\u2081]\n          <;> ring\n        _ \u2265 3 * t ^ 2 := by linarith\n    exact h\u2083\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable types and positivity constraints are correctly captured in Lean", "Definition P = xyz is perfectly translated to P = x * y * z", "Definition t = P^(1/3) is correctly formalized with appropriate type annotation", "Constraint 1 - 2P \u2265 3P^(2/3) is accurately represented in Lean", "Conclusion 1 - 2t^3 \u2265 3t^2 matches exactly", "Extra constraint x^2 + y^2 + z^2 + 2*x*y*z = 1 is additional but acceptable as per guidelines"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "or equivalently $2t^3 + 3t^2 - 1 \\le 0$.", "statement": "We assume:\n\u2022 $1 - 2t^3 \\ge 3t^2$ [l4]\nTherefore, we conclude:\n\u2022 $2t^3 + 3t^2 - 1 \\le 0$ [l5].", "dependencies": ["l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (t : \u211d)\n  (h_l4 : 1 - 2 * t^3 \u2265 3 * t^2) :\n  2 * t^3 + 3 * t^2 - 1 \u2264 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (t : \u211d)\n  (h_l4 : 1 - 2 * t^3 \u2265 3 * t^2) :\n  2 * t^3 + 3 * t^2 - 1 \u2264 0 := by\n  have h_step1 : -2 * t ^ 3 \u2265 3 * t ^ 2 - 1 := by\n    have h1 : 1 - 2 * t ^ 3 \u2265 3 * t ^ 2 := h_l4\n    -- Subtract 1 from both sides to get -2 * t ^ 3 \u2265 3 * t ^ 2 - 1\n    linarith\n  \n  have h_step2 : 2 * t ^ 3 \u2264 1 - 3 * t ^ 2 := by\n    have h2 : -2 * t ^ 3 \u2265 3 * t ^ 2 - 1 := h_step1\n    -- Multiply both sides by -1 and reverse the inequality\n    have h3 : 2 * t ^ 3 \u2264 1 - 3 * t ^ 2 := by\n      linarith\n    exact h3\n  \n  have h_step3 : 2 * t ^ 3 + 3 * t ^ 2 - 1 \u2264 0 := by\n    have h3 : 2 * t ^ 3 \u2264 1 - 3 * t ^ 2 := h_step2\n    -- Add 3 * t ^ 2 - 1 to both sides to get 2 * t ^ 3 + 3 * t ^ 2 - 1 \u2264 0\n    linarith\n  \n  exact h_step3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declaration correctly captures the real-valued variable t from the natural language", "The hypothesis in Lean exactly matches the mathematical premise $1 - 2t^3 \\ge 3t^2$", "The conclusion in Lean exactly matches the mathematical conclusion $2t^3 + 3t^2 - 1 \\le 0$", "The logical structure perfectly captures the implication from premise to conclusion as stated in natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Factoring, we get $(2t-1)(t+1)^2 \\le 0$", "statement": "We assume:\n\u2022 $2t^3 + 3t^2 - 1 \\le 0$ [l5]\nTherefore, we conclude:\n\u2022 $(2t-1)(t+1)^2 \\le 0$ [l6].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (t : \u211d)\n  (ht : t > 0)\n  (l5 : 2 * t^3 + 3 * t^2 - 1 \u2264 0) :\n  (2 * t - 1) * (t + 1)^2 \u2264 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (t : \u211d)\n  (ht : t > 0)\n  (l5 : 2 * t^3 + 3 * t^2 - 1 \u2264 0) :\n  (2 * t - 1) * (t + 1)^2 \u2264 0 := by\n  have h_identity : (2 * t - 1) * (t + 1)^2 = 2 * t^3 + 3 * t^2 - 1 := by\n    have h1 : (t + 1) ^ 2 = t ^ 2 + 2 * t + 1 := by\n      ring\n    calc\n      (2 * t - 1) * (t + 1) ^ 2 = (2 * t - 1) * (t ^ 2 + 2 * t + 1) := by rw [h1]\n      _ = (2 * t) * (t ^ 2 + 2 * t + 1) - 1 * (t ^ 2 + 2 * t + 1) := by ring\n      _ = 2 * t ^ 3 + 4 * t ^ 2 + 2 * t - (t ^ 2 + 2 * t + 1) := by ring\n      _ = 2 * t ^ 3 + 4 * t ^ 2 + 2 * t - t ^ 2 - 2 * t - 1 := by ring\n      _ = 2 * t ^ 3 + 3 * t ^ 2 - 1 := by ring\n  \n  have h_main : (2 * t - 1) * (t + 1)^2 \u2264 0 := by\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the premise '2 * t^3 + 3 * t^2 - 1 \u2264 0' and conclusion '(2 * t - 1) * (t + 1)^2 \u2264 0' from the natural language. The additional constraint 't > 0' is an extra condition not mentioned in the natural language, but according to the evaluation criteria, extra logically consistent conditions are acceptable and do not affect the 'Perfectly match' rating. The core logical relationship between the premise and conclusion is preserved exactly as stated."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "since $t>0$", "statement": "We assume:\n\u2022 x, y, z are positive real numbers [tc_1]\n\u2022 $P = xyz$ [def_1]\n\u2022 $t = P^{1/3}$ [def_2]\nTherefore, we conclude:\n\u2022 $t > 0$ [l7].", "dependencies": ["tc_1", "def_1", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (x y z : \u211d) (hpos : 0 < x \u2227 0 < y \u2227 0 < z) :\n  let P := x * y * z\n  let t := P^(1/3 : \u211d)\n  0 < t := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (x y z : \u211d) (hpos : 0 < x \u2227 0 < y \u2227 0 < z) :\n  let P := x * y * z\n  let t := P^(1/3 : \u211d)\n  0 < t := by\n  intro P t\n  have hP_pos : 0 < P := by\n    have hx : 0 < x := hpos.1\n    have hy : 0 < y := hpos.2.1\n    have hz : 0 < z := hpos.2.2\n    have hxy : 0 < x * y := mul_pos hx hy\n    have hxyz : 0 < x * y * z := mul_pos hxy hz\n    dsimp only [P] at *\n    exact hxyz\n  \n  have ht_pos : 0 < t := by\n    dsimp only [t, P] at *\n    -- Use the property that a positive number raised to any real power is positive.\n    have h : 0 < (x * y * z : \u211d) := hP_pos\n    -- Apply the property of real powers to show that (x * y * z)^(1/3 : \u211d) > 0\n    have h\u2081 : 0 < (x * y * z : \u211d) ^ (1 / 3 : \u211d) := Real.rpow_pos_of_pos h _\n    exact h\u2081\n  \n  exact ht_pos", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized with appropriate types and logical conjunction", "The product definition P := x * y * z exactly matches the natural language P = xyz", "The cube root definition P^(1/3 : \u211d) correctly represents P^{1/3} with proper type annotation", "The conclusion 0 < t is mathematically equivalent to t > 0 from the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "and since $t>0$, it follows that $2t-1 \\le 0$", "statement": "We assume:\n\u2022 $(2t-1)(t+1)^2 \\le 0$ [l6]\n\u2022 $t > 0$ [l7]\nTherefore, we conclude:\n\u2022 $2t-1 \\le 0$ [l8].", "dependencies": ["l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (t : \u211d) (l6 : (2 * t - 1) * (t + 1)^2 \u2264 0) (l7 : t > 0) :\n  2 * t - 1 \u2264 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 (t : \u211d) (l6 : (2 * t - 1) * (t + 1)^2 \u2264 0) (l7 : t > 0) :\n  2 * t - 1 \u2264 0 := by\n  have h_sq_pos : (t + 1)^2 > 0 := by\n    have h1 : t + 1 > 0 := by linarith\n    have h2 : (t + 1) ^ 2 > 0 := by\n      -- Since t + 1 > 0, its square is also positive.\n      have h3 : t + 1 > 0 := h1\n      have h4 : (t + 1) ^ 2 > 0 := by\n        -- Use the fact that the square of a positive number is positive.\n        exact pow_pos h3 2\n      exact h4\n    exact h2\n  \n  have h_main : 2 * t - 1 \u2264 0 := by\n    by_contra h\n    -- Assume for contradiction that 2 * t - 1 > 0\n    have h\u2081 : 2 * t - 1 > 0 := by linarith\n    -- Since (t + 1)^2 > 0, the product (2 * t - 1) * (t + 1)^2 would be positive\n    have h\u2082 : (2 * t - 1) * (t + 1) ^ 2 > 0 := by\n      -- Use the fact that the product of two positive numbers is positive\n      have h\u2083 : (t + 1) ^ 2 > 0 := h_sq_pos\n      have h\u2084 : 2 * t - 1 > 0 := h\u2081\n      nlinarith\n    -- This contradicts the given inequality (2 * t - 1) * (t + 1)^2 \u2264 0\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Mathematical expression (2t-1)(t+1)^2 \u2264 0 is correctly formalized with explicit multiplication operators", "Constraint t > 0 is exactly preserved in the Lean formalization", "Conclusion 2t-1 \u2264 0 is correctly represented with explicit multiplication", "Logical structure of assumptions leading to conclusion is properly captured in theorem format", "Variable type declaration t : \u211d appropriately makes implicit real number assumption explicit"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "so $t \\le \\frac{1}{2}$.", "statement": "We assume:\n\u2022 $2t-1 \\le 0$ [l8]\nTherefore, we conclude:\n\u2022 $t \\le \\frac{1}{2}$ [l9].", "dependencies": ["l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 (t : \u211d) (l8 : 2 * t - 1 \u2264 0) :\n  t \u2264 1/2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 (t : \u211d) (l8 : 2 * t - 1 \u2264 0) :\n  t \u2264 1/2 := by\n  have h\u2081 : 2 * t \u2264 1 := by\n    -- Add 1 to both sides of the inequality 2 * t - 1 \u2264 0 to get 2 * t \u2264 1\n    linarith\n  \n  have h\u2082 : t \u2264 1/2 := by\n    -- Divide both sides of the inequality 2 * t \u2264 1 by 2 to get t \u2264 1/2\n    have h\u2083 : t \u2264 1 / 2 := by\n      -- Use the fact that 2 is positive to divide both sides by 2 without changing the inequality direction\n      linarith\n    exact h\u2083\n  \n  exact h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption '2t-1 \u2264 0' is correctly captured as '(l8 : 2 * t - 1 \u2264 0)' with the same label l8. The mathematical expression is identical in meaning.", "The conclusion 't \u2264 1/2' is correctly captured as 't \u2264 1/2'. The fraction notation is equivalent between natural language and Lean.", "The logical flow from assumption to conclusion is properly structured in Lean using the theorem format where l8 serves as the hypothesis and the inequality as the goal to prove.", "The variable t is implicitly assumed to be real in the natural language context, and this is made explicit in Lean as '(t : \u211d)'. This is an appropriate and necessary clarification that doesn't change the mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l10": {"id": "l10", "natural_language": "Therefore $xyz = t^3$", "statement": "We assume:\n\u2022 $P = xyz$ [def_1]\n\u2022 $t = P^{1/3}$ [def_2]\nTherefore, we conclude:\n\u2022 $xyz = t^3$ [l10].", "dependencies": ["def_1", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l10\n  (x y z : \u211d) (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (t : \u211d) (ht : t = (x * y * z)^(1/3 : \u211d)) :\n  x * y * z = t^3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l10\n  (x y z : \u211d) (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (t : \u211d) (ht : t = (x * y * z)^(1/3 : \u211d)) :\n  x * y * z = t^3 := by\n  have h_a_pos : 0 < x * y * z := by\n    have h\u2081 : 0 < x := hpos.1\n    have h\u2082 : 0 < y := hpos.2.1\n    have h\u2083 : 0 < z := hpos.2.2\n    have h\u2084 : 0 < x * y := mul_pos h\u2081 h\u2082\n    have h\u2085 : 0 < x * y * z := mul_pos h\u2084 h\u2083\n    exact h\u2085\n  \n  have h_t_cubed : t ^ 3 = x * y * z := by\n    rw [ht]\n    have h\u2081 : ((x * y * z : \u211d) ^ (1 / 3 : \u211d)) ^ 3 = x * y * z := by\n      have h\u2082 : 0 < (x * y * z : \u211d) := by exact_mod_cast h_a_pos\n      -- Use the property of real power to simplify the expression\n      have h\u2083 : ((x * y * z : \u211d) ^ (1 / 3 : \u211d)) ^ 3 = (x * y * z : \u211d) ^ ((1 / 3 : \u211d) * 3 : \u211d) := by\n        rw [\u2190 Real.rpow_nat_cast]\n        rw [\u2190 Real.rpow_mul (le_of_lt h\u2082)]\n        <;> norm_num\n        <;> ring_nf\n      rw [h\u2083]\n      -- Simplify the exponent\n      have h\u2084 : ((1 / 3 : \u211d) * 3 : \u211d) = (1 : \u211d) := by norm_num\n      rw [h\u2084]\n      -- Simplify the power\n      have h\u2085 : (x * y * z : \u211d) ^ (1 : \u211d) = (x * y * z : \u211d) := by\n        simp [Real.rpow_one]\n      rw [h\u2085]\n    -- Use the simplified expression to conclude the proof\n    calc\n      ((x * y * z : \u211d) ^ (1 / 3 : \u211d)) ^ 3 = x * y * z := h\u2081\n      _ = x * y * z := by ring\n  \n  have h_main : x * y * z = t ^ 3 := by\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The intermediate variable P from the natural language definition is not explicitly present in the Lean formalization, though the mathematical meaning is preserved through direct substitution", "The definition of t matches perfectly - t is defined as the cube root of the product xyz in both versions", "The conclusion xyz = t^3 is stated identically in both the natural language and Lean formalization"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore $xyz = t^3 \\le \\frac{1}{8}$.", "statement": "We assume:\n\u2022 $t \\le \\frac{1}{2}$ [l9]\n\u2022 $xyz = t^3$ [l10]\n\u2022 $t > 0$ [l7]\nTherefore, we conclude:\n\u2022 $xyz \\le \\frac{1}{8}$ [ts_1].", "dependencies": ["l9", "l10", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (x y z t : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (ht_def : t = (x * y * z)^(1/3 : \u211d))\n  (h7 : 0 < t)\n  (h9 : t \u2264 1/2)\n  (h10 : x * y * z = t^3) :\n  x * y * z \u2264 1/8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (x y z t : \u211d) \n  (hpos : 0 < x \u2227 0 < y \u2227 0 < z)\n  (hconstraint : x^2 + y^2 + z^2 + 2*x*y*z = 1)\n  (ht_def : t = (x * y * z)^(1/3 : \u211d))\n  (h7 : 0 < t)\n  (h9 : t \u2264 1/2)\n  (h10 : x * y * z = t^3) :\n  x * y * z \u2264 1/8 := by\n  have h_t_cubed : t^3 \u2264 1/8 := by\n    have h2 : 0 \u2264 t := by linarith\n    have h3 : t \u2264 1 / 2 := by exact_mod_cast h9\n    have h4 : t ^ 2 \u2265 0 := by positivity\n    have h5 : t ^ 3 \u2264 1 / 8 := by\n      nlinarith [sq_nonneg (t - 1 / 2), sq_nonneg (t + 1 / 2),\n        mul_nonneg h2 (sq_nonneg (t - 1 / 2))]\n    exact h5\n  \n  have h_main : x * y * z \u2264 1/8 := by\n    have h2 : x * y * z = t ^ 3 := h10\n    rw [h2]\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption t > 0 [l7] is correctly captured as (h7 : 0 < t)", "The assumption t \u2264 1/2 [l9] is correctly captured as (h9 : t \u2264 1/2)", "The assumption xyz = t\u00b3 [l10] is correctly captured as (h10 : x * y * z = t^3)", "The conclusion xyz \u2264 1/8 [ts_1] is correctly captured as the goal x * y * z \u2264 1/8. The Lean formalization includes additional hypotheses that provide mathematical context but do not contradict the natural language statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l10", "label": "l10", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l10", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l10", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l10", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

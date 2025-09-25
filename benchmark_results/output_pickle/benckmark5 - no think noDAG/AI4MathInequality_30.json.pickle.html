@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for all positive real numbers $a, b, c, x, y, z$ such that $a x + b y + c z = x y z$, the following inequality holds: $\\sqrt{a+b} + \\sqrt{b+c} + \\sqrt{c+a} < x + y + z$.
+
+Proof: Let $u=	frac{a}{yz}, v=	frac{b}{xz}, w=	frac{c}{xy}$. From $ax+by+cz=xyz$, dividing through by $xyz$ yields $	frac{a}{yz}+	frac{b}{xz}+	frac{c}{xy}=1$, so $u+v+w=1$. Substituting $a=uyz$, $b=vxz$, and $c=wxy$ into the target inequality $\sqrt{a+b}+\sqrt{b+c}+\sqrt{c+a}<x+y+z$ gives $\sqrt{z(uy+vx)}+\sqrt{x(vz+wy)}+\sqrt{y(wx+uz)}<x+y+z$. Denote these radicals by $A=\sqrt{z(uy+vx)}, B=\sqrt{x(vz+wy)}, C=\sqrt{y(wx+uz)}$. Then we must prove $(A+B+C)^2<(x+y+z)^2$. By the Cauchy–Schwarz inequality with vectors $(\sqrt{z},\sqrt{x},\sqrt{y})$ and $(\sqrt{uy+vx},\sqrt{vz+wy},\sqrt{wx+uz})$, we obtain $(A+B+C)^2\le (x+y+z)ig((uy+vx)+(vz+wy)+(wx+uz)ig)$. Setting $S=(uy+vx)+(vz+wy)+(wx+uz)$, observe that $S=u(y+z)+v(x+z)+w(x+y)$. Since $u+v+w=1$, we rewrite this as $S=(u+v+w)(x+y+z)-(ux+vy+wz)=(x+y+z)-(ux+vy+wz)$. As $u,v,w,x,y,z>0$, we have $ux+vy+wz>0$, hence $S<x+y+z$. Therefore $(A+B+C)^2\le(x+y+z)S<(x+y+z)(x+y+z)=(x+y+z)^2$. Taking square roots, we conclude $\sqrt{z(uy+vx)}+\sqrt{x(vz+wy)}+\sqrt{y(wx+uz)}<x+y+z$, which establishes the desired inequality.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "for all positive real numbers $a, b, c, x, y, z$", "statement": "Premise:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c x y z : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c, x, y, z are positive real numbers by declaring them as real numbers and explicitly stating the positivity conditions through the conjunction of inequalities 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "$a x + b y + c z = x y z$", "statement": "Premise:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c x y z : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n(tc_2 : a * x + b * y + c * z = x * y * z)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that all six variables are positive real numbers through the variable declaration and the conjunction of positivity conditions in tc_1", "The equation in Lean exactly matches the mathematical expression a*x + b*y + c*z = x*y*z"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Let $u=\tfrac{a}{yz}, v=\tfrac{b}{xz}, w=\tfrac{c}{xy}$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2].\nDefinition:\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c x y z : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n(tc_2 : a * x + b * y + c * z = x * y * z)\n(def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c, x, y, z are positive real numbers using explicit type declarations and positivity constraints", "The Lean formalization exactly matches the equation a*x + b*y + c*z = x*y*z", "The natural language presents the three equations u = a / (y*z), v = b / (x*z), w = c / (x*y) as conclusions to be proven, but the Lean formalization treats them as assumptions/conditions (def_1). This fundamentally changes the logical structure from a theorem to be proven to given definitions"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that a, b, c, x, y, z are positive real numbers using explicit type declarations and positivity constraints', 'The Lean formalization exactly matches the equation a*x + b*y + c*z = x*y*z', 'The natural language presents the three equations u = a / (y*z), v = b / (x*z), w = c / (x*y) as conclusions to be proven, but the Lean formalization treats them as assumptions/conditions (def_1). This fundamentally changes the logical structure from a theorem to be proven to given definitions']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "From $ax+by+cz=xyz$, dividing through by $xyz$ yields $\tfrac{a}{yz}+\tfrac{b}{xz}+\tfrac{c}{xy}=1$, so $u+v+w=1$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1].\nTherefore, we conclude:\n\u2022 u + v + w = 1 [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)) :\n  u + v + w = 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)) :\n  u + v + w = 1 := by\n  rw [def_1.1, def_1.2.1, def_1.2.2]\n  have hx : x \u2260 0 := by linarith [tc_1.2.2.2.1]\n  have hy : y \u2260 0 := by linarith [tc_1.2.2.2.2]\n  have hz : z \u2260 0 := by linarith [tc_1.2.2.2.2]\n  field_simp [hx, hy, hz]\n  rw [\u2190 mul_assoc, \u2190 mul_assoc, \u2190 mul_assoc]\n  rw [\u2190 tc_2]\n  rw [mul_comm (x * y) z]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 6, "endLine": 18, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  x * y * z\na b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nhx : x \u2260 0\nhy : y \u2260 0\nhz : z \u2260 0\n\u22a2 (a * x * z + b * y * z) * x * y + c * (y * z * (x * z)) = y * z * (x * z) * (x * y)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized with proper conjunction of inequalities", "The main equation constraint is translated exactly as stated in natural language", "All three variable definitions are properly captured with correct division operations and parenthesization", "The conclusion statement matches the natural language exactly", "The logical structure correctly represents the assumption-conclusion relationship, with appropriate additional type declarations for completeness", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\nset_option maxRecDepth 1000\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)) :\n  \u00ac(u + v + w = 1) := by\n  rw [def_1.1, def_1.2.1, def_1.2.2]\n  rw [add_assoc, \u2190 add_div]\n  rw [div_eq_div_iff]\n  rotate_left\n  repeat' apply mul_pos <;> (try apply tc_1.2.2.2.1) <;> (try apply tc_1.2.2.2.2.1) <;> apply tc_1.2.2.2.2.2\n  rw [\u2190 tc_2]\n  ring\n  exact one_ne_zero"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Substituting $a=uyz$, $b=vxz$, and $c=wxy$ into the target inequality $\\sqrt{a+b}+\\sqrt{b+c}+\\sqrt{c+a}<x+y+z$ gives $\\sqrt{z(uy+vx)}+\\sqrt{x(vz+wy)}+\\sqrt{y(wx+uz)}<x+y+z$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1].\nTherefore, we conclude:\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1) :\n  sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1) :\n  sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)) := by\n  have hx : x \u2260 0 := by linarith [tc_1.2.2.1]\n  have hy : y \u2260 0 := by linarith [tc_1.2.2.2.1]\n  have hz : z \u2260 0 := by linarith [tc_1.2.2.2.2]\n  rw [def_1.1, def_1.2.1, def_1.2.2]\n  field_simp\n  rw [\u2190 mul_assoc, \u2190 mul_assoc, \u2190 mul_assoc]\n  rw [mul_comm x y, mul_comm x z, mul_comm y z]\n  rw [\u2190 mul_assoc, \u2190 mul_assoc, \u2190 mul_assoc]\n  rw [mul_comm z x, mul_comm z y, mul_comm y x]\n  rw [tc_2]\n  rw [l1]\n  simp only [mul_one]\n  rfl", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 22, "column": 6, "endLine": 22, "endColumn": 10, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  a * x + b * y + c * z\na b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nhx : x \u2260 0\nhy : y \u2260 0\nhz : z \u2260 0\n\u22a2 \u221a(a + b) + \u221a(b + c) + \u221a(c + a) =\n    \u221a(z * (a * y * x * z + b * x * y * z) / (y * z * x * z)) +\n        \u221a(x * (b * z * y * x + c * y * z * x) / (x * z * y * x)) +\n      \u221a(y * (c * x * (y * z) + a * z * (x * y)) / (x * y * (y * z)))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized with appropriate real number types and conjunction of inequalities", "The main constraint equation tc_2 is exactly translated with proper operator precedence and parenthesization", "All three variable definitions in def_1 are correctly captured using logical conjunction", "The sum constraint l1 is perfectly matched", "The conclusion equation l2 maintains exact mathematical equivalence with proper sqrt function calls and nested expressions", "The overall logical structure correctly transforms the natural language premise-conclusion format into Lean's hypothesis-goal format", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l2 :\n  \u2203 (a b c x y z : \u211d) (u v w : \u211d),\n  (0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z) \u2227\n  (a * x + b * y + c * z = x * y * z) \u2227\n  (u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)) \u2227\n  (u + v + w = 1) \u2227\n  \u00ac (sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z))) := by\n  let a : \u211d := 1\n  let b : \u211d := 1\n  let c : \u211d := 1\n  let x : \u211d := 1\n  let y : \u211d := 1\n  let z : \u211d := 3\n  have tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z := by norm_num\n  have tc_2 : a * x + b * y + c * z = x * y * z := by norm_num\n  let u := a / (y * z)\n  let v := b / (x * z)\n  let w := c / (x * y)\n  have def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y) := by simp [u, v, w]\n  have l1 : u + v + w = 1 := by simp [u, v, w]; norm_num\n  refine \u27e8a, b, c, x, y, z, u, v, w, tc_1, tc_2, def_1, l1, ?_\u27e9\n  simp [a, b, c, x, y, z, u, v, w]\n  have : sqrt (1 + 1) = sqrt 2 := by rfl\n  have : sqrt (3 * (1/3 * 1 + 1/3 * 1)) = sqrt 2 := by norm_num\n  norm_num"}, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Denote these radicals by $A=\\sqrt{z(uy+vx)}, B=\\sqrt{x(vz+wy)}, C=\\sqrt{y(wx+uz)}$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2].\nDefinition:\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that all six variables are positive real numbers using conjunction", "The equation a*x + b*y + c*z = x*y*z is exactly represented in Lean", "All three definitions u = a/(y*z), v = b/(x*z), w = c/(x*y) are correctly captured using conjunction in Lean", "The constraint u + v + w = 1 is exactly represented in Lean", "The complex equation involving square roots is exactly represented in Lean with proper parenthesization", "The definitions of A, B, and C are exactly represented in Lean using type annotations with definitions"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "By the Cauchy\u2013Schwarz inequality with vectors $(\\sqrt{z},\\sqrt{x},\\sqrt{y})$ and $(\\sqrt{uy+vx},\\sqrt{vz+wy},\\sqrt{wx+uz})$, we obtain $(A+B+C)^2\\le (x+y+z)\big((uy+vx)+(vz+wy)+(wx+uz)\big)$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2].\nTherefore, we conclude:\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a b c x y z : \u211d) (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z))) :\n  (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a b c x y z : \u211d) (u v w : \u211d)\n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (hx : 0 < x) (hy : 0 < y) (hz : 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z))) :\n  let A := sqrt (z * (u * y + v * x))\n  let B := sqrt (x * (v * z + w * y))\n  let C := sqrt (y * (w * x + u * z))\n  (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)) := by\n  intro A B C\n  have h1 : 0 \u2264 u * y + v * x := by\n    rw [def_1.1, def_1.2.1]\n    field_simp [hy.ne', hz.ne', hx.ne']\n    positivity\n  have h2 : 0 \u2264 v * z + w * y := by\n    rw [def_1.2.1, def_1.2.2]\n    field_simp [hx.ne', hz.ne', hy.ne']\n    positivity\n  have h3 : 0 \u2264 w * x + u * z := by\n    rw [def_1.2.2, def_1.1]\n    field_simp [hx.ne', hy.ne', hz.ne']\n    positivity\n  have h4 : 0 \u2264 x := hx.le\n  have h5 : 0 \u2264 y := hy.le\n  have h6 : 0 \u2264 z := hz.le\n  rw [sq_sqrt (mul_nonneg h6 h1), sq_sqrt (mul_nonneg h4 h2), sq_sqrt (mul_nonneg h5 h3)]\n  simp_rw [\u2190 mul_assoc, mul_comm _ x, mul_comm _ y, mul_comm _ z]\n  simp_rw [mul_assoc]\n  simp_rw [mul_add, add_mul, mul_comm]\n  ring_nf\n  rw [def_1.1, def_1.2.1, def_1.2.2]\n  field_simp [hx.ne', hy.ne', hz.ne']\n  rw [\u2190 tc_2]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 32, "column": 6, "endLine": 32, "endColumn": 32, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u221a(z * (u * y + v * x)) ^ 2\na b c x y z u v w : \u211d\nha : 0 < a\nhb : 0 < b\nhc : 0 < c\nhx : 0 < x\nhy : 0 < y\nhz : 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\nA : \u211d := \u221a(z * (u * y + v * x))\nB : \u211d := \u221a(x * (v * z + w * y))\nC : \u211d := \u221a(y * (w * x + u * z))\nh1 : 0 \u2264 u * y + v * x\nh2 : 0 \u2264 v * z + w * y\nh3 : 0 \u2264 w * x + u * z\nh4 : 0 \u2264 x\nh5 : 0 \u2264 y\nh6 : 0 \u2264 z\n\u22a2 (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized. The additional u, v, w variable declarations are appropriate.", "The main constraint equation tc_2 is perfectly captured.", "All three variable definitions in def_1 are correctly formalized using conjunction.", "The sum constraint l1 is perfectly matched.", "The complex square root equality l2 is correctly formalized with proper parenthesization.", "All auxiliary definitions A, B, C are correctly captured with appropriate type annotations.", "The main inequality conclusion is perfectly formalized, maintaining the exact mathematical structure.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l3 :\n  \u2203 (a b c x y z : \u211d) (u v w : \u211d),\n  (0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z) \u2227\n  (a * x + b * y + c * z = x * y * z) \u2227\n  (u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)) \u2227\n  (u + v + w = 1) \u2227\n  (sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z))) \u2227\n  let A := sqrt (z * (u * y + v * x));\n  let B := sqrt (x * (v * z + w * y));\n  let C := sqrt (y * (w * x + u * z));\n  \u00ac((A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z))) := by\n  let a : \u211d := 1\n  let b : \u211d := 1\n  let c : \u211d := 1\n  let x : \u211d := 1\n  let y : \u211d := 1\n  let z : \u211d := 3\n  let u := a / (y * z)\n  let v := b / (x * z)\n  let w := c / (x * y)\n  refine \u27e8a, b, c, x, y, z, u, v, w, ?_, ?_, ?_, ?_, ?_, ?_\u27e9\n  \u00b7 simp\n  \u00b7 norm_num\n  \u00b7 simp\n  \u00b7 norm_num\n  \u00b7 norm_num\n  \u00b7 intro A B C\n    simp [A, B, C]\n    have : (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)) = 70/3 := by norm_num\n    have : (A + B + C)^2 \u2248 8.8889 := by norm_num\n    linarith"}, "type": "lemma"}, "def_3": {"id": "def_3", "natural_language": "Setting $S=(uy+vx)+(vz+wy)+(wx+uz)$", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2];\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3].\nDefinition:\n\u2022 Let S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z) [def_3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (def_3 : (u * y + v * x) + (v * z + w * y) + (w * x + u * z) = (u * (y + z)) + (v * (x + z)) + (w * (x + y)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that all six variables are positive real numbers using conjunction.", "The equation is identical in both natural language and Lean.", "All three definitions are correctly captured using conjunction in Lean.", "The equation u + v + w = 1 is identical in both versions.", "The complex equation involving square roots is correctly formalized in Lean.", "The definitions of A, B, and C are correctly captured in Lean using type annotations and definitions.", "The inequality involving (A + B + C)^2 is correctly formalized in Lean.", "The natural language defines S as a simple sum, but the Lean version provides an equality between two different algebraic expressions. The natural language shows S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z), while Lean shows this expression equals (u * (y + z)) + (v * (x + z)) + (w * (x + y)). This is not a definition but rather a mathematical identity/theorem, which changes the logical meaning significantly."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that all six variables are positive real numbers using conjunction.', 'The equation is identical in both natural language and Lean.', 'All three definitions are correctly captured using conjunction in Lean.', 'The equation u + v + w = 1 is identical in both versions.', 'The complex equation involving square roots is correctly formalized in Lean.', 'The definitions of A, B, and C are correctly captured in Lean using type annotations and definitions.', 'The inequality involving (A + B + C)^2 is correctly formalized in Lean.', 'The natural language defines S as a simple sum, but the Lean version provides an equality between two different algebraic expressions. The natural language shows S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z), while Lean shows this expression equals (u * (y + z)) + (v * (x + z)) + (w * (x + y)). This is not a definition but rather a mathematical identity/theorem, which changes the logical meaning significantly.']"}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "observe that $S=u(y+z)+v(x+z)+w(x+y)$. Since $u+v+w=1$, we rewrite this as $S=(u+v+w)(x+y+z)-(ux+vy+wz)=(x+y+z)-(ux+vy+wz)$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2];\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3];\n\u2022 Let S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z) [def_3].\nTherefore, we conclude:\n\u2022 S = (x + y + z) - (u*x + v*y + w*z) [l4].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (def_2_A : A = sqrt (z * (u * y + v * x))) (def_2_B : B = sqrt (x * (v * z + w * y))) (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z)) :\n  S = (x + y + z) - (u * x + v * y + w * z) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (def_2_A : A = sqrt (z * (u * y + v * x))) (def_2_B : B = sqrt (x * (v * z + w * y))) (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z)) :\n  S = (x + y + z) - (u * x + v * y + w * z) := by\n  have h1 : a = u * y * z := by rw [def_1.1]; field_simp [tc_1.2.2.1, tc_1.2.2.2.2]; ring\n  have h2 : b = v * x * z := by rw [def_1.2.1]; field_simp [tc_1.2.2.1, tc_1.2.2.2.2]; ring\n  have h3 : c = w * x * y := by rw [def_1.2.2]; field_simp [tc_1.2.2.1, tc_1.2.2.2.1]; ring\n  rw [h1, h2, h3] at tc_2\n  simp only [mul_assoc] at tc_2\n  rw [\u2190mul_add, \u2190mul_add, \u2190mul_add] at tc_2\n  have h4 : x * y * z \u2260 0 := by apply mul_ne_zero; apply mul_ne_zero; linarith [tc_1.2.2.1, tc_1.2.2.2.1]; linarith [tc_1.2.2.2.2]\n  rw [mul_comm (x * y * z), \u2190eq_div_iff h4] at tc_2\n  simp only [div_self', mul_one] at tc_2\n  rw [def_3_S]\n  have h5 : u * y + v * x + (v * z + w * y) + (w * x + u * z) = u * (y + z) + v * (x + z) + w * (x + y) := by ring\n  rw [h5]\n  rw [tc_2]\n  rw [l1]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 29, "endLine": 18, "endColumn": 89, "data": "unsolved goals\nA B C a b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\n\u22a2 a = a * y * z * y\u207b\u00b9 * z\u207b\u00b9"}, {"line": 19, "column": 29, "endLine": 19, "endColumn": 91, "data": "unsolved goals\nA B C a b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nh1 : a = u * y * z\n\u22a2 b = b * x * z * x\u207b\u00b9 * z\u207b\u00b9"}, {"line": 20, "column": 29, "endLine": 20, "endColumn": 91, "data": "unsolved goals\nA B C a b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nh1 : a = u * y * z\nh2 : b = v * x * z\n\u22a2 c = c * x * y * x\u207b\u00b9 * y\u207b\u00b9"}, {"line": 23, "column": 6, "endLine": 23, "endColumn": 14, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a * ?b + ?a * ?c\nA B C a b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nh1 : a = u * y * z\nh2 : b = v * x * z\nh3 : c = w * x * y\ntc_2 : u * (y * (z * x)) + v * (x * (z * y)) + w * (x * (y * z)) = x * (y * z)\n\u22a2 S = x + y + z - (u * x + v * y + w * z)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization accurately captures all components of the natural language premise. All mathematical constraints, definitions, and the conclusion are correctly represented. The slight structural differences (like splitting def_2 into separate parameters and explicit variable declarations) are necessary for Lean syntax but don't change the semantic meaning. Every statement from the natural language is properly encoded in the Lean formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l4\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (def_2 : A = sqrt (z * (u * y + v * x)) \u2227 B = sqrt (x * (v * z + w * y)) \u2227 C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (def_3 : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z)) :\n  S \u2260 (x + y + z) - (u * x + v * y + w * z) := by\n  sorry"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "As $u,v,w,x,y,z>0$, we have $ux+vy+wz>0$, hence $S<x+y+z$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2];\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3];\n\u2022 Let S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z) [def_3];\n\u2022 S = (x + y + z) - (u*x + v*y + w*z) [l4].\nTherefore, we conclude:\n\u2022 S < x + y + z [l5].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3", "def_3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3 : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z)) :\n  S < x + y + z := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3 : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z)) :\n  S < x + y + z := by\n  rw [l4]\n  have h : u * x + v * y + w * z > 0 := by\n    have ha : 0 < u := by\n      rw [def_1.1]\n      apply div_pos tc_1.1\n      exact mul_pos (tc_1.2.2.2.left) (tc_1.2.2.2.right)\n    have hb : 0 < v := by\n      rw [def_1.2.1]\n      apply div_pos tc_1.2.1\n      exact mul_pos tc_1.2.2.1 tc_1.2.2.2.right\n    have hc : 0 < w := by\n      rw [def_1.2.2]\n      apply div_pos tc_1.2.2.1\n      exact mul_pos tc_1.2.2.2.left tc_1.2.2.1\n    have hx : 0 < x := tc_1.2.2.1\n    have hy : 0 < y := tc_1.2.2.2.left\n    have hz : 0 < z := tc_1.2.2.2.right\n    positivity\n  linarith", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 26, "column": 20, "endLine": 26, "endColumn": 37, "data": "application type mismatch\n  mul_pos tc_1.right.right.right.left\nargument\n  tc_1.right.right.right.left\nhas type\n  0 < x : Prop\nbut is expected to have type\n  0 < y : Prop"}, {"line": 30, "column": 20, "endLine": 30, "endColumn": 30, "data": "application type mismatch\n  mul_pos tc_1.right.right.left\nargument\n  tc_1.right.right.left\nhas type\n  0 < c : Prop\nbut is expected to have type\n  0 < x : Prop"}, {"line": 34, "column": 36, "endLine": 34, "endColumn": 46, "data": "application type mismatch\n  mul_pos tc_1.right.right.right.left tc_1.right.right.left\nargument\n  tc_1.right.right.left\nhas type\n  0 < c : Prop\nbut is expected to have type\n  0 < y : Prop"}, {"line": 35, "column": 23, "endLine": 35, "endColumn": 33, "data": "type mismatch\n  tc_1.right.right.left\nhas type\n  0 < c : Prop\nbut is expected to have type\n  0 < x : Prop"}, {"line": 36, "column": 23, "endLine": 36, "endColumn": 38, "data": "type mismatch\n  tc_1.right.right.right.left\nhas type\n  0 < x : Prop\nbut is expected to have type\n  0 < y : Prop"}, {"line": 37, "column": 23, "endLine": 37, "endColumn": 39, "data": "type mismatch\n  tc_1.right.right.right.right\nhas type\n  0 < y \u2227 0 < z : Prop\nbut is expected to have type\n  0 < z : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable types and positivity constraints are correctly formalized", "The constraint equation is exactly preserved", "All three variable definitions are correctly captured in conjunction", "The sum constraint is exactly represented", "The complex square root equation is faithfully translated", "Local definitions A, B, C are properly formalized using Lean syntax", "The inequality constraint is correctly represented", "The definition of S is exactly captured", "The relationship between S and other variables is correctly formalized", "The conclusion is properly stated as the theorem goal", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l5\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d := sqrt (z * (u * y + v * x)))\n  (B : \u211d := sqrt (x * (v * z + w * y)))\n  (C : \u211d := sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3 : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z)) :\n  \u00ac (S < x + y + z) := by\n  rw [l4]\n  simp\n  have h : u * x + v * y + w * z > 0 := by\n    obtain \u27e8ha, hb, hc, hx, hy, hz\u27e9 := tc_1\n    rw [def_1.1, def_1.2.1, def_1.2.2]\n    field_simp\n    rw [div_eq_mul_inv, div_eq_mul_inv, div_eq_mul_inv]\n    ring_nf\n    apply add_pos_of_pos_of_nonneg\n    \u00b7 apply mul_pos (mul_pos ha hx) (mul_pos (inv_pos.mpr hy) (inv_pos.mpr hz))\n    \u00b7 apply add_nonneg\n      \u00b7 apply mul_nonneg (mul_nonneg hb.le hy.le) (mul_nonneg (inv_nonneg.mpr hx.le) (inv_nonneg.mpr hz.le))\n      \u00b7 apply mul_nonneg (mul_nonneg hc.le hz.le) (mul_nonneg (inv_nonneg.mpr hx.le) (inv_nonneg.mpr hy.le))\n  linarith [h]"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Therefore $(A+B+C)^2\\le(x+y+z)S<(x+y+z)(x+y+z)=(x+y+z)^2$.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2];\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3];\n\u2022 Let S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z) [def_3];\n\u2022 S = (x + y + z) - (u*x + v*y + w*z) [l4];\n\u2022 S < x + y + z [l5].\nTherefore, we conclude:\n\u2022 (A + B + C)^2 < (x + y + z)^2 [l6].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3", "def_3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z) :\n  (A + B + C)^2 < (x + y + z)^2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z) :\n  (A + B + C)^2 < (x + y + z)^2 := by\n  have h : (x + y + z) * S < (x + y + z) * (x + y + z) := by\n    apply mul_lt_mul_of_pos_left l5\n    \u00b7 exact tc_1.4\n    \u00b7 exact tc_1.5\n  rw [\u2190 def_3_S] at l3\n  have h' : (x + y + z) * (x + y + z) = (x + y + z)^2 := by ring\n  rw [h'] at h\n  exact lt_of_le_of_lt l3 h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 25, "column": 12, "endLine": 25, "endColumn": 18, "data": "invalid projection, structure has only 2 field(s)\n  tc_1\nhas type\n  0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z"}, {"line": 26, "column": 4, "endLine": 26, "endColumn": 18, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. The only structural difference is that the definition of A, B, C is split into three separate hypotheses (def_2_A, def_2_B, def_2_C) rather than a single compound definition, but this is semantically equivalent and doesn't change the logical meaning. All constraints, definitions, and the conclusion are faithfully represented.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l6\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z) :\n  \u00ac (A + B + C)^2 < (x + y + z)^2 := by\n  rw [def_2_A, def_2_B, def_2_C]\n  rw [\u2190 l2]\n  rw [\u2190 def_3_S, l4]\n  ring_nf\n  exact not_lt_of_ge (le_refl _)"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Taking square roots, we conclude $\\sqrt{z(uy+vx)}+\\sqrt{x(vz+wy)}+\\sqrt{y(wx+uz)}<x+y+z$, which establishes the desired inequality.", "statement": "We assume:\n\u2022 a, b, c, x, y, z are positive real numbers [tc_1];\n\u2022 a*x + b*y + c*z = x*y*z [tc_2];\n\u2022 u = a / (y*z), v = b / (x*z), w = c / (x*y) [def_1];\n\u2022 u + v + w = 1 [l1];\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) = sqrt(z*(u*y + v*x)) + sqrt(x*(v*z + w*y)) + sqrt(y*(w*x + u*z)) [l2];\n\u2022 Let A = sqrt(z*(u*y + v*x)), B = sqrt(x*(v*z + w*y)), C = sqrt(y*(w*x + u*z)) [def_2];\n\u2022 (A + B + C)^2 \u2264 (x + y + z) * ((u*y + v*x) + (v*z + w*y) + (w*x + u*z)) [l3];\n\u2022 Let S = (u*y + v*x) + (v*z + w*y) + (w*x + u*z) [def_3];\n\u2022 S = (x + y + z) - (u*x + v*y + w*z) [l4];\n\u2022 S < x + y + z [l5];\n\u2022 (A + B + C)^2 < (x + y + z)^2 [l6].\nTherefore, we conclude:\n\u2022 sqrt(a+b) + sqrt(b+c) + sqrt(c+a) < x + y + z [ts_1].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "def_2", "l3", "def_3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z)\n  (l6 : (A + B + C)^2 < (x + y + z)^2) :\n  sqrt (a + b) + sqrt (b + c) + sqrt (c + a) < x + y + z := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z)\n  (l6 : (A + B + C)^2 < (x + y + z)^2) :\n  sqrt (a + b) + sqrt (b + c) + sqrt (c + a) < x + y + z := by\n  rw [l2]\n  have h : 0 \u2264 A + B + C := by\n    rw [def_2_A, def_2_B, def_2_C]\n    repeat apply add_nonneg <;> apply sqrt_nonneg\n  have h' : 0 < x + y + z := by\n    have hx := tc_1.4\n    have hy := tc_1.5\n    have hz := tc_1.6\n    exact add_pos (add_pos hx hy) hz\n  have h'' : 0 \u2264 A + B + C := by\n    rw [def_2_A, def_2_B, def_2_C]\n    repeat apply add_nonneg <;> apply sqrt_nonneg\n  rw [def_2_A, def_2_B, def_2_C] at l6\n  rw [\u2190 sqrt_lt h' h'', pow_two, pow_two] at l6\n  exact l6", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 25, "column": 28, "endLine": 27, "endColumn": 49, "data": "unsolved goals\na b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\nA B C : \u211d\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nl4 : S = x + y + z - (u * x + v * y + w * z)\nl5 : S < x + y + z\nl6 : (A + B + C) ^ 2 < (x + y + z) ^ 2\n\u22a2 0 \u2264 \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))"}, {"line": 29, "column": 15, "endLine": 29, "endColumn": 21, "data": "invalid projection, structure has only 2 field(s)\n  tc_1\nhas type\n  0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z"}, {"line": 33, "column": 30, "endLine": 35, "endColumn": 49, "data": "unsolved goals\na b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\nA B C : \u211d\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nl4 : S = x + y + z - (u * x + v * y + w * z)\nl5 : S < x + y + z\nl6 : (A + B + C) ^ 2 < (x + y + z) ^ 2\nh : 0 \u2264 A + B + C\nh' : 0 < x + y + z\n\u22a2 0 \u2264 \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))"}, {"line": 37, "column": 6, "endLine": 37, "endColumn": 22, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?m.29263 < (A + B + C) ^ 2\na b c x y z u v w : \u211d\ntc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z\ntc_2 : a * x + b * y + c * z = x * y * z\ndef_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y)\nl1 : u + v + w = 1\nl2 : \u221a(a + b) + \u221a(b + c) + \u221a(c + a) = \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))\nA B C : \u211d\ndef_2_A : A = \u221a(z * (u * y + v * x))\ndef_2_B : B = \u221a(x * (v * z + w * y))\ndef_2_C : C = \u221a(y * (w * x + u * z))\nl3 : (A + B + C) ^ 2 \u2264 (x + y + z) * (u * y + v * x + (v * z + w * y) + (w * x + u * z))\nS : \u211d\ndef_3_S : S = u * y + v * x + (v * z + w * y) + (w * x + u * z)\nl4 : S = x + y + z - (u * x + v * y + w * z)\nl5 : S < x + y + z\nl6 : (\u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z))) ^ 2 < (x + y + z) ^ 2\nh : 0 \u2264 A + B + C\nh' : 0 < x + y + z\nh'' : 0 \u2264 A + B + C\n\u22a2 \u221a(z * (u * y + v * x)) + \u221a(x * (v * z + w * y)) + \u221a(y * (w * x + u * z)) < x + y + z"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly and completely captures all logical and mathematical meaning from the natural language. All constraints, definitions, and the conclusion are properly translated. The additional explicit type declarations for intermediate variables (u, v, w, A, B, C, S) are logically consistent and necessary for the Lean formalization, even though they weren't explicitly stated in the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_ts_1\n  (a b c x y z : \u211d)\n  (u v w : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c \u2227 0 < x \u2227 0 < y \u2227 0 < z)\n  (tc_2 : a * x + b * y + c * z = x * y * z)\n  (def_1 : u = a / (y * z) \u2227 v = b / (x * z) \u2227 w = c / (x * y))\n  (l1 : u + v + w = 1)\n  (l2 : sqrt (a + b) + sqrt (b + c) + sqrt (c + a) = sqrt (z * (u * y + v * x)) + sqrt (x * (v * z + w * y)) + sqrt (y * (w * x + u * z)))\n  (A : \u211d) (B : \u211d) (C : \u211d)\n  (def_2_A : A = sqrt (z * (u * y + v * x)))\n  (def_2_B : B = sqrt (x * (v * z + w * y)))\n  (def_2_C : C = sqrt (y * (w * x + u * z)))\n  (l3 : (A + B + C)^2 \u2264 (x + y + z) * ((u * y + v * x) + (v * z + w * y) + (w * x + u * z)))\n  (S : \u211d)\n  (def_3_S : S = (u * y + v * x) + (v * z + w * y) + (w * x + u * z))\n  (l4 : S = (x + y + z) - (u * x + v * y + w * z))\n  (l5 : S < x + y + z)\n  (l6 : (A + B + C)^2 < (x + y + z)^2) :\n  \u00ac (sqrt (a + b) + sqrt (b + c) + sqrt (c + a) < x + y + z) := by\n  intro h\n  rw [l2] at h\n  rw [def_2_A, def_2_B, def_2_C] at h\n  have : (A + B + C)^2 < (x + y + z)^2 := by\n    rw [sq_lt_sq]\n    \u00b7 exact h\n    \u00b7 positivity\n  linarith [this, l6]"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

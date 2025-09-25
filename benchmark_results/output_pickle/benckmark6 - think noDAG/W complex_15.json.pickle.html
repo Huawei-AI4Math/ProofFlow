@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f(z) = \frac{1}{(z-1)(z-3)}$. If the Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$, then the series is given by $f(z) = -\frac{1}{2(z-1)} - \sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$.
+
+Proof: First, we perform a partial fraction decomposition of $f(z)$ to get $f(z) = -\frac{1}{2(z-1)} + \frac{1}{2(z-3)}$. For the second term, $\frac{1}{2(z-3)}$, we manipulate it to be centered at $z=1$: $\frac{1}{2(z-3)} = \frac{1}{2((z-1)-2)} = -\frac{1}{4(1 - \frac{z-1}{2})}$. Since the series must be valid for $|z-1|<2$, we have $|\frac{z-1}{2}|<1$, allowing the use of the geometric series formula, which gives $-\frac{1}{4} \sum_{n=0}^{\infty} (\frac{z-1}{2})^n = -\sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$. Finally, combining the first term from the partial fraction decomposition with the series expansion of the second term gives the complete Laurent series: $f(z) = -\frac{1}{2(z-1)} - \sum_{n=0}^{\infty} \frac{(z-1)^n}{2^{n+2}}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f(z) = \\frac{1}{(z-1)(z-3)}$", "statement": "Premise:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u2102 \u2192 \u2102)\n(tc_1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical meaning. The addition of domain restrictions (z \u2260 1 \u2227 z \u2260 3) is a necessary and logically consistent detail to make the function well-defined, which is acceptable under the 'Perfectly match' criteria since extra logically consistent details are allowed."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If the Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$", "statement": "Premise:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3))) :\n  \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    \u2203 (series : \u2115 \u2192 \u2102), \n      f z = -1 / (2 * (z - 1)) - \u2211' n : \u2115, series n := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization correctly captures the function definition with appropriate domain restrictions (z \u2260 1 and z \u2260 3) that are mathematically necessary but not explicitly stated in the natural language. This is an acceptable addition of logically consistent details.", "The Lean version provides a specific form of the Laurent series with the principal part -1/(2*(z-1)) explicitly shown, while the natural language only states that a Laurent series exists and is valid in the given annulus. The Lean version is more specific but captures the essential meaning that there exists a Laurent series representation in the specified region."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the function definition with appropriate domain restrictions (z \u2260 1 and z \u2260 3) that are mathematically necessary but not explicitly stated in the natural language. This is an acceptable addition of logically consistent details.', 'The Lean version provides a specific form of the Laurent series with the principal part -1/(2*(z-1)) explicitly shown, while the natural language only states that a Laurent series exists and is valid in the given annulus. The Lean version is more specific but captures the essential meaning that there exists a Laurent series representation in the specified region.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "First, we perform a partial fraction decomposition of $f(z)$ to get $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\nTherefore, we conclude:\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3))) :\n  \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3))) :\n  \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\n  intro z hz\n  have h\u2081 : f z = 1 / ((z - 1) * (z - 3)) := hc z hz\n  rw [h\u2081]\n  have h\u2082 : (1 : \u2102) / ((z - 1) * (z - 3)) = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\n    have h\u2083 : (z - 1) \u2260 0 := by\n      intro h\n      apply hz.1\n      rw [sub_eq_zero] at h\n      exact h\n    have h\u2084 : (z - 3) \u2260 0 := by\n      intro h\n      apply hz.2\n      rw [sub_eq_zero] at h\n      exact h\n    have h\u2085 : (2 : \u2102) \u2260 0 := by norm_num\n    have h\u2086 : (2 : \u2102) * (z - 1) \u2260 0 := by\n      intro h\n      have h\u2087 : (2 : \u2102) \u2260 0 := by norm_num\n      have h\u2088 : (z - 1) = 0 := by\n        simp [h\u2087, mul_eq_mul_left_iff] at h \u22a2\n        <;> simp_all [Complex.ext_iff]\n        <;> norm_num at *\n        <;>\n        (try { contradiction }) <;>\n        (try { linarith })\n      contradiction\n    have h\u2087 : (2 : \u2102) * (z - 3) \u2260 0 := by\n      intro h\n      have h\u2088 : (2 : \u2102) \u2260 0 := by norm_num\n      have h\u2089 : (z - 3) = 0 := by\n        simp [h\u2088, mul_eq_mul_left_iff] at h \u22a2\n        <;> simp_all [Complex.ext_iff]\n        <;> norm_num at *\n        <;>\n        (try { contradiction }) <;>\n        (try { linarith })\n      contradiction\n    -- Prove that 1/((z-1)(z-3)) = -1/(2(z-1)) + 1/(2(z-3))\n    calc\n      (1 : \u2102) / ((z - 1) * (z - 3)) = (1 : \u2102) / ((z - 1) * (z - 3)) := rfl\n      _ = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\n        have h\u2088 : (1 : \u2102) / ((z - 1) * (z - 3)) = (1 : \u2102) / ((z - 1) * (z - 3)) := rfl\n        rw [h\u2088]\n        -- Use the identity 1/((z-1)(z-3)) = (-1/2)/(z-1) + (1/2)/(z-3)\n        have h\u2089 : (1 : \u2102) / ((z - 1) * (z - 3)) = (-1 / 2) / (z - 1) + (1 / 2) / (z - 3) := by\n          field_simp [h\u2083, h\u2084, h\u2085]\n          <;> ring_nf\n          <;> field_simp [h\u2083, h\u2084, h\u2085]\n          <;> ring_nf\n          <;> simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n          <;> norm_num\n          <;>\n          (try {\n            nlinarith\n          }) <;>\n          (try {\n            simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n            <;> norm_num <;>\n            (try { nlinarith })\n          })\n        rw [h\u2089]\n        -- Simplify (-1/2)/(z-1) + (1/2)/(z-3) to -1/(2(z-1)) + 1/(2(z-3))\n        have h\u2081\u2080 : (-1 / 2 : \u2102) / (z - 1) = -1 / (2 * (z - 1)) := by\n          field_simp [h\u2083, h\u2085]\n          <;> ring_nf\n          <;> simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n          <;> norm_num\n          <;>\n          (try {\n            nlinarith\n          }) <;>\n          (try {\n            simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n            <;> norm_num <;>\n            (try { nlinarith })\n          })\n        have h\u2081\u2081 : (1 / 2 : \u2102) / (z - 3) = 1 / (2 * (z - 3)) := by\n          field_simp [h\u2084, h\u2085]\n          <;> ring_nf\n          <;> simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n          <;> norm_num\n          <;>\n          (try {\n            nlinarith\n          }) <;>\n          (try {\n            simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n            <;> norm_num <;>\n            (try { nlinarith })\n          })\n        rw [h\u2081\u2080, h\u2081\u2081]\n        <;> ring_nf\n        <;> simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n        <;> norm_num\n        <;>\n        (try {\n          nlinarith\n        }) <;>\n        (try {\n          simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n          <;> norm_num <;>\n          (try { nlinarith })\n        })\n  rw [h\u2082]\n  <;> simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n  <;> norm_num\n  <;>\n  (try {\n    nlinarith\n  }) <;>\n  (try {\n    simp_all [Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im]\n    <;> norm_num <;>\n    (try { nlinarith })\n  })", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the essential mathematical content. The function definition f(z) = 1/((z-1)(z-3)) is properly represented with appropriate domain restrictions. The conclusion about the partial fraction decomposition is mathematically equivalent to the natural language statement. While the Laurent series context from [tc_2] is not explicitly represented, this contextual information is not necessary for the mathematical identity being proven, and the core logical relationship between the function definition and its partial fraction form is preserved."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For the second term, $\\frac{1}{2(z-3)}$, we manipulate it to be centered at $z=1$: $\\frac{1}{2(z-3)} = \\frac{1}{2((z-1)-2)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].\nTherefore, we conclude:\n\u2022 $\\frac{1}{2(z-3)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$ [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u2102 \u2192 \u2102)\n\ntheorem l2\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := by\n  have h\u2081 : z \u2260 1 := by\n    intro h\n    have h\u2082 : z = 1 := h\n    rw [h\u2082] at hz\n    norm_num [Complex.abs, Complex.normSq, Real.sqrt_lt, Real.lt_sqrt] at hz <;>\n      (try contradiction) <;>\n      (try linarith) <;>\n      (try nlinarith)\n  \n  have h\u2082 : z \u2260 3 := by\n    intro h\n    have h\u2083 : z = 3 := h\n    rw [h\u2083] at hz\n    norm_num [Complex.abs, Complex.normSq, Real.sqrt_lt, Real.lt_sqrt] at hz <;>\n      (try contradiction) <;>\n      (try linarith) <;>\n      (try nlinarith)\n  \n  have h\u2083 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := by\n    have h\u2084 : 1 - (z - 1) / 2 \u2260 0 := by\n      intro h\u2085\n      have h\u2086 : 1 - (z - 1) / 2 = 0 := h\u2085\n      have h\u2087 : (z - 1) / 2 = 1 := by\n        ring_nf at h\u2086 \u22a2\n        <;> simp_all [Complex.ext_iff, pow_two]\n        <;>\n          (try\n            {\n              norm_num at *\n              <;>\n                (try\n                  {\n                    nlinarith\n                  })\n              <;>\n                (try\n                  {\n                    linarith\n                  })\n            })\n        <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, pow_two]\n              <;>\n                (try\n                  {\n                    norm_num at *\n                    <;>\n                      (try\n                        {\n                          nlinarith\n                        })\n                    <;>\n                      (try\n                        {\n                          linarith\n                        })\n                  })\n            })\n        <;>\n          (try\n            {\n              nlinarith\n            })\n        <;>\n          (try\n            {\n              linarith\n            })\n      have h\u2088 : z - 1 = 2 := by\n        have h\u2089 : (z - 1) / 2 = 1 := h\u2087\n        have h\u2081\u2080 : z - 1 = 2 := by\n          calc\n            z - 1 = 2 * ((z - 1) / 2) := by ring\n            _ = 2 * 1 := by rw [h\u2089]\n            _ = 2 := by ring\n        exact h\u2081\u2080\n      have h\u2089 : z = 3 := by\n        have h\u2081\u2080 : z - 1 = 2 := h\u2088\n        have h\u2081\u2081 : z = 3 := by\n          calc\n            z = (z - 1) + 1 := by ring\n            _ = 2 + 1 := by rw [h\u2081\u2080]\n            _ = 3 := by ring\n        exact h\u2081\u2081\n      contradiction\n    have h\u2085 : 2 * (z - 3) \u2260 0 := by\n      intro h\u2086\n      have h\u2087 : 2 * (z - 3) = 0 := h\u2086\n      have h\u2088 : z - 3 = 0 := by\n        simp [Complex.ext_iff, mul_comm] at h\u2087 \u22a2\n        <;>\n          (try\n            {\n              norm_num at h\u2087 \u22a2 <;>\n                (try\n                  {\n                    simp_all [Complex.ext_iff, pow_two]\n                    <;>\n                      (try\n                        {\n                          nlinarith\n                        })\n                    <;>\n                      (try\n                        {\n                          linarith\n                        })\n                  })\n            })\n        <;>\n          (try\n            {\n              aesop\n            })\n        <;>\n          (try\n            {\n              nlinarith\n            })\n        <;>\n          (try\n            {\n              linarith\n            })\n      have h\u2089 : z = 3 := by\n        have h\u2081\u2080 : z - 3 = 0 := h\u2088\n        have h\u2081\u2081 : z = 3 := by\n          calc\n            z = (z - 3) + 3 := by ring\n            _ = 0 + 3 := by rw [h\u2081\u2080]\n            _ = 3 := by ring\n        exact h\u2081\u2081\n      contradiction\n    calc\n      1 / (2 * (z - 3)) = 1 / (2 * (z - 3)) := by rfl\n      _ = -1 / (4 * (1 - (z - 1) / 2)) := by\n        have h\u2086 : 4 * (1 - (z - 1) / 2) = 4 - 2 * (z - 1) := by\n          ring_nf\n          <;>\n            simp [Complex.ext_iff, pow_two]\n          <;>\n            norm_num\n          <;>\n            ring_nf at *\n          <;>\n            simp_all [Complex.ext_iff, pow_two]\n          <;>\n            norm_num at *\n          <;>\n            linarith\n        have h\u2087 : 2 * (z - 3) = 2 * (z - 1) - 4 := by\n          ring_nf\n          <;>\n            simp [Complex.ext_iff, pow_two]\n          <;>\n            norm_num\n          <;>\n            ring_nf at *\n          <;>\n            simp_all [Complex.ext_iff, pow_two]\n          <;>\n            norm_num at *\n          <;>\n            linarith\n        have h\u2088 : 1 / (2 * (z - 3)) = 1 / (2 * (z - 1) - 4) := by\n          rw [h\u2087]\n          <;>\n            simp_all [Complex.ext_iff, pow_two]\n          <;>\n            norm_num at *\n          <;>\n            linarith\n        have h\u2089 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / (4 - 2 * (z - 1)) := by\n          rw [h\u2086]\n          <;>\n            simp_all [Complex.ext_iff, pow_two]\n          <;>\n            norm_num at *\n          <;>\n            linarith\n        have h\u2081\u2080 : 1 / (2 * (z - 1) - 4) = -1 / (4 - 2 * (z - 1)) := by\n          have h\u2081\u2081 : 2 * (z - 1) - 4 \u2260 0 := by\n            intro h\u2081\u2082\n            have h\u2081\u2083 : 2 * (z - 1) - 4 = 0 := h\u2081\u2082\n            have h\u2081\u2084 : 2 * (z - 1) = 4 := by\n              ring_nf at h\u2081\u2083 \u22a2\n              <;>\n                simp_all [Complex.ext_iff, pow_two]\n              <;>\n                norm_num at *\n              <;>\n                (try\n                  {\n                    linarith\n                  })\n              <;>\n                (try\n                  {\n                    nlinarith\n                  })\n            have h\u2081\u2085 : z - 1 = 2 := by\n              have h\u2081\u2086 : 2 * (z - 1) = 4 := h\u2081\u2084\n              have h\u2081\u2087 : z - 1 = 2 := by\n                calc\n                  z - 1 = (2 * (z - 1)) / 2 := by ring\n                  _ = 4 / 2 := by rw [h\u2081\u2086]\n                  _ = 2 := by norm_num\n              exact h\u2081\u2087\n            have h\u2081\u2086 : z = 3 := by\n              have h\u2081\u2087 : z - 1 = 2 := h\u2081\u2085\n              have h\u2081\u2088 : z = 3 := by\n                calc\n                  z = (z - 1) + 1 := by ring\n                  _ = 2 + 1 := by rw [h\u2081\u2087]\n                  _ = 3 := by norm_num\n              exact h\u2081\u2088\n            contradiction\n          have h\u2081\u2082 : 4 - 2 * (z - 1) \u2260 0 := by\n            intro h\u2081\u2083\n            have h\u2081\u2084 : 4 - 2 * (z - 1) = 0 := h\u2081\u2083\n            have h\u2081\u2085 : 2 * (z - 1) = 4 := by\n              ring_nf at h\u2081\u2084 \u22a2\n              <;>\n                simp_all [Complex.ext_iff, pow_two]\n              <;>\n                norm_num at *\n              <;>\n                (try\n                  {\n                    linarith\n                  })\n              <;>\n                (try\n                  {\n                    nlinarith\n                  })\n            have h\u2081\u2086 : z - 1 = 2 := by\n              have h\u2081\u2087 : 2 * (z - 1) = 4 := h\u2081\u2085\n              have h\u2081\u2088 : z - 1 = 2 := by\n                calc\n                  z - 1 = (2 * (z - 1)) / 2 := by ring\n                  _ = 4 / 2 := by rw [h\u2081\u2087]\n                  _ = 2 := by norm_num\n              exact h\u2081\u2088\n            have h\u2081\u2087 : z = 3 := by\n              have h\u2081\u2088 : z - 1 = 2 := h\u2081\u2086\n              have h\u2081\u2089 : z = 3 := by\n                calc\n                  z = (z - 1) + 1 := by ring\n                  _ = 2 + 1 := by rw [h\u2081\u2088]\n                  _ = 3 := by norm_num\n              exact h\u2081\u2089\n            contradiction\n          calc\n            1 / (2 * (z - 1) - 4) = 1 / (-(4 - 2 * (z - 1))) := by\n              ring_nf\n              <;>\n                simp_all [Complex.ext_iff, pow_two]\n              <;>\n                norm_num at *\n              <;>\n                (try\n                  {\n                    linarith\n                  })\n              <;>\n                (try\n                  {\n                    nlinarith\n                  })\n            _ = -1 / (4 - 2 * (z - 1)) := by\n              field_simp [h\u2081\u2081, h\u2081\u2082]\n              <;>\n                ring_nf\n              <;>\n                simp_all [Complex.ext_iff, pow_two]\n              <;>\n                norm_num at *\n              <;>\n                (try\n                  {\n                    linarith\n                  })\n              <;>\n                (try\n                  {\n                    nlinarith\n                  })\n            _ = -1 / (4 - 2 * (z - 1)) := by rfl\n        calc\n          1 / (2 * (z - 3)) = 1 / (2 * (z - 1) - 4) := by rw [h\u2088]\n          _ = -1 / (4 - 2 * (z - 1)) := by rw [h\u2081\u2080]\n          _ = -1 / (4 * (1 - (z - 1) / 2)) := by\n            rw [h\u2086]\n            <;>\n              simp_all [Complex.ext_iff, pow_two]\n            <;>\n              norm_num at *\n            <;>\n              linarith\n  exact h\u2083", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Function definition correctly formalized with appropriate domain restrictions for poles at z=1 and z=3", "Laurent series annulus condition 0 < |z-1| < 2 accurately captured in hypothesis hz", "Partial fraction decomposition properly formalized with correct coefficients and domain restrictions", "Target conclusion correctly states the equality to be proven, which is mathematically valid"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Since the series must be valid for $|z-1|<2$, we have $|\\frac{z-1}{2}|<1$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].\n\u2022 $\\frac{1}{2(z-3)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$ [l2].\nTherefore, we conclude:\n\u2022 For $z$ in the annulus of convergence, $|\\frac{z-1}{2}| < 1$ [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) :\n  \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2))) :\n  \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1 := by\n  intro z hz\n  have h\u2081 : Complex.abs ((z - 1) / 2) < 1 := by\n    have h\u2082 : Complex.abs (z - 1) < 2 := hz.2\n    calc\n      Complex.abs ((z - 1) / 2) = Complex.abs (z - 1) / 2 := by\n        simp [Complex.abs, Complex.normSq, div_pow]\n        <;> ring_nf\n        <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n        <;> ring_nf\n        <;> norm_num\n        <;> linarith\n      _ < 2 / 2 := by gcongr <;> simp_all [Complex.abs]\n      _ = 1 := by norm_num\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The function definition in Lean has an extra factor of (z-1), making it f(z) = 1/((z-1)\u00b2(z-3)) instead of f(z) = 1/((z-1)(z-3)) as stated in natural language. This is a significant mathematical error that changes the entire function.", "The annulus condition 0 < |z-1| < 2 is correctly captured in the Lean formalization.", "The partial fraction decomposition f(z) = -1/(2(z-1)) + 1/(2(z-3)) is accurately formalized.", "The algebraic manipulation 1/(2(z-3)) = -1/(4(1-(z-1)/2)) is correctly represented.", "The conclusion that |(z-1)/2| < 1 for z in the annulus is properly formalized."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The function definition in Lean has an extra factor of (z-1), making it f(z) = 1/((z-1)\u00b2(z-3)) instead of f(z) = 1/((z-1)(z-3)) as stated in natural language. This is a significant mathematical error that changes the entire function.', 'The annulus condition 0 < |z-1| < 2 is correctly captured in the Lean formalization.', 'The partial fraction decomposition f(z) = -1/(2(z-1)) + 1/(2(z-3)) is accurately formalized.', 'The algebraic manipulation 1/(2(z-3)) = -1/(4(1-(z-1)/2)) is correctly represented.', 'The conclusion that |(z-1)/2| < 1 for z in the annulus is properly formalized.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "allowing the use of the geometric series formula, which gives $-\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].\n\u2022 $\\frac{1}{2(z-3)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$ [l2].\n\u2022 For $z$ in the annulus of convergence, $|\\frac{z-1}{2}| < 1$ [l3].\nTherefore, we conclude:\n\u2022 $-\\frac{1}{4(1 - \\frac{z-1}{2})} = -\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n$ [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n := by\n  have h : (1 - (z - 1) / 2 : \u2102) \u2260 0 := by\n    have h\u2081 : Complex.abs ((z - 1) / 2) < 1 := l3 z hz\n    have h\u2082 : Complex.abs (1 - (z - 1) / 2 : \u2102) > 0 := by\n      have h\u2083 : Complex.abs ((z - 1) / 2) < 1 := l3 z hz\n      have h\u2084 : Complex.abs (1 - (z - 1) / 2 : \u2102) \u2265 1 - Complex.abs ((z - 1) / 2 : \u2102) := by\n        -- Using the reverse triangle inequality\n        have h\u2085 : Complex.abs (1 - (z - 1) / 2 : \u2102) \u2265 Complex.abs (1 : \u2102) - Complex.abs ((z - 1) / 2 : \u2102) := by\n          -- Apply the reverse triangle inequality\n          calc\n            Complex.abs (1 - (z - 1) / 2 : \u2102) \u2265 Complex.abs (1 : \u2102) - Complex.abs ((z - 1) / 2 : \u2102) := by\n              -- Reverse triangle inequality\n              have h\u2086 : Complex.abs (1 : \u2102) \u2264 Complex.abs (1 - (z - 1) / 2 : \u2102) + Complex.abs ((z - 1) / 2 : \u2102) := by\n                calc\n                  Complex.abs (1 : \u2102) = Complex.abs ((1 - (z - 1) / 2 : \u2102) + ((z - 1) / 2 : \u2102)) := by ring_nf\n                  _ \u2264 Complex.abs (1 - (z - 1) / 2 : \u2102) + Complex.abs ((z - 1) / 2 : \u2102) := by\n                    apply Complex.abs.add_le\n              linarith\n            _ = Complex.abs (1 : \u2102) - Complex.abs ((z - 1) / 2 : \u2102) := by rfl\n        -- Simplify the right side\n        have h\u2086 : Complex.abs (1 : \u2102) = (1 : \u211d) := by simp [Complex.abs_of_nonneg]\n        rw [h\u2086] at h\u2085\n        linarith\n      -- Since |(z - 1)/2| < 1, 1 - |(z - 1)/2| > 0\n      have h\u2085 : (1 : \u211d) - Complex.abs ((z - 1) / 2 : \u2102) > 0 := by\n        have h\u2086 : Complex.abs ((z - 1) / 2 : \u2102) < 1 := l3 z hz\n        linarith\n      -- Therefore, |1 - (z - 1)/2| \u2265 1 - |(z - 1)/2| > 0\n      linarith\n    -- Since |1 - (z - 1)/2| > 0, 1 - (z - 1)/2 \u2260 0\n    intro h\u2083\n    have h\u2084 : (1 - (z - 1) / 2 : \u2102) = 0 := h\u2083\n    have h\u2085 : Complex.abs (1 - (z - 1) / 2 : \u2102) = 0 := by\n      rw [h\u2084]\n      simp [Complex.abs]\n    linarith\n  have h\u2081 : \u2211' n : \u2115, ((z - 1) / 2 : \u2102) ^ n = (1 : \u2102) / (1 - (z - 1) / 2) := by\n    have h\u2082 : Complex.abs ((z - 1) / 2 : \u2102) < 1 := l3 z hz\n    have h\u2083 : \u2211' n : \u2115, ((z - 1) / 2 : \u2102) ^ n = \u2211' n : \u2115, (((z - 1) / 2 : \u2102) : \u2102) ^ n := rfl\n    rw [h\u2083]\n    -- Use the formula for the sum of a geometric series\n    have h\u2084 : \u2211' n : \u2115, (((z - 1) / 2 : \u2102) : \u2102) ^ n = (1 : \u2102) / (1 - (z - 1) / 2) := by\n      rw [tsum_geometric_of_norm_lt_one (by simpa using h\u2082)]\n      <;> field_simp [h]\n    rw [h\u2084]\n  calc\n    -1 / (4 * (1 - (z - 1) / 2)) = (-1 / 4 : \u2102) * (1 / (1 - (z - 1) / 2)) := by\n      field_simp [h]\n      <;> ring_nf\n      <;> field_simp [h]\n      <;> ring_nf\n    _ = (-1 / 4 : \u2102) * \u2211' n : \u2115, ((z - 1) / 2 : \u2102) ^ n := by\n      rw [h\u2081]\n      <;> simp [div_eq_mul_inv]\n      <;> ring_nf\n    _ = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n := by\n      norm_num\n      <;> simp [div_eq_mul_inv]\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n      <;> norm_num\n      <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n      <;> norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Function definition correctly formalized with appropriate domain restrictions for complex division", "Laurent series annulus condition properly incorporated into hypothesis constraints", "Partial fraction decomposition exactly matches the mathematical expression", "Algebraic manipulation of the second term is precisely captured", "Convergence condition correctly formalized with proper absolute value notation", "Main geometric series conclusion accurately represented using Lean's infinite sum notation"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "-$\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n = -\\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].\n\u2022 $\\frac{1}{2(z-3)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$ [l2].\n\u2022 For $z$ in the annulus of convergence, $|\\frac{z-1}{2}| < 1$ [l3].\n\u2022 $-\\frac{1}{4(1 - \\frac{z-1}{2})} = -\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n$ [l4].\nTherefore, we conclude:\n\u2022 $-\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n = -\\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$ [l5].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (l4 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n)\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (l4 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n)\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n  have h\u2080 : -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n    have h\u2081 : -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = \u2211' n : \u2115, (-1 / 4 : \u2102) * (((z - 1) / 2) ^ n : \u2102) := by\n      -- Use the property of multiplying a constant into the sum\n      rw [\u2190 tsum_mul_left]\n      <;>\n      simp [div_eq_mul_inv, mul_assoc]\n      <;>\n      norm_num\n      <;>\n      field_simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;>\n      ring_nf\n      <;>\n      simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2081]\n    have h\u2082 : \u2211' n : \u2115, (-1 / 4 : \u2102) * (((z - 1) / 2) ^ n : \u2102) = \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by\n      -- Prove that each term in the sum can be rewritten\n      have h\u2083 : \u2200 n : \u2115, (-1 / 4 : \u2102) * (((z - 1) / 2) ^ n : \u2102) = ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by\n        intro n\n        calc\n          (-1 / 4 : \u2102) * (((z - 1) / 2) ^ n : \u2102) = (-1 / 4 : \u2102) * ((z - 1) ^ n / 2 ^ n : \u2102) := by\n            -- Simplify ((z - 1) / 2) ^ n to (z - 1) ^ n / 2 ^ n\n            have h\u2084 : (((z - 1) / 2 : \u2102) ^ n : \u2102) = ((z - 1) ^ n / 2 ^ n : \u2102) := by\n              calc\n                (((z - 1) / 2 : \u2102) ^ n : \u2102) = (z - 1 : \u2102) ^ n / 2 ^ n := by\n                  rw [div_pow]\n                  <;> simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n                  <;> norm_num\n                  <;> field_simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n                  <;> ring_nf\n                  <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n                  <;> norm_num\n                  <;> linarith\n                _ = ((z - 1) ^ n / 2 ^ n : \u2102) := by simp\n            rw [h\u2084]\n          _ = ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by\n            -- Simplify the expression to match the target form\n            have h\u2085 : ((-1 / 4 : \u2102) * ((z - 1) ^ n / 2 ^ n : \u2102) : \u2102) = ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by\n              calc\n                ((-1 / 4 : \u2102) * ((z - 1) ^ n / 2 ^ n : \u2102) : \u2102) = (-1 : \u2102) / 4 * ((z - 1) ^ n / 2 ^ n : \u2102) := by ring\n                _ = (-1 : \u2102) * ((z - 1) ^ n / 2 ^ n : \u2102) / 4 := by ring\n                _ = ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by\n                  -- Use the property of division and exponentiation\n                  field_simp [pow_add, pow_one, mul_assoc, Complex.ext_iff, pow_add, pow_one, mul_assoc]\n                  <;>\n                  ring_nf\n                  <;>\n                  simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n                  <;>\n                  norm_num\n                  <;>\n                  linarith\n            rw [h\u2085]\n      -- Apply the term-wise equality to the sum\n      calc\n        \u2211' n : \u2115, (-1 / 4 : \u2102) * (((z - 1) / 2) ^ n : \u2102) = \u2211' n : \u2115, (((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102)) := by\n          -- Use the term-wise equality to rewrite the sum\n          exact tsum_congr (fun n \u21a6 h\u2083 n)\n        _ = \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) := by rfl\n    rw [h\u2082]\n    -- Factor out the constant (-1 : \u2102) from the sum\n    have h\u2083 : \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) = \u2211' n : \u2115, (-1 : \u2102) * ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) := by\n      -- Use the commutativity of multiplication in \u2102 to rewrite the summand\n      have h\u2084 : \u2200 n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) = (-1 : \u2102) * ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) := by\n        intro n\n        ring_nf\n        <;>\n        simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n        <;>\n        norm_num\n        <;>\n        linarith\n      calc\n        \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) * (-1 : \u2102) = \u2211' n : \u2115, (-1 : \u2102) * ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) := by\n          -- Use the term-wise equality to rewrite the sum\n          exact tsum_congr (fun n \u21a6 h\u2084 n)\n        _ = \u2211' n : \u2115, (-1 : \u2102) * ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) := by rfl\n    rw [h\u2083]\n    have h\u2084 : \u2211' n : \u2115, (-1 : \u2102) * ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) = (-1 : \u2102) * \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) := by\n      -- Use the property of factoring out a constant from a sum\n      rw [tsum_mul_left]\n      <;>\n      simp [div_eq_mul_inv, mul_assoc]\n      <;>\n      norm_num\n      <;>\n      field_simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;>\n      ring_nf\n      <;>\n      simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2084]\n    -- Simplify the expression using the properties of multiplication and negation\n    have h\u2085 : (-1 : \u2102) * \u2211' n : \u2115, ((z - 1) ^ n / 2 ^ (n + 2) : \u2102) = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n      simp [Complex.ext_iff, tsum_mul_left]\n      <;>\n      simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n      <;>\n      norm_num\n      <;>\n      linarith\n    rw [h\u2085]\n    <;>\n    simp [div_eq_mul_inv, mul_assoc]\n    <;>\n    norm_num\n    <;>\n    field_simp [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n    <;>\n    ring_nf\n    <;>\n    simp_all [Complex.ext_iff, pow_add, pow_one, mul_assoc]\n    <;>\n    norm_num\n    <;>\n    linarith\n  -- Use the previously derived equality to conclude the proof\n  exact h\u2080", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 73, "column": 18, "endLine": 73, "endColumn": 26, "data": "linarith failed to find a contradiction\nf : \u2102 \u2192 \u2102\nz : \u2102\nn : \u2115\nhc :\n  \u2200 (z : \u2102),\n    (z.re = 1 \u2192 \u00acz.im = 0) \u2192\n      (z.re = 3 \u2192 \u00acz.im = 0) \u2192\n        (-1 / (2 * (z - 1))).re + (z.re - 3) / Complex.normSq (z - 3) * 2\u207b\u00b9 =\n            (z.re - 3) / Complex.normSq (z - 3) * ((z.re - 1) / Complex.normSq (z - 1)) -\n              -z.im / Complex.normSq (z - 3) * (-z.im / Complex.normSq (z - 1)) \u2227\n          (-1 / (2 * (z - 1))).im + -z.im / Complex.normSq (z - 3) * 2\u207b\u00b9 =\n            (z.re - 3) / Complex.normSq (z - 3) * (-z.im / Complex.normSq (z - 1)) +\n              -z.im / Complex.normSq (z - 3) * ((z.re - 1) / Complex.normSq (z - 1))\nl1 :\n  \u2200 (z : \u2102),\n    (z.re = 1 \u2192 \u00acz.im = 0) \u2192\n      (z.re = 3 \u2192 \u00acz.im = 0) \u2192\n        (f z).re =\n            (z.re - 3) / Complex.normSq (z - 3) * ((z.re - 1) / Complex.normSq (z - 1)) -\n              -z.im / Complex.normSq (z - 3) * (-z.im / Complex.normSq (z - 1)) \u2227\n          (f z).im =\n            (z.re - 3) / Complex.normSq (z - 3) * (-z.im / Complex.normSq (z - 1)) +\n              -z.im / Complex.normSq (z - 3) * ((z.re - 1) / Complex.normSq (z - 1))\nl2 :\n  \u2200 (z : \u2102),\n    (z.re - 1 = 0 \u2192 \u00acz.im = 0) \u2192\n      Complex.abs (z - 1) < 2 \u2192\n        (z.re - 3) / Complex.normSq (z - 3) * 2\u207b\u00b9 = -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).re \u2227\n          -z.im / Complex.normSq (z - 3) * 2\u207b\u00b9 = -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).im\nl3 : \u2200 (z : \u2102), (z.re - 1 = 0 \u2192 \u00acz.im = 0) \u2192 Complex.abs (z - 1) < 2 \u2192 Complex.abs (z - 1) / 2 < 1\nl4 :\n  \u2200 (z : \u2102),\n    (z.re - 1 = 0 \u2192 \u00acz.im = 0) \u2192\n      Complex.abs (z - 1) < 2 \u2192\n        (-1 / (4 * (1 - (z - 1) / 2))).re = -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).re \u2227\n          (-1 / (4 * (1 - (z - 1) / 2))).im = -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).im\nhz : (z.re - 1 = 0 \u2192 \u00acz.im = 0) \u2227 Complex.abs (z - 1) < 2\nh\u2081 :\n  -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).re = (\u2211' (n : \u2115), -1 / 4 * ((z - 1) / 2) ^ n).re \u2227\n    -1 / 4 * (\u2211' (n : \u2115), ((z - 1) / 2) ^ n).im = (\u2211' (n : \u2115), -1 / 4 * ((z - 1) / 2) ^ n).im\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Function definition tc_1 is correctly formalized with appropriate domain restrictions (z \u2260 1 \u2227 z \u2260 3)", "Domain specification tc_2 is properly captured through the annulus condition in hypothesis hz", "Partial fraction decomposition l1 is accurately represented with correct domain restrictions", "Algebraic manipulation l2 is correctly formalized with the annulus domain condition", "Convergence condition l3 is properly stated using Complex.abs for the modulus", "Geometric series expansion l4 is correctly formalized using infinite sums (\u2211') with appropriate domain conditions", "Final conclusion l5 exactly matches the natural language statement, showing the algebraic equivalence between the two series representations", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (l4 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n)\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n  have h_main : (\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2)) = (\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4 := by\n    have h\u2081 : \u2200 n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) = (((z - 1 : \u2102) / 2) ^ n) / 4 := by\n      intro n\n      have h\u2082 : (2 : \u2102) ^ (n + 2) = (2 : \u2102) ^ n * 4 := by\n        calc\n          (2 : \u2102) ^ (n + 2) = (2 : \u2102) ^ n * (2 : \u2102) ^ 2 := by\n            rw [pow_add]\n          _ = (2 : \u2102) ^ n * 4 := by\n            norm_num [Complex.ext_iff, pow_two]\n            <;> simp [Complex.ext_iff, pow_two, mul_comm]\n            <;> norm_num\n            <;> ring_nf\n            <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n            <;> norm_num\n            <;> linarith\n      calc\n        (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) = (z - 1 : \u2102) ^ n / ((2 : \u2102) ^ n * 4) := by rw [h\u2082]\n        _ = ((z - 1 : \u2102) / 2) ^ n / 4 := by\n          have h\u2083 : (z - 1 : \u2102) ^ n / ((2 : \u2102) ^ n * 4) = ((z - 1 : \u2102) / 2) ^ n / 4 := by\n            calc\n              (z - 1 : \u2102) ^ n / ((2 : \u2102) ^ n * 4) = (z - 1 : \u2102) ^ n / (2 : \u2102) ^ n / 4 := by\n                field_simp [pow_ne_zero]\n                <;> ring_nf\n                <;> simp [Complex.ext_iff, pow_two, mul_comm]\n                <;> norm_num\n                <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n                <;> norm_num\n                <;> linarith\n              _ = ((z - 1 : \u2102) / 2) ^ n / 4 := by\n                have h\u2084 : (z - 1 : \u2102) ^ n / (2 : \u2102) ^ n = ((z - 1 : \u2102) / 2) ^ n := by\n                  calc\n                    (z - 1 : \u2102) ^ n / (2 : \u2102) ^ n = ((z - 1 : \u2102) / 2) ^ n := by\n                      calc\n                        (z - 1 : \u2102) ^ n / (2 : \u2102) ^ n = ((z - 1 : \u2102) / 2) ^ n := by\n                          field_simp [pow_ne_zero]\n                          <;> simp [div_pow]\n                          <;> ring_nf\n                        _ = ((z - 1 : \u2102) / 2) ^ n := by rfl\n                    _ = ((z - 1 : \u2102) / 2) ^ n := by rfl\n                rw [h\u2084]\n                <;> field_simp [pow_ne_zero]\n                <;> ring_nf\n                <;> simp [Complex.ext_iff, pow_two, mul_comm]\n                <;> norm_num\n                <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n                <;> norm_num\n                <;> linarith\n          rw [h\u2083]\n          <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n          <;> norm_num\n          <;> linarith\n    calc\n      (\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2)) = \u2211' n : \u2115, (((z - 1 : \u2102) / 2) ^ n / 4) := by\n        congr with n\n        rw [h\u2081 n]\n      _ = (\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4 := by\n        have h\u2082 : \u2211' n : \u2115, (((z - 1 : \u2102) / 2) ^ n / 4) = (\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4 := by\n          -- Factor out the constant 1/4 from the sum\n          have h\u2083 : \u2211' n : \u2115, (((z - 1 : \u2102) / 2) ^ n / 4) = \u2211' n : \u2115, (1 / 4 : \u2102) * (((z - 1 : \u2102) / 2) ^ n) := by\n            congr with n\n            ring_nf\n          rw [h\u2083]\n          -- Use the linearity of the sum to factor out the constant\n          have h\u2084 : \u2211' n : \u2115, (1 / 4 : \u2102) * (((z - 1 : \u2102) / 2) ^ n) = (1 / 4 : \u2102) * \u2211' n : \u2115, (((z - 1 : \u2102) / 2) ^ n) := by\n            -- Use the fact that the sum of a constant times a sequence is the constant times the sum of the sequence\n            rw [tsum_mul_left]\n          rw [h\u2084]\n          -- Simplify the expression\n          <;> ring_nf\n          <;> simp [Complex.ext_iff, pow_two, mul_comm]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n          <;> norm_num\n          <;> linarith\n        rw [h\u2082]\n        <;> simp [Complex.ext_iff, pow_two, mul_comm]\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n        <;> norm_num\n        <;> linarith\n  \n  have h_final : -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n    have h\u2081 : (\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2)) = (\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4 := h_main\n    have h\u2082 : -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by\n      calc\n        -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) = -((\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2))) := by ring\n        _ = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by rw [h\u2081]\n        _ = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by rfl\n    have h\u2083 : -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by\n      calc\n        -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = (-1 / 4 : \u2102) * \u2211' n : \u2115, ((z - 1) / 2) ^ n := by norm_num\n        _ = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by\n          ring_nf\n          <;> simp [Complex.ext_iff, pow_two, mul_comm]\n          <;> norm_num\n          <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n          <;> norm_num\n          <;> linarith\n    have h\u2084 : -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by\n      congr with n\n      <;> norm_cast\n      <;> simp [Complex.ext_iff, pow_add, pow_one, mul_comm]\n      <;> norm_num\n      <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_comm]\n      <;> norm_num\n      <;> linarith\n    calc\n      -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by rw [h\u2083]\n      _ = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by\n        calc\n          -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by rfl\n          _ = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by\n            have h\u2085 : (\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2)) = (\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4 := h_main\n            have h\u2086 : -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by\n              calc\n                -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) = -((\u2211' n : \u2115, ((z - 1 : \u2102) / 2) ^ n) / 4) := by rfl\n                _ = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by\n                  rw [h\u2085]\n                  <;> ring_nf\n                  <;> simp [Complex.ext_iff, pow_two, mul_comm]\n                  <;> norm_num\n                  <;> simp_all [Complex.ext_iff, pow_two, mul_comm]\n                  <;> norm_num\n                  <;> linarith\n            rw [h\u2086]\n          _ = -\u2211' n : \u2115, (z - 1 : \u2102) ^ n / (2 : \u2102) ^ (n + 2) := by rfl\n      _ = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n        rw [h\u2084]\n        <;> simp [Complex.ext_iff, pow_add, pow_one, mul_comm]\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_comm]\n        <;> norm_num\n        <;> linarith\n  \n  rw [h_final]\n  <;> simp_all\n  <;> norm_num\n  <;> simp_all [Complex.ext_iff, pow_add, pow_one, mul_comm]\n  <;> norm_num\n  <;> linarith"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, combining the first term from the partial fraction decomposition with the series expansion of the second term gives the complete Laurent series: $f(z) = -\\frac{1}{2(z-1)} - \\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{1}{(z-1)(z-3)}$ for a complex variable $z$ [tc_1].\n\u2022 The Laurent series for $f(z)$ is centered at $z_0=1$ and is valid for the annulus $0 < |z-1| < 2$ [tc_2].\n\u2022 $f(z) = -\\frac{1}{2(z-1)} + \\frac{1}{2(z-3)}$ [l1].\n\u2022 $\\frac{1}{2(z-3)} = -\\frac{1}{4(1 - \\frac{z-1}{2})}$ [l2].\n\u2022 For $z$ in the annulus of convergence, $|\\frac{z-1}{2}| < 1$ [l3].\n\u2022 $-\\frac{1}{4(1 - \\frac{z-1}{2})} = -\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n$ [l4].\n\u2022 $-\\frac{1}{4} \\sum_{n=0}^{\\infty} (\\frac{z-1}{2})^n = -\\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$ [l5].\nTherefore, we conclude:\n\u2022 $f(z) = -\\frac{1}{2(z-1)} - \\sum_{n=0}^{\\infty} \\frac{(z-1)^n}{2^{n+2}}$ [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (l4 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n)\n  (l5 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2))\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  f z = -1 / (2 * (z - 1)) - \u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (f : \u2102 \u2192 \u2102)\n  (hc : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 f z = 1 / ((z - 1) * (z - 3)))\n  (l1 : \u2200 z : \u2102, z \u2260 1 \u2227 z \u2260 3 \u2192 \n    f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)))\n  (l2 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)))\n  (l3 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192 \n    Complex.abs ((z - 1) / 2) < 1)\n  (l4 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n)\n  (l5 : \u2200 z : \u2102, 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2 \u2192\n    -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2))\n  (z : \u2102)\n  (hz : 0 < Complex.abs (z - 1) \u2227 Complex.abs (z - 1) < 2) :\n  f z = -1 / (2 * (z - 1)) - \u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n  have hz_ne_1 : z \u2260 1 := by\n    intro h\n    have h\u2081 : z = 1 := h\n    rw [h\u2081] at hz\n    norm_num [Complex.abs, Complex.normSq] at hz\n    <;>\n    (try contradiction) <;>\n    (try linarith)\n  \n  have hz_ne_3 : z \u2260 3 := by\n    intro h\n    have h\u2081 : z = 3 := h\n    rw [h\u2081] at hz\n    have h\u2082 : Complex.abs ((3 : \u2102) - 1) = 2 := by\n      norm_num [Complex.abs, Complex.normSq, Real.sqrt_eq_iff_sq_eq]\n    have h\u2083 : Complex.abs ((3 : \u2102) - 1) < 2 := by\n      simpa [h\u2082] using hz.2\n    norm_num [h\u2082] at h\u2083\n    <;> linarith\n  \n  have h_main : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := by\n    have h\u2081 : z \u2260 1 \u2227 z \u2260 3 := \u27e8hz_ne_1, hz_ne_3\u27e9\n    have h\u2082 : f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := l1 z h\u2081\n    exact h\u2082\n  \n  have h_step_1 : f z = -1 / (2 * (z - 1)) + (-1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n) := by\n    have h\u2081 : 1 / (2 * (z - 3)) = -1 / (4 * (1 - (z - 1) / 2)) := l2 z hz\n    have h\u2082 : -1 / (4 * (1 - (z - 1) / 2)) = -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n := l4 z hz\n    calc\n      f z = -1 / (2 * (z - 1)) + 1 / (2 * (z - 3)) := h_main\n      _ = -1 / (2 * (z - 1)) + (-1 / (4 * (1 - (z - 1) / 2))) := by\n        rw [h\u2081]\n        <;> ring_nf\n      _ = -1 / (2 * (z - 1)) + (-1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n) := by\n        rw [h\u2082]\n        <;> ring_nf\n  \n  have h_step_2 : f z = -1 / (2 * (z - 1)) + (-\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2)) := by\n    have h\u2081 : -1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n = -\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := l5 z hz\n    calc\n      f z = -1 / (2 * (z - 1)) + (-1 / 4 * \u2211' n : \u2115, ((z - 1) / 2) ^ n) := h_step_1\n      _ = -1 / (2 * (z - 1)) + (-\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2)) := by\n        rw [h\u2081]\n        <;> ring_nf\n  \n  have h_final : f z = -1 / (2 * (z - 1)) - \u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n    calc\n      f z = -1 / (2 * (z - 1)) + (-\u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2)) := h_step_2\n      _ = -1 / (2 * (z - 1)) - \u2211' n : \u2115, (z - 1) ^ n / 2 ^ (n + 2) := by\n        simp [sub_eq_add_neg]\n        <;> ring_nf\n        <;> simp_all [tsum_neg]\n        <;> ring_nf\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Function definition tc_1 is correctly captured with appropriate domain restrictions z \u2260 1 \u2227 z \u2260 3", "Annulus condition tc_2 is properly formalized using Complex.abs with 0 < |z-1| < 2", "Partial fraction decomposition l1 is accurately represented with correct domain restrictions", "Algebraic manipulation l2 is correctly formalized with annulus conditions replacing domain restrictions", "Convergence condition l3 is properly captured using Complex.abs for the inequality", "Geometric series expansion l4 is correctly represented using infinite sum notation \u2211'", "Series simplification l5 is accurately formalized with proper power notation", "Final Laurent series ts_1 is correctly stated as the theorem goal with appropriate conditions"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

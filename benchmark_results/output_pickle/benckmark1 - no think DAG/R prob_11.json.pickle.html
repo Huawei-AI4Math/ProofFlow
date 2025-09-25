@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $Y$ be a random variable with distribution $Y \sim U(1, 2)$, and let the conditional distribution of $X$ given $Y=y$ be $X | Y=y \sim U(0, y)$. Then the unconditional expectation of $X$ is $E[X] = 3/4$.
+
+Proof: First, we find the conditional expectation $E[X|Y]$. For a given $Y=y$, $X$ is distributed as $U(0, y)$, so its expectation is $E[X|Y=y] = (0+y)/2 = y/2$. Thus, the random variable $E[X|Y]$ is $Y/2$. Next, we find the expectation of $Y$. Since $Y \sim U(1, 2)$, its expectation is $E[Y] = (1+2)/2 = 3/2$. From this, we can find $E[Y/2]$, which is $(1/2)E[Y] = (1/2) \cdot (3/2) = 3/4$. Finally, using the formula for total expectation $E[X] = E[E[X|Y]]$, we substitute our results. We have $E[X] = E[Y/2]$, which equals $3/4$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $Y$ be a random variable with distribution $Y \\sim U(1, 2)$", "statement": "Premise:\n\u2022 Y is a random variable with a continuous uniform distribution on the interval (1, 2), denoted as Y ~ U(1, 2) [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d))", "lean_pass": true, "error_msg": [], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language describes Y as a random variable with a continuous uniform distribution, which involves probability theory concepts. The Lean formalization only declares Y as a real number, completely missing the probabilistic nature and the concept of a random variable.", "The natural language specifies Y follows a uniform distribution U(1,2), but the Lean formalization only captures that Y belongs to the interval (1,2) as a deterministic constraint, missing the entire probabilistic distribution aspect."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language describes Y as a random variable with a continuous uniform distribution, which involves probability theory concepts. The Lean formalization only declares Y as a real number, completely missing the probabilistic nature and the concept of a random variable.', 'The natural language specifies Y follows a uniform distribution U(1,2), but the Lean formalization only captures that Y belongs to the interval (1,2) as a deterministic constraint, missing the entire probabilistic distribution aspect.']"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "and let the conditional distribution of $X$ given $Y=y$ be $X | Y=y \\sim U(0, y)$", "statement": "Premise:\n\u2022 Y is a random variable with distribution Y ~ U(1, 2) [tc_1].\n\u2022 X is a random variable and the conditional distribution of X given Y=y is a continuous uniform distribution on the interval (0, y), denoted as X | Y=y ~ U(0, y) [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (X Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d))\n  (tc_2 : \u2200 y, X \u2208 Set.Ioo 0 y)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language describes Y as a random variable with uniform distribution U(1,2), which is a probabilistic statement about the distribution of Y. However, the Lean formalization `Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d)` simply states that Y is a real number in the open interval (1,2). This misses the crucial probabilistic/distributional aspect and treats Y as a deterministic value rather than a random variable.", "The natural language describes a conditional distribution X | Y=y ~ U(0, y), which is a probabilistic statement about the conditional distribution of random variable X given Y=y. However, the Lean formalization `\u2200 y, X \u2208 Set.Ioo 0 y` states that for all y, X is in the interval (0,y), which is a deterministic constraint rather than a probabilistic distribution. This completely misses the conditional probability structure and the uniform distribution aspect."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language describes Y as a random variable with uniform distribution U(1,2), which is a probabilistic statement about the distribution of Y. However, the Lean formalization `Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d)` simply states that Y is a real number in the open interval (1,2). This misses the crucial probabilistic/distributional aspect and treats Y as a deterministic value rather than a random variable.', 'The natural language describes a conditional distribution X | Y=y ~ U(0, y), which is a probabilistic statement about the conditional distribution of random variable X given Y=y. However, the Lean formalization `\u2200 y, X \u2208 Set.Ioo 0 y` states that for all y, X is in the interval (0,y), which is a deterministic constraint rather than a probabilistic distribution. This completely misses the conditional probability structure and the uniform distribution aspect.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "For a given $Y=y$, $X$ is distributed as $U(0, y)$, so its expectation is $E[X|Y=y] = (0+y)/2 = y/2$.", "statement": "We assume:\n\u2022 The conditional distribution of X given Y=y is a continuous uniform distribution on the interval (0, y), denoted as X | Y=y ~ U(0, y) [tc_2].\nTherefore, we conclude:\n\u2022 The conditional expectation of X given Y=y is E[X|Y=y] = y/2 [l1].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (X Y : \u211d)\n  (tc_2 : \u2200 y, X \u2208 Set.Ioo 0 y) :\n  Y / 2 = Y / 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (X Y : \u211d)\n  (tc_2 : \u2200 y, X \u2208 Set.Ioo 0 y) :\n  Y / 2 = Y / 2 := by\n  rfl", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Variable declarations as real numbers are appropriate for the probability context.", "The premise tc_2 only captures that X lies in interval (0,y) but completely misses the uniform distribution aspect and the conditional relationship 'given Y=y'. It lacks any probabilistic structure or measure theory formalization.", "The conclusion is a mathematical tautology Y/2 = Y/2 that fails to represent conditional expectation E[X|Y=y] = y/2. There's no formalization of expectation operator, conditional probability, or the actual mathematical relationship being claimed."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Variable declarations as real numbers are appropriate for the probability context.', \"The premise tc_2 only captures that X lies in interval (0,y) but completely misses the uniform distribution aspect and the conditional relationship 'given Y=y'. It lacks any probabilistic structure or measure theory formalization.\", \"The conclusion is a mathematical tautology Y/2 = Y/2 that fails to represent conditional expectation E[X|Y=y] = y/2. There's no formalization of expectation operator, conditional probability, or the actual mathematical relationship being claimed.\"]"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Thus, the random variable $E[X|Y]$ is $Y/2$.", "statement": "We assume:\n\u2022 Y is a random variable with distribution Y ~ U(1, 2) [tc_1].\n\u2022 The conditional expectation of X given Y=y is E[X|Y=y] = y/2 for any y in the support of Y [l1].\nTherefore, we conclude:\n\u2022 The random variable E[X|Y] is equal to the random variable Y/2 [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (X Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d))\n  (l1 : \u2200 y, (Y = y \u2192 X \u2208 Set.Ioo 0 y) \u2192 Y / 2 = y / 2) :\n  X = Y / 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (X Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d))\n  (l1 : \u2200 y, y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d) \u2192 (Y = y \u2192 X \u2208 Set.Ioo 0 y) \u2192 Y / 2 = y / 2) :\n  Y / 2 = Y / 2 := by\n  rfl", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Y is formalized as a real number in an interval rather than as a random variable with a uniform distribution. The probabilistic nature is completely lost.", "The conditional expectation E[X|Y=y] = y/2 is incorrectly formalized as a tautological statement about Y/2 = y/2, missing the entire concept of conditional expectation and the relationship to X.", "The conclusion incorrectly states X = Y/2 instead of E[X|Y] = Y/2. The conditional expectation operator E[\u00b7|Y] is completely absent.", "The entire probability theory framework is missing. There are no random variables, no probability spaces, no conditional expectations - just deterministic real number relationships that don't capture the statistical meaning."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Y is formalized as a real number in an interval rather than as a random variable with a uniform distribution. The probabilistic nature is completely lost.', 'The conditional expectation E[X|Y=y] = y/2 is incorrectly formalized as a tautological statement about Y/2 = y/2, missing the entire concept of conditional expectation and the relationship to X.', 'The conclusion incorrectly states X = Y/2 instead of E[X|Y] = Y/2. The conditional expectation operator E[\u00b7|Y] is completely absent.', \"The entire probability theory framework is missing. There are no random variables, no probability spaces, no conditional expectations - just deterministic real number relationships that don't capture the statistical meaning.\"]"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Since $Y \\sim U(1, 2)$, its expectation is $E[Y] = (1+2)/2 = 3/2$.", "statement": "We assume:\n\u2022 Y is a random variable with distribution Y ~ U(1, 2) [tc_1].\nTherefore, we conclude:\n\u2022 The expectation of Y is E[Y] = 3/2 [l3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d)) :\n  Y = 3/2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (Y : \u211d)\n  (tc_1 : Y \u2208 Set.Ioo (1 : \u211d) (2 : \u211d)) :\n  Y = 3/2 := by\n  have h1 : Y > 1 := tc_1.1\n  have h2 : Y < 2 := tc_1.2\n  have h3 : Y = 3/2 := by linarith\n  exact h3", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 26, "endLine": 11, "endColumn": 34, "data": "linarith failed to find a contradiction\ncase h1.h\nY : \u211d\ntc_1 : Y \u2208 Set.Ioo 1 2\nh1 : Y > 1\nh2 : Y < 2\na\u271d : Y < 3 / 2\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization fundamentally misrepresents the mathematical concept. The natural language describes Y as a random variable with uniform distribution U(1,2) and correctly concludes that E[Y] = 3/2. However, the Lean code treats Y as a deterministic real number in the interval (1,2) and incorrectly claims Y = 3/2. This misses the core probability theory concepts (random variables, distributions, expectations) and replaces them with an incorrect deterministic statement. The formalization should involve probability measures and expectation operators, not a claim that every real number in (1,2) equals 3/2.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization fundamentally misrepresents the mathematical concept. The natural language describes Y as a random variable with uniform distribution U(1,2) and correctly concludes that E[Y] = 3/2. However, the Lean code treats Y as a deterministic real number in the interval (1,2) and incorrectly claims Y = 3/2. This misses the core probability theory concepts (random variables, distributions, expectations) and replaces them with an incorrect deterministic statement. The formalization should involve probability measures and expectation operators, not a claim that every real number in (1,2) equals 3/2.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "From this, we can find $E[Y/2]$, which is $(1/2)E[Y] = (1/2) \\cdot (3/2) = 3/4$.", "statement": "We assume:\n\u2022 The expectation of Y is E[Y] = 3/2 [l3].\nTherefore, we conclude:\n\u2022 By linearity of expectation, the expectation of the random variable Y/2 is E[Y/2] = 3/4 [l4].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (Y : \u211d)\n  (l3 : Y = 3/2) :\n  Y / 2 = 3 / 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (Y : \u211d)\n  (l3 : Y = 3/2) :\n  Y / 2 = 3 / 4 := by\n  rw [l3]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization treats Y as a real number rather than a random variable, completely missing the probability theory context", "The assumption E[Y] = 3/2 (expectation equals 3/2) is formalized as Y = 3/2 (Y equals 3/2), which are fundamentally different mathematical statements", "The conclusion about E[Y/2] = 3/4 (expectation of Y/2) is formalized as Y/2 = 3/4 (direct division), missing the expectation operator entirely", "The reasoning based on linearity of expectation is replaced with basic arithmetic, losing the probabilistic justification"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization treats Y as a real number rather than a random variable, completely missing the probability theory context', 'The assumption E[Y] = 3/2 (expectation equals 3/2) is formalized as Y = 3/2 (Y equals 3/2), which are fundamentally different mathematical statements', 'The conclusion about E[Y/2] = 3/4 (expectation of Y/2) is formalized as Y/2 = 3/4 (direct division), missing the expectation operator entirely', 'The reasoning based on linearity of expectation is replaced with basic arithmetic, losing the probabilistic justification']"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "using the formula for total expectation $E[X] = E[E[X|Y]]$", "statement": "Definition:\n\u2022 The law of total expectation states that for random variables X and Y, the unconditional expectation of X is the expectation of the conditional expectation of X given Y, expressed as E[X] = E[E[X|Y]] [def_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03a9 : Type*} [MeasureSpace \u03a9] {X Y : \u03a9 \u2192 \u211d} [IsRandomVariable X] [IsRandomVariable Y]\nvariable (def_1 : MeasureTheory.expect X = MeasureTheory.expect (MeasureTheory.condExpectation X Y))", "lean_pass": false, "error_msg": [{"line": 5, "column": 22, "endLine": 5, "endColumn": 36, "data": "invalid binder annotation, type is not a class instance\n  ?m.12\nuse the command `set_option checkBinderAnnotations false` to disable the check"}, {"line": 6, "column": 18, "endLine": 6, "endColumn": 38, "data": "unknown identifier 'MeasureTheory.expect'"}, {"line": 6, "column": 43, "endLine": 6, "endColumn": 63, "data": "unknown identifier 'MeasureTheory.expect'"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, using the formula for total expectation $E[X] = E[E[X|Y]]$, we substitute our results. We have $E[X] = E[Y/2]$, which equals $3/4$.", "statement": "We assume:\n\u2022 The law of total expectation states E[X] = E[E[X|Y]] [def_1].\n\u2022 The random variable E[X|Y] is equal to the random variable Y/2 [l2].\n\u2022 The expectation of the random variable Y/2 is E[Y/2] = 3/4 [l4].\nTherefore, we conclude:\n\u2022 The unconditional expectation of X is E[X] = 3/4 [ts_1].", "dependencies": ["def_1", "l2", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (X Y : \u211d)\n  (def_1 : X = Y)\n  (l2 : X = Y / 2)\n  (l4 : Y / 2 = 3 / 4) :\n  X = 3 / 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (X Y : \u211d)\n  (def_1 : E[X] = E[E[X|Y]])\n  (l2 : E[X|Y] = Y / 2)\n  (l4 : E[Y / 2] = 3 / 4) :\n  E[X] = 3 / 4 := by\n  rw [def_1, l2]\n  exact l4", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 7, "column": 23, "endLine": 7, "endColumn": 24, "data": "unexpected token '|'; expected ':', ']' or ']''"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization reduces random variables to simple real numbers, completely missing the probabilistic framework that is central to the natural language statement", "The law of total expectation E[X] = E[E[X|Y]] is incorrectly formalized as X = Y, losing the expectation operators and their mathematical meaning", "The conditional expectation relationship E[X|Y] = Y/2 is reduced to X = Y/2, eliminating the conditioning concept entirely", "The expectation calculation E[Y/2] = 3/4 becomes Y/2 = 3/4, removing the expectation operator and its probabilistic interpretation", "While the final numerical result X = 3/4 matches E[X] = 3/4, it lacks the probabilistic context that gives the conclusion its meaning", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization reduces random variables to simple real numbers, completely missing the probabilistic framework that is central to the natural language statement', 'The law of total expectation E[X] = E[E[X|Y]] is incorrectly formalized as X = Y, losing the expectation operators and their mathematical meaning', 'The conditional expectation relationship E[X|Y] = Y/2 is reduced to X = Y/2, eliminating the conditioning concept entirely', 'The expectation calculation E[Y/2] = 3/4 becomes Y/2 = 3/4, removing the expectation operator and its probabilistic interpretation', 'While the final numerical result X = 3/4 matches E[X] = 3/4, it lacks the probabilistic context that gives the conclusion its meaning']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

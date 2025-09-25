@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: If $X_2$ and $X_3$ are independent random variables from exponential distributions with parameters $\lambda_2$ and $\lambda_3$, the random variable $Y = \min(X_2, X_3)$ has an exponential distribution with parameter $\lambda_2 + \lambda_3$.
+
+Proof: To find the distribution of $Y = \min(X_2, X_3)$, we can compute its survival function, $P(Y > x)$. This is the probability that both $X_2$ and $X_3$ are greater than $x$. So, $P(\min(X_2, X_3) > x) = P(X_2 > x 	ext{ and } X_3 > x)$. By the independence of $X_2$ and $X_3$, we can write this as $P(X_2 > x)P(X_3 > x)$. Since $X_2$ and $X_3$ are exponential, their survival functions are $P(X_2 > x) = e^{-\lambda_2 x}$ and $P(X_3 > x) = e^{-\lambda_3 x}$ for $x > 0$. Multiplying these gives $P(Y > x) = e^{-\lambda_2 x} e^{-\lambda_3 x} = e^{-(\lambda_2 + \lambda_3)x}$. This is the survival function of an exponential distribution with parameter $\lambda_2 + \lambda_3$. Therefore, $Y = \min(X_2, X_3)$ is an exponential random variable with parameter $\lambda_2 + \lambda_3$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "If $X_2$ ... are ... random variables from exponential distributions with parameters $\\lambda_2$", "statement": "Premise:\n\u2022 $X_2$ is a random variable following an exponential distribution with parameter $\\lambda_2 > 0$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 \n  (X\u2082 : \u211d \u2192 \u211d) (lambda\u2082 : \u211d)\n  (h_positive : lambda\u2082 > 0)\n  (h_survival : \u2200 x \u2265 0, \u222b \u03c9 in Set.Ici x, Real.exp (-lambda\u2082 * \u03c9) = Real.exp (-lambda\u2082 * x))\n  : \u2200 x \u2265 0, \u222b \u03c9 in Set.Ici x, Real.exp (-lambda\u2082 * \u03c9) = Real.exp (-(lambda\u2082) * x) := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language describes X\u2082 as a random variable, but Lean represents it as a deterministic function \u211d \u2192 \u211d. While this could be interpreted as a random variable in some contexts, it's not the standard probability theory representation.", "The parameter \u03bb\u2082 > 0 condition is perfectly captured in Lean with the type declaration and positivity constraint.", "The natural language states X\u2082 follows an exponential distribution, but the Lean formalization only provides a survival function property. A complete exponential distribution characterization would require probability density function or cumulative distribution function properties, not just this integral equation.", "The natural language explicitly states there are no new derived facts from this premise alone, but the Lean theorem concludes with a proposition that restates the survival function property, which contradicts the 'no conclusions' statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language describes X\u2082 as a random variable, but Lean represents it as a deterministic function \u211d \u2192 \u211d. While this could be interpreted as a random variable in some contexts, it's not the standard probability theory representation.\", 'The parameter \u03bb\u2082 > 0 condition is perfectly captured in Lean with the type declaration and positivity constraint.', 'The natural language states X\u2082 follows an exponential distribution, but the Lean formalization only provides a survival function property. A complete exponential distribution characterization would require probability density function or cumulative distribution function properties, not just this integral equation.', \"The natural language explicitly states there are no new derived facts from this premise alone, but the Lean theorem concludes with a proposition that restates the survival function property, which contradicts the 'no conclusions' statement.\"]"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "... and $X_3$ are ... random variables from exponential distributions with parameters ... $\\lambda_3$", "statement": "Premise:\n\u2022 $X_3$ is a random variable following an exponential distribution with parameter $\\lambda_3 > 0$ [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  (\u03bb\u2083 : \u211d) \n  (h_pos : 0 < \u03bb\u2083) :\n  \u2203 (f : \u211d \u2192 \u211d), \n    (\u2200 x : \u211d, x \u2265 0 \u2192 f x = Real.exp (-\u03bb\u2083 * x)) \u2227\n    (\u222b x in Set.Ici 0, f x = 1) := by sorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 3, "endLine": 8, "endColumn": 4, "data": "unexpected token '\u03bb'; expected '_' or identifier"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "$X_2$ and $X_3$ are independent random variables", "statement": "Premise:\n\u2022 $X_2$ and $X_3$ are independent random variables [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem condition_independence {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (X\u2082 X\u2083 : \u03a9 \u2192 \u211d)\n  (hX\u2082 : Measurable X\u2082) (hX\u2083 : Measurable X\u2083)\n  (h_indep : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082))\n  : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082) := by sorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization correctly captures the independence of X\u2082 and X\u2083 using the formal measure-theoretic definition. The additional technical details (measure space, measurability conditions) are appropriate mathematical infrastructure not explicitly mentioned in the natural language but necessary for formal treatment.", "The natural language states there are no new derived facts from this premise alone, but the Lean theorem restates the independence condition as its conclusion. This creates a tautological theorem structure that doesn't align with the natural language's indication of no conclusions."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the independence of X\u2082 and X\u2083 using the formal measure-theoretic definition. The additional technical details (measure space, measurability conditions) are appropriate mathematical infrastructure not explicitly mentioned in the natural language but necessary for formal treatment.', \"The natural language states there are no new derived facts from this premise alone, but the Lean theorem restates the independence condition as its conclusion. This creates a tautological theorem structure that doesn't align with the natural language's indication of no conclusions.\"]"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "the random variable $Y = \\min(X_2, X_3)$", "statement": "Definition:\n\u2022 Given random variables $X_2$ and $X_3$, we define a new random variable $Y = \\min(X_2, X_3)$ [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (X\u2082 X\u2083 : \u211d \u2192 \u211d) (lambda\u2082 lambda\u2083 : \u211d)\n(lambda\u2082_pos : lambda\u2082 > 0) (lambda\u2083_pos : lambda\u2083 > 0)\n(Y : \u211d \u2192 \u211d)\n(Y_def : \u2200 \u03c9, Y \u03c9 = min (X\u2082 \u03c9) (X\u2083 \u03c9))", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly represents random variables X\u2082 and X\u2083 as functions from \u211d \u2192 \u211d, which is the standard mathematical representation of random variables. The additional lambda variables and positivity constraints are extra details not mentioned in the natural language but don't contradict it.", "The Lean definition Y_def : \u2200 \u03c9, Y \u03c9 = min (X\u2082 \u03c9) (X\u2083 \u03c9) perfectly captures the mathematical statement Y = min(X\u2082, X\u2083). The use of \u03c9 as the sample space variable is standard notation for random variables, and the pointwise definition is mathematically equivalent to the natural language statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "This is the probability that both $X_2$ and $X_3$ are greater than $x$. So, $P(\\min(X_2, X_3) > x) = P(X_2 > x \\text{ and } X_3 > x)$.", "statement": "We assume:\n\u2022 $Y = \\min(X_2, X_3)$ [def_1]\nTherefore, we conclude:\n\u2022 For any real number $x$, the event $Y > x$ is equivalent to the event that both $X_2 > x$ and $X_3 > x$. Consequently, their probabilities are equal: $P(Y > x) = P(X_2 > x \\text{ and } X_3 > x)$ [l1].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : Measure \u03a9) (h\u03bc : IsProbabilityMeasure \u03bc)\n  (X\u2082 X\u2083 Y : \u03a9 \u2192 \u211d)\n  (h_def : \u2200 \u03c9, Y \u03c9 = min (X\u2082 \u03c9) (X\u2083 \u03c9)) :\n  \u2200 x : \u211d, \u03bc {\u03c9 | Y \u03c9 > x} = \u03bc {\u03c9 | X\u2082 \u03c9 > x \u2227 X\u2083 \u03c9 > x} := by sorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 7, "endLine": 9, "endColumn": 16, "data": "function expected at\n  Measure\nterm has type\n  ?m.9"}, {"line": 9, "column": 24, "endLine": 9, "endColumn": 46, "data": "function expected at\n  IsProbabilityMeasure\nterm has type\n  ?m.22"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib.MeasureTheory\nimport Mathlib.Probability\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) (h\u03bc : MeasureTheory.IsProbabilityMeasure \u03bc)\n  (X\u2082 X\u2083 Y : \u03a9 \u2192 \u211d)\n  (h_def : \u2200 \u03c9, Y \u03c9 = min (X\u2082 \u03c9) (X\u2083 \u03c9)) :\n  \u2200 x : \u211d, \u03bc {\u03c9 | Y \u03c9 > x} = \u03bc {\u03c9 | X\u2082 \u03c9 > x \u2227 X\u2083 \u03c9 > x} := by\n  intro x\n  have h_set_eq : {\u03c9 | Y \u03c9 > x} = {\u03c9 | X\u2082 \u03c9 > x \u2227 X\u2083 \u03c9 > x} := by\n    apply Set.ext\n    intro \u03c9\n    simp only [Set.mem_setOf_eq]\n    have h\u2081 : Y \u03c9 = min (X\u2082 \u03c9) (X\u2083 \u03c9) := h_def \u03c9\n    rw [h\u2081]\n    -- Use the property of min for real numbers to establish the equivalence\n    have h\u2082 : (min (X\u2082 \u03c9) (X\u2083 \u03c9) : \u211d) > x \u2194 X\u2082 \u03c9 > x \u2227 X\u2083 \u03c9 > x := by\n      constructor\n      \u00b7 -- Prove the forward direction: if min(X\u2082 \u03c9, X\u2083 \u03c9) > x, then X\u2082 \u03c9 > x and X\u2083 \u03c9 > x\n        intro h\n        have h\u2083 : X\u2082 \u03c9 > x := by\n          have h\u2084 : (min (X\u2082 \u03c9) (X\u2083 \u03c9) : \u211d) \u2264 X\u2082 \u03c9 := by apply min_le_left\n          linarith\n        have h\u2084 : X\u2083 \u03c9 > x := by\n          have h\u2085 : (min (X\u2082 \u03c9) (X\u2083 \u03c9) : \u211d) \u2264 X\u2083 \u03c9 := by apply min_le_right\n          linarith\n        exact \u27e8h\u2083, h\u2084\u27e9\n      \u00b7 -- Prove the backward direction: if X\u2082 \u03c9 > x and X\u2083 \u03c9 > x, then min(X\u2082 \u03c9, X\u2083 \u03c9) > x\n        rintro \u27e8h\u2083, h\u2084\u27e9\n        have h\u2085 : (min (X\u2082 \u03c9) (X\u2083 \u03c9) : \u211d) > x := by\n          cases' le_total (X\u2082 \u03c9) (X\u2083 \u03c9) with h\u2086 h\u2086\n          \u00b7 -- Case: X\u2082 \u03c9 \u2264 X\u2083 \u03c9\n            have h\u2087 : min (X\u2082 \u03c9) (X\u2083 \u03c9) = X\u2082 \u03c9 := by\n              rw [min_eq_left h\u2086]\n            rw [h\u2087]\n            linarith\n          \u00b7 -- Case: X\u2083 \u03c9 \u2264 X\u2082 \u03c9\n            have h\u2087 : min (X\u2082 \u03c9) (X\u2083 \u03c9) = X\u2083 \u03c9 := by\n              rw [min_eq_right h\u2086]\n            rw [h\u2087]\n            linarith\n        exact h\u2085\n    -- Use the established equivalence to conclude the proof\n    exact h\u2082\n  \n  have h_main : \u03bc {\u03c9 | Y \u03c9 > x} = \u03bc {\u03c9 | X\u2082 \u03c9 > x \u2227 X\u2083 \u03c9 > x} := by\n    rw [h_set_eq]\n    <;>\n    simp_all\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By the independence of $X_2$ and $X_3$, we can write this as $P(X_2 > x)P(X_3 > x)$.", "statement": "We assume:\n\u2022 For any $x>0$, $P(Y > x) = P(X_2 > x \\text{ and } X_3 > x)$ [l1]\n\u2022 $X_2$ and $X_3$ are independent random variables [tc_3]\nTherefore, we conclude:\n\u2022 For any $x>0$, $P(Y > x) = P(X_2 > x)P(X_3 > x)$ [l2].", "dependencies": ["l1", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (X\u2082 X\u2083 : \u03a9 \u2192 \u211d)\n  (rate\u2082 rate\u2083 : \u211d)\n  (hX\u2082 : Measurable X\u2082) (hX\u2083 : Measurable X\u2083)\n  (hrate\u2082 : rate\u2082 > 0) (hrate\u2083 : rate\u2083 > 0)\n  (h_indep : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082))\n  : \u2200 x : \u211d, \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = \n    \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (X\u2082 X\u2083 : \u03a9 \u2192 \u211d)\n  (rate\u2082 rate\u2083 : \u211d)\n  (hX\u2082 : Measurable X\u2082) (hX\u2083 : Measurable X\u2083)\n  (hrate\u2082 : rate\u2082 > 0) (hrate\u2083 : rate\u2083 > 0)\n  (h_indep : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082))\n  : \u2200 x : \u211d, \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = \n    \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) := by\n  intro x\n  have h_main : \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) := by\n    have h\u2081 : MeasurableSet {y : \u211d | y > x} := by\n      -- Prove that the set {y : \u211d | y > x} is measurable\n      apply measurableSet_Ioi\n    -- Apply the independence hypothesis with s\u2081 = s\u2082 = {y : \u211d | y > x}\n    have h\u2082 : \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) :=\n      h_indep {y | y > x} {y | y > x} h\u2081 h\u2081\n    -- The result follows directly from the independence hypothesis\n    exact h\u2082\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The independence assumption is correctly formalized using the standard measure-theoretic definition of independence between random variables.", "The initial condition l1 that relates P(Y > x) to P(X\u2082 > x and X\u2083 > x) is completely missing from the Lean theorem statement. This is a crucial premise needed for the logical argument.", "The conclusion correctly captures the mathematical relationship using measure theory notation, but lacks the positivity constraint on x that is explicitly stated in the natural language.", "The domain constraint 'x > 0' from the natural language is not preserved in the Lean formalization, which uses the entire real line instead.", "The random variable Y, which is central to the natural language statement, is entirely absent from the Lean formalization. The theorem should establish the connection between Y and the intersection of events involving X\u2082 and X\u2083."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The independence assumption is correctly formalized using the standard measure-theoretic definition of independence between random variables.', 'The initial condition l1 that relates P(Y > x) to P(X\u2082 > x and X\u2083 > x) is completely missing from the Lean theorem statement. This is a crucial premise needed for the logical argument.', 'The conclusion correctly captures the mathematical relationship using measure theory notation, but lacks the positivity constraint on x that is explicitly stated in the natural language.', \"The domain constraint 'x > 0' from the natural language is not preserved in the Lean formalization, which uses the entire real line instead.\", 'The random variable Y, which is central to the natural language statement, is entirely absent from the Lean formalization. The theorem should establish the connection between Y and the intersection of events involving X\u2082 and X\u2083.']"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Since $X_2$ ... are exponential, their survival functions are $P(X_2 > x) = e^{-\\lambda_2 x}$", "statement": "We assume:\n\u2022 $X_2$ follows an exponential distribution with parameter $\\lambda_2 > 0$ [tc_1]\nTherefore, we conclude:\n\u2022 For any $x > 0$, the survival function of $X_2$ is $P(X_2 > x) = e^{-\\lambda_2 x}$ [l3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (lambda\u2082 : \u211d)\n  (h_positive : lambda\u2082 > 0)\n  : \u2200 x > 0, Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (lambda\u2082 : \u211d)\n  (h_positive : lambda\u2082 > 0)\n  : \u2200 x > 0, Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x) := by\n  have h_main : \u2200 (x : \u211d), x > 0 \u2192 Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x) := by\n    intro x hx\n    rfl\n  \n  intro x hx\n  have h\u2081 : Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x) := h_main x hx\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization completely misses the probabilistic context of the natural language statement. While the natural language discusses an exponential distribution, random variable X\u2082, and survival function P(X\u2082 > x) = e^(-\u03bb\u2082x), the Lean code only contains a tautological statement that Real.exp(-lambda\u2082 * x) = Real.exp(-lambda\u2082 * x). The formalization lacks any representation of random variables, probability distributions, or survival functions, making it a major inconsistency with the intended mathematical meaning."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization completely misses the probabilistic context of the natural language statement. While the natural language discusses an exponential distribution, random variable X\u2082, and survival function P(X\u2082 > x) = e^(-\u03bb\u2082x), the Lean code only contains a tautological statement that Real.exp(-lambda\u2082 * x) = Real.exp(-lambda\u2082 * x). The formalization lacks any representation of random variables, probability distributions, or survival functions, making it a major inconsistency with the intended mathematical meaning.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "and $P(X_3 > x) = e^{-\\lambda_3 x}$ for $x > 0$.", "statement": "We assume:\n\u2022 $X_3$ follows an exponential distribution with parameter $\\lambda_3 > 0$ [tc_2]\nTherefore, we conclude:\n\u2022 For any $x > 0$, the survival function of $X_3$ is $P(X_3 > x) = e^{-\\lambda_3 x}$ [l4].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (\u03bb\u2083 : \u211d) \n  (h\u03bb\u2083 : \u03bb\u2083 > 0) :\n  \u2200 x > 0, Real.exp (-\u03bb\u2083 * x) = 1 - \u222b t in Set.Iic x, \u03bb\u2083 * Real.exp (-\u03bb\u2083 * t) := by sorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 3, "endLine": 8, "endColumn": 4, "data": "unexpected token '\u03bb'; expected '_' or identifier"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (lambda3 : \u211d) \n  (hlambda3 : lambda3 > 0) :\n  \u2200 x > 0, Real.exp (-lambda3 * x) = 1 - \u222b t in Set.Iic x, lambda3 * Real.exp (-lambda3 * t) := by\n  have h_main : \u2200 (x : \u211d), x > 0 \u2192 \u00acIntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x) := by\n    intro x hx\n    have h\u2081 : \u00acIntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := by\n      -- Prove that the constant function lambda3 is not integrable on (-\u221e, 0]\n      have h\u2082 : \u00acIntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := by\n        -- Use the fact that the measure of (-\u221e, 0] is infinite and lambda3 > 0\n        have h\u2083 : \u00acIntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := by\n          intro h\n          have h\u2084 : IntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := h\n          have h\u2085 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) := rfl\n          -- Use the fact that the integral of a positive constant over an infinite set is infinite\n          have h\u2086 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u221e := by\n            -- The integral of a positive constant over (-\u221e, 0] is \u221e\n            have h\u2087 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u221e := by\n              -- Use the fact that the measure of (-\u221e, 0] is infinite and lambda3 > 0\n              have h\u2088 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u221e := by\n                -- Use the fact that the measure of (-\u221e, 0] is infinite and lambda3 > 0\n                have h\u2089 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u221e := by\n                  -- Use the fact that the measure of (-\u221e, 0] is infinite and lambda3 > 0\n                  simp [MeasureTheory.integral_const, Real.volume_Iic, hlambda3]\n                  <;>\n                  simp_all [ENNReal.ofReal_eq_top]\n                  <;>\n                  linarith\n                exact h\u2089\n              exact h\u2088\n            exact h\u2087\n          -- Contradiction arises as the integral cannot be finite\n          have h\u2087 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) \u2260 \u221e := by\n            -- The integral of a positive constant over (-\u221e, 0] cannot be finite\n            have h\u2088 : IntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := h\u2084\n            have h\u2089 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) \u2260 \u221e := by\n              -- Use the fact that the integral is finite if the function is integrable\n              have h\u2081\u2080 : (\u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d)) \u2260 \u221e := by\n                -- Use the fact that the integral is finite if the function is integrable\n                exact by\n                  by_contra h\u2081\u2081\n                  -- If the integral were \u221e, it would contradict the integrability\n                  have h\u2081\u2082 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) = \u221e := by simpa using h\u2081\u2081\n                  have h\u2081\u2083 : \u00acIntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) := by\n                    intro h\u2081\u2084\n                    have h\u2081\u2085 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) < \u221e := by\n                      -- Use the fact that the integral is finite if the function is integrable\n                      have h\u2081\u2086 : \u222b t in Set.Iic (0 : \u211d), (lambda3 : \u211d) < \u221e := by\n                        -- Use the fact that the integral is finite if the function is integrable\n                        exact (MeasureTheory.integral_lt_top h\u2081\u2084).trans_le (by simp)\n                      exact h\u2081\u2086\n                    -- Contradiction arises as the integral cannot be both finite and \u221e\n                    simp_all [h\u2081\u2082]\n                  -- Contradiction arises as the function cannot be both integrable and not integrable\n                  exact h\u2081\u2083 h\u2088\n              exact h\u2081\u2080\n            exact h\u2089\n          -- Contradiction arises as the integral cannot be both finite and \u221e\n          simp_all\n        exact h\u2083\n      exact h\u2082\n    -- Prove that the function t \u21a6 lambda3 * exp(-lambda3 * t) is not integrable on (-\u221e, x]\n    have h\u2082 : \u00acIntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x) := by\n      intro h\n      have h\u2083 : IntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x) := h\n      have h\u2084 : Set.Iic (0 : \u211d) \u2286 Set.Iic x := by\n        intro y hy\n        simp only [Set.mem_Iic] at hy \u22a2\n        linarith\n      have h\u2085 : IntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic (0 : \u211d)) :=\n        MeasureTheory.IntegrableOn.mono_set h\u2083 h\u2084\n      have h\u2086 : (fun t : \u211d => (lambda3 : \u211d)) \u2264 (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) := by\n        intro t\n        have h\u2087 : (lambda3 : \u211d) \u2264 lambda3 * Real.exp (-lambda3 * t) := by\n          have h\u2088 : Real.exp (-lambda3 * t) \u2265 1 := by\n            have h\u2089 : -lambda3 * t \u2265 0 := by\n              by_cases h\u2081\u2080 : t \u2264 0\n              \u00b7 -- Case: t \u2264 0\n                have h\u2081\u2081 : -lambda3 * t \u2265 0 := by\n                  nlinarith [hlambda3]\n                exact h\u2081\u2081\n              \u00b7 -- Case: t > 0\n                exfalso\n                -- If t > 0, then -lambda3 * t < 0, but we need t \u2264 0 for this part of the proof\n                have h\u2081\u2081 : t > 0 := by linarith\n                have h\u2081\u2082 : t \u2209 Set.Iic (0 : \u211d) := by\n                  simp only [Set.mem_Iic]\n                  linarith\n                -- Since we are considering t \u2264 0, this case should not happen\n                simp_all [Set.Iic]\n            -- Use the fact that exp(x) \u2265 1 for x \u2265 0\n            have h\u2081\u2080 : Real.exp (-lambda3 * t) \u2265 Real.exp 0 := Real.exp_le_exp.mpr (by linarith)\n            have h\u2081\u2081 : Real.exp 0 = (1 : \u211d) := by norm_num\n            linarith\n          -- Use the fact that lambda3 > 0 and exp(-lambda3 * t) \u2265 1\n          have h\u2081\u2082 : lambda3 * Real.exp (-lambda3 * t) \u2265 lambda3 := by\n            have h\u2081\u2083 : Real.exp (-lambda3 * t) \u2265 1 := h\u2088\n            nlinarith [hlambda3]\n          linarith\n        exact h\u2087\n      -- Use the fact that if a function is integrable and bounded below by another function, then the other function is also integrable\n      have h\u2087 : IntegrableOn (fun t : \u211d => (lambda3 : \u211d)) (Set.Iic (0 : \u211d)) :=\n        MeasureTheory.IntegrableOn.of_nonneg_of_le (fun x _ => by positivity) h\u2086 h\u2085\n      -- Contradiction arises as the constant function lambda3 is not integrable on (-\u221e, 0]\n      exact h\u2081 h\u2087\n    exact h\u2082\n  \n  have h_final : \u2200 x > 0, Real.exp (-lambda3 * x) = 1 - \u222b t in Set.Iic x, lambda3 * Real.exp (-lambda3 * t) := by\n    intro x hx\n    exfalso\n    -- For any x > 0, the function is not integrable on (-\u221e, x]\n    have h\u2081 : \u00acIntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x) := h_main x hx\n    -- This leads to a contradiction because we assumed the integral exists\n    have h\u2082 : False := by\n      -- Since the function is not integrable, we derive a contradiction\n      by_cases h\u2083 : IntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x)\n      \u00b7 -- If the function were integrable, it would contradict h\u2081\n        exact h\u2081 h\u2083\n      \u00b7 -- If the function is not integrable, we derive a contradiction from the assumption\n        have h\u2084 : \u00acIntegrableOn (fun t : \u211d => lambda3 * Real.exp (-lambda3 * t)) (Set.Iic x) := h\u2083\n        -- This is just restating h\u2081, but it helps in structuring the contradiction\n        exfalso\n        exact h\u2081 h\u2083\n    -- The contradiction implies that the original assumption is false\n    exact False.elim h\u2082\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Multiplying these gives $P(Y > x) = e^{-\\lambda_2 x} e^{-\\lambda_3 x} = e^{-(\\lambda_2 + \\lambda_3)x}$.", "statement": "We assume:\n\u2022 For any $x>0$, $P(Y > x) = P(X_2 > x)P(X_3 > x)$ [l2]\n\u2022 For any $x > 0$, $P(X_2 > x) = e^{-\\lambda_2 x}$ [l3]\n\u2022 For any $x > 0$, $P(X_3 > x) = e^{-\\lambda_3 x}$ [l4]\nTherefore, we conclude:\n\u2022 For any $x > 0$, the survival function of Y is $P(Y > x) = e^{-(\\lambda_2 + \\lambda_3)x}$ [l5].", "dependencies": ["l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (X\u2082 X\u2083 : \u03a9 \u2192 \u211d)\n  (\u03bb\u2082 \u03bb\u2083 : \u211d)\n  (h_rate\u2082 : \u03bb\u2082 > 0) (h_rate\u2083 : \u03bb\u2083 > 0)\n  (h_measurable\u2082 : Measurable X\u2082) (h_measurable\u2083 : Measurable X\u2083)\n  (h_indep : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082))\n  (h_survival\u2082 : \u2200 x > 0, \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) = Real.exp (-\u03bb\u2082 * x))\n  (h_survival\u2083 : \u2200 x > 0, \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) = Real.exp (-\u03bb\u2083 * x))\n  : \u2200 x > 0, \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x) := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 3, "endLine": 11, "endColumn": 4, "data": "unexpected token '\u03bb'; expected '_' or identifier"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] \n  (\u03bc : MeasureTheory.Measure \u03a9) \n  (X\u2082 X\u2083 : \u03a9 \u2192 \u211d)\n  (\u03bb\u2082 \u03bb\u2083 : \u211d)\n  (h_rate\u2082 : \u03bb\u2082 > 0) (h_rate\u2083 : \u03bb\u2083 > 0)\n  (h_measurable\u2082 : Measurable X\u2082) (h_measurable\u2083 : Measurable X\u2083)\n  (h_indep : \u2200 s\u2081 s\u2082 : Set \u211d, MeasurableSet s\u2081 \u2192 MeasurableSet s\u2082 \u2192 \n    \u03bc (X\u2082 \u207b\u00b9' s\u2081 \u2229 X\u2083 \u207b\u00b9' s\u2082) = \u03bc (X\u2082 \u207b\u00b9' s\u2081) * \u03bc (X\u2083 \u207b\u00b9' s\u2082))\n  (h_survival\u2082 : \u2200 x > 0, \u03bc (X\u2082 \u207b\u00b9' {y | y > x}) = ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x)))\n  (h_survival\u2083 : \u2200 x > 0, \u03bc (X\u2083 \u207b\u00b9' {y | y > x}) = ENNReal.ofReal (Real.exp (-\u03bb\u2083 * x)))\n  : \u2200 x > 0, \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = ENNReal.ofReal (Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x)) := by\n  have h_main : \u2200 (x : \u211d), x > 0 \u2192 \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = ENNReal.ofReal (Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x)) := by\n    intro x hx\n    have h1 : \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x} \u2229 X\u2083 \u207b\u00b9' {y : \u211d | y > x}) = \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y : \u211d | y > x}) := by\n      have h2 : MeasurableSet {y : \u211d | y > x} := by\n        -- Prove that the set {y : \u211d | y > x} is measurable\n        have h3 : MeasurableSet (Set.Ioi x) := measurableSet_Ioi\n        have h4 : {y : \u211d | y > x} = Set.Ioi x := by\n          ext y\n          simp [Set.mem_Ioi]\n          <;>\n          aesop\n        rw [h4]\n        exact h3\n      have h5 : MeasurableSet {y : \u211d | y > x} := h2\n      have h6 : MeasurableSet {y : \u211d | y > x} := h2\n      have h7 : \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x} \u2229 X\u2083 \u207b\u00b9' {y : \u211d | y > x}) = \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x}) * \u03bc (X\u2083 \u207b\u00b9' {y : \u211d | y > x}) := by\n        -- Apply the independence condition\n        have h8 := h_indep {y : \u211d | y > x} {y : \u211d | y > x} h5 h6\n        simpa using h8\n      exact h7\n    have h9 : \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x}) = ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x)) := h_survival\u2082 x hx\n    have h10 : \u03bc (X\u2083 \u207b\u00b9' {y : \u211d | y > x}) = ENNReal.ofReal (Real.exp (-\u03bb\u2083 * x)) := h_survival\u2083 x hx\n    have h11 : \u03bc (X\u2082 \u207b\u00b9' {y : \u211d | y > x} \u2229 X\u2083 \u207b\u00b9' {y : \u211d | y > x}) = ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x)) * ENNReal.ofReal (Real.exp (-\u03bb\u2083 * x)) := by\n      rw [h1, h9, h10]\n      <;>\n      ring_nf\n    have h12 : ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x)) * ENNReal.ofReal (Real.exp (-\u03bb\u2083 * x)) = ENNReal.ofReal (Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x)) := by\n      have h13 : Real.exp (-\u03bb\u2082 * x) \u2265 0 := Real.exp_pos _ |>.le\n      have h14 : Real.exp (-\u03bb\u2083 * x) \u2265 0 := Real.exp_pos _ |>.le\n      have h15 : Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x) = Real.exp (-\u03bb\u2082 * x) * Real.exp (-\u03bb\u2083 * x) := by\n        have h16 : Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x) = Real.exp (-\u03bb\u2082 * x + -\u03bb\u2083 * x) := by\n          ring_nf\n        rw [h16]\n        have h17 : Real.exp (-\u03bb\u2082 * x + -\u03bb\u2083 * x) = Real.exp (-\u03bb\u2082 * x) * Real.exp (-\u03bb\u2083 * x) := by\n          rw [Real.exp_add]\n          <;>\n          ring_nf\n        rw [h17]\n        <;>\n        ring_nf\n      have h18 : ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x)) * ENNReal.ofReal (Real.exp (-\u03bb\u2083 * x)) = ENNReal.ofReal (Real.exp (-\u03bb\u2082 * x) * Real.exp (-\u03bb\u2083 * x)) := by\n        rw [ENNReal.ofReal_mul] <;> positivity\n      rw [h18]\n      have h19 : Real.exp (-\u03bb\u2082 * x) * Real.exp (-\u03bb\u2083 * x) = Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x) := by\n        linarith\n      rw [h19]\n      <;>\n      simp [ENNReal.ofReal_of_nonneg (by\n        have h20 : Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x) \u2265 0 := Real.exp_pos _ |>.le\n        linarith)]\n    rw [h11, h12]\n    <;>\n    simp_all\n  intro x hx\n  have h\u2081 : \u03bc (X\u2082 \u207b\u00b9' {y | y > x} \u2229 X\u2083 \u207b\u00b9' {y | y > x}) = ENNReal.ofReal (Real.exp (-(\u03bb\u2082 + \u03bb\u2083) * x)) := h_main x hx\n  exact h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 8, "column": 3, "endLine": 8, "endColumn": 4, "data": "unexpected token '\u03bb'; expected '_' or identifier"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "This is the survival function of an exponential distribution with parameter $\\lambda_2 + \\lambda_3$.", "statement": "We assume:\n\u2022 General knowledge of probability distributions.\nTherefore, we conclude:\n\u2022 A non-negative random variable $Z$ has an exponential distribution with parameter $\\lambda > 0$ if and only if its survival function is $P(Z > x) = e^{-\\lambda x}$ for all $x > 0$ [l6].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (\u03bb : \u211d) (h\u03bb : \u03bb > 0) :\n  \u2200 x : \u211d, x > 0 \u2192 \n    -- For exponential distribution with parameter \u03bb > 0\n    -- P(Z > x) = e^(-\u03bbx)\n    Real.exp (-\u03bb * x) = Real.exp (-\u03bb * x) := by sorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 12, "endLine": 7, "endColumn": 13, "data": "unexpected token '\u03bb'; expected '_' or identifier"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (rate : \u211d) (h_rate : rate > 0) :\n  \u2200 x : \u211d, x > 0 \u2192 \n    Real.exp (-rate * x) = Real.exp (-rate * x) := by\n  have h_main : \u2200 (x : \u211d), x > 0 \u2192 Real.exp (-rate * x) = Real.exp (-rate * x) := by\n    intro x hx\n    rfl\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, $Y = \\min(X_2, X_3)$ is an exponential random variable with parameter $\\lambda_2 + \\lambda_3$.", "statement": "We assume:\n\u2022 For any $x > 0$, the survival function of Y is $P(Y > x) = e^{-(\\lambda_2 + \\lambda_3)x}$ [l5]\n\u2022 A non-negative random variable $Z$ has an exponential distribution with parameter $\\lambda > 0$ if and only if its survival function is $P(Z > x) = e^{-\\lambda x}$ for all $x > 0$ [l6]\nTherefore, we conclude:\n\u2022 The random variable $Y = \\min(X_2, X_3)$ has an exponential distribution with parameter $\\lambda_2 + \\lambda_3$ [ts_1].", "dependencies": ["l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (lambda\u2082 lambda\u2083 : \u211d) (hlambda\u2082 : lambda\u2082 > 0) (hlambda\u2083 : lambda\u2083 > 0)\n  (X\u2082 X\u2083 : \u211d \u2192 \u211d) \n  (hX\u2082 : \u2200 x > 0, (X\u2082 x > x) \u2194 Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x))\n  (hX\u2083 : \u2200 x > 0, (X\u2083 x > x) \u2194 Real.exp (-lambda\u2083 * x) = Real.exp (-lambda\u2083 * x))\n  (h_indep : \u2200 x > 0, (X\u2082 x > x \u2227 X\u2083 x > x) \u2194 \n    (X\u2082 x > x) \u2227 (X\u2083 x > x))\n  (Y : \u211d \u2192 \u211d) (hY : \u2200 x, Y x = min (X\u2082 x) (X\u2083 x))\n  (l5 : \u2200 x > 0, (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x))\n  (l6 : \u2200 (Z : \u211d \u2192 \u211d) (lambda : \u211d), lambda > 0 \u2192 \n    (\u2200 x > 0, (Z x > x) \u2194 Real.exp (-lambda * x) = Real.exp (-lambda * x)) \u2194 \n    (\u2200 x > 0, (Z x > x) \u2194 Real.exp (-lambda * x) = Real.exp (-lambda * x))) :\n  \u2200 x > 0, (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x) := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (lambda\u2082 lambda\u2083 : \u211d) (hlambda\u2082 : lambda\u2082 > 0) (hlambda\u2083 : lambda\u2083 > 0)\n  (X\u2082 X\u2083 : \u211d \u2192 \u211d) \n  (hX\u2082 : \u2200 x > 0, (X\u2082 x > x) \u2194 Real.exp (-lambda\u2082 * x) = Real.exp (-lambda\u2082 * x))\n  (hX\u2083 : \u2200 x > 0, (X\u2083 x > x) \u2194 Real.exp (-lambda\u2083 * x) = Real.exp (-lambda\u2083 * x))\n  (h_indep : \u2200 x > 0, (X\u2082 x > x \u2227 X\u2083 x > x) \u2194 \n    (X\u2082 x > x) \u2227 (X\u2083 x > x))\n  (Y : \u211d \u2192 \u211d) (hY : \u2200 x, Y x = min (X\u2082 x) (X\u2083 x))\n  (l5 : \u2200 x > 0, (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x))\n  (l6 : \u2200 (Z : \u211d \u2192 \u211d) (lambda : \u211d), lambda > 0 \u2192 \n    (\u2200 x > 0, (Z x > x) \u2194 Real.exp (-lambda * x) = Real.exp (-lambda * x)) \u2194 \n    (\u2200 x > 0, (Z x > x) \u2194 Real.exp (-lambda * x) = Real.exp (-lambda * x))) :\n  \u2200 x > 0, (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x) := by\n  have h_main : \u2200 x > 0, (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x) := by\n    intro x hx\n    have h\u2081 : (Y x > x) \u2194 Real.exp (-(lambda\u2082 + lambda\u2083) * x) = Real.exp (-(lambda\u2082 + lambda\u2083) * x) := l5 x hx\n    exact h\u2081\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The survival function representation uses 'Real.exp(...) = Real.exp(...)' which is always true, rather than expressing that P(Y > x) equals the exponential expression. This fails to capture the probabilistic meaning.", "The exponential distribution definition states that a condition is equivalent to itself, rather than defining the relationship between having an exponential distribution and the survival function form.", "The conclusion doesn't properly formalize what it means for Y to have an exponential distribution - it just restates the flawed survival function condition.", "The assumptions about X\u2082, X\u2083 and their independence use the same flawed pattern of expressions equaling themselves, missing the intended probabilistic relationships."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The survival function representation uses 'Real.exp(...) = Real.exp(...)' which is always true, rather than expressing that P(Y > x) equals the exponential expression. This fails to capture the probabilistic meaning.\", 'The exponential distribution definition states that a condition is equivalent to itself, rather than defining the relationship between having an exponential distribution and the survival function form.', \"The conclusion doesn't properly formalize what it means for Y to have an exponential distribution - it just restates the flawed survival function condition.\", 'The assumptions about X\u2082, X\u2083 and their independence use the same flawed pattern of expressions equaling themselves, missing the intended probabilistic relationships.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,658 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Suppose that  $K$ is a bounded set with zero content and $\epsilon,$
+$\rho>0.$  Then there are cubes $C_1,$ $C_2,$ \dots$,$
+$C_r$ with edge lengths
+$<\rho$ such that  $C_j\cap K
+e\emptyset,$ $1\le j\le r,$
+\begin{equation}\label{eq:7.3.5}
+K\subset\bigcup_{j=1}^r C_j,
+\end{equation}
+and
+$$
+\sum_{j=1}^r V(C_j)<\epsilon.
+$$
+
+Proof: Since $V(K)=0$,
+$$
+\int_C\psi_K(\mathbf{X})\,d\mathbf{X}=0
+$$
+if $C$ is any cube containing $K$. From this and the
+definition of the integral, there is a $\delta>0$ such that if ${\bf
+P}$ is any partition of $C$ with $\|{\bf P}\|\le\delta$ and $\sigma$
+is any Riemann sum of $\psi_K$ over ${\bf P}$, then
+\begin{equation}\label{eq:7.3.6}
+0\le\sigma\le\epsilon.
+\end{equation}
+
+ewpage
+
+oindent
+Now suppose that  ${\bf P}=\{C_1,C_2,\dots,C_k\}$ is a partition of $C$
+into cubes with
+\begin{equation}\label{eq:7.3.7}
+\|{\bf P}\|<\min (\rho,\delta),
+\end{equation}
+and let $C_1$, $C_2$, \dots, $C_k$ be numbered so that $C_j\cap K
+e
+\emptyset$ if $1\le j\le r$  and
+$C_j\cap K=\emptyset$ if $r+1\le j\le k$. Then \eqref{eq:7.3.5} holds, and
+a typical Riemann sum of $\psi_K$ over ${\bf P}$ is of the form
+$$
+\sigma=\sum_{j=1}^r\psi_K(\mathbf{X}_j)V(C_j)
+$$
+with $\mathbf{X}_j\in C_j$, $1\le j\le r$. In particular, we
+can choose
+$\mathbf{X}_j$ from $K$, so that $\psi_K(\mathbf{X}_j)=1$,  and
+$$
+\sigma=\sum_{j=1}^r V(C_j).
+$$
+Now \eqref{eq:7.3.6} and \eqref{eq:7.3.7} imply that $C_1$, $C_2$, \dots,
+$C_r$ have the required properties.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "K is a bounded set", "statement": "Premise:\n\u2022 K is a bounded subset of \u211d\u207f [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (Fin n \u2192 \u211d))\n(tc_1 : BddAbove K \u2227 BddBelow K)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly represents K as a bounded subset of \u211d\u207f. The type 'Fin n \u2192 \u211d' is the standard representation of \u211d\u207f in Lean, and 'BddAbove K \u2227 BddBelow K' correctly captures the boundedness condition.", "Both the natural language and Lean formalization contain no conclusions, which matches perfectly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "K is a bounded set with zero content", "statement": "Premise:\n\u2022 K is a bounded subset of \u211d\u207f with zero content, V(K) = 0 [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 {n : \u2115} (K : Set (Fin n \u2192 \u211d)) \n  (hK_bounded : \u2203 (a b : Fin n \u2192 \u211d), \u2200 x \u2208 K, \u2200 i, a i \u2264 x i \u2227 x i \u2264 b i)\n  (hK_volume : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d) (h\u03b5 : 0 < \u03b5) (h\u03c1 : 0 < \u03c1) :\n  \u2203 (r : \u2115) (C : Fin r \u2192 Set (Fin n \u2192 \u211d)),\n    (\u2200 j, \u2203 (a : Fin n \u2192 \u211d) (s : \u211d), s < \u03c1 \u2227 \n      C j = Set.pi Set.univ (fun i => Set.Ioo (a i - s / 2) (a i + s / 2))) \u2227\n    (\u2200 j, (C j \u2229 K).Nonempty) \u2227\n    K \u2286 (Finset.univ : Finset (Fin r)).biUnion C \u2227\n    (Finset.univ : Finset (Fin r)).sum (fun j => MeasureTheory.volume (C j)) < \u03b5 := by sorry", "lean_pass": false, "error_msg": [{"line": 16, "column": 79, "endLine": 16, "endColumn": 80, "data": "type mismatch\n  \u03b5\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 15, "column": 8, "endLine": 15, "endColumn": 48, "data": "application type mismatch\n  K \u2286 Finset.univ.biUnion ?m.1756\nargument\n  Finset.univ.biUnion ?m.1756\nhas type\n  Finset ?m.1097 : Type\nbut is expected to have type\n  Set (Fin n \u2192 \u211d) : Type"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "\u03b5, \u03c1 > 0", "statement": "Premise:\n\u2022 \u03b5 is a positive real number, \u03b5 > 0 [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (\u03b5 : \u211d)\n(tc_3 : 0 < \u03b5)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that \u03b5 is a positive real number through the type declaration (\u03b5 : \u211d) combined with the constraint (tc_3 : 0 < \u03b5)", "The constraint (tc_3 : 0 < \u03b5) is mathematically equivalent to \u03b5 > 0, just written in the standard Lean notation where the smaller value comes first"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_4": {"id": "tc_4", "natural_language": "\u03b5, \u03c1 > 0", "statement": "Premise:\n\u2022 \u03c1 is a positive real number, \u03c1 > 0 [tc_4].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (\u03c1 : \u211d)\n(tc_4 : 0 < \u03c1)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that \u03c1 is a real number through 'variable (\u03c1 : \u211d)' and that it's positive through '(tc_4 : 0 < \u03c1)'. The combination of these two statements in Lean is equivalent to stating '\u03c1 is a positive real number'.", "The condition '\u03c1 > 0' in natural language is perfectly captured by '(tc_4 : 0 < \u03c1)' in Lean, as '0 < \u03c1' is mathematically equivalent to '\u03c1 > 0'."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "if C is any cube containing K.", "statement": "Definition:\n\u2022 Since K is a bounded set [tc_1], let C be a cube in \u211d\u207f that contains K [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (Fin n \u2192 \u211d))\n(tc_1 : BddAbove K \u2227 BddBelow K)\n\nvariable (C : Set (Fin n \u2192 \u211d))\n(def_1 : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b \u2227 K \u2286 C)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that K is bounded by expressing it as bounded above and below, which is equivalent to being bounded in \u211d\u207f", "The Lean formalization correctly represents C as a cube (closed interval Set.Icc a b) in \u211d\u207f that contains K (K \u2286 C)"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Since V(K)=0, \u222b_C \u03c8_K(X) dX=0 if C is any cube containing K.", "statement": "We assume:\n\u2022 K is a set with zero content, V(K) = 0 [tc_2].\n\u2022 C is a cube containing K [def_1].\nTherefore, we conclude:\n\u2022 The Riemann integral of the characteristic function of K, \u03c8_K, over the cube C is zero: \u222b_C \u03c8_K(X) dX = 0 [l1].", "dependencies": ["tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (C : Set (Fin n \u2192 \u211d))\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (hC_cube : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b \u2227 K \u2286 C)\n  (hK_decidable : \u2200 x, Decidable (x \u2208 K)) :\n  \u222b x in C, (if x \u2208 K then 1 else 0) = 0 := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 2, "endLine": 12, "endColumn": 36, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (C : Set (Fin n \u2192 \u211d))\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (hC_cube : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b \u2227 K \u2286 C)\n  (hK_decidable : \u2200 x, Decidable (x \u2208 K)) :\n  \u222b x in C, (if x \u2208 K then 1 else 0) = 0 := by\n  have hK_measurable : MeasurableSet K := by\n    have h\u2081 : MeasurableSet K := by\n      -- Use the fact that the volume of K is zero to show that K is measurable.\n      have h\u2082 : MeasureTheory.volume K = 0 := hK_zero_measure\n      -- Use the property of the volume measure to deduce that K is measurable.\n      have h\u2083 : MeasurableSet K := by\n        -- Use the fact that the volume measure is complete and the volume of K is zero.\n        apply MeasurableSet.of_volume_measurable\n        <;> simp_all [hK_zero_measure]\n      exact h\u2083\n    exact h\u2081\n  \n  have h_ae_zero : (fun x : (Fin n \u2192 \u211d) => (if x \u2208 K then (1 : \u211d) else 0)) =\u1d50[MeasureTheory.volume] (fun _ => (0 : \u211d)) := by\n    have h\u2081 : \u2200\u1d50 (x : Fin n \u2192 \u211d) \u2202MeasureTheory.volume, x \u2209 K := by\n      -- Use the fact that K has measure zero to show that almost every x is not in K\n      have h\u2082 : MeasureTheory.volume K = 0 := hK_zero_measure\n      have h\u2083 : MeasurableSet K := hK_measurable\n      -- Use the lemma that if a set has measure zero, then almost every point is not in it\n      have h\u2084 : \u2200\u1d50 (x : Fin n \u2192 \u211d) \u2202MeasureTheory.volume, x \u2209 K := by\n        apply MeasureTheory.ae_not_mem_null_set h\u2083\n        simp [h\u2082]\n      exact h\u2084\n    -- Use the fact that almost every x is not in K to show that the function is almost everywhere zero\n    filter_upwards [h\u2081] with x hx\n    by_cases hx' : x \u2208 K\n    <;> simp_all [hx']\n    <;>\n    (try contradiction)\n    <;>\n    (try simp_all)\n    <;>\n    (try norm_num)\n  \n  have hC_measurable : MeasurableSet C := by\n    obtain \u27e8a, b, hC, hK\u27e9 := hC_cube\n    rw [hC]\n    -- A cube in \u211d\u207f is a measurable set because it is a product of intervals, which are measurable.\n    exact measurableSet_Icc\n  \n  have h_integral_zero : \u222b x in C, (if x \u2208 K then (1 : \u211d) else 0) = 0 := by\n    have h\u2081 : \u222b x in C, (if x \u2208 K then (1 : \u211d) else 0) = \u222b x in C, (0 : \u211d) := by\n      -- Use the fact that the functions are almost everywhere equal to change the integrand\n      have h\u2082 : (fun x : (Fin n \u2192 \u211d) => (if x \u2208 K then (1 : \u211d) else 0)) =\u1d50[MeasureTheory.volume] (fun _ => (0 : \u211d)) := h_ae_zero\n      have h\u2083 : \u222b x in C, (if x \u2208 K then (1 : \u211d) else 0) = \u222b x in C, (0 : \u211d) := by\n        -- Use the fact that the functions are almost everywhere equal to change the integrand\n        apply MeasureTheory.set_integral_congr_ae hC_measurable\n        filter_upwards [h\u2082] with x hx\n        simp_all\n      exact h\u2083\n    -- Simplify the integral of the zero function\n    have h\u2082 : \u222b x in C, (0 : \u211d) = 0 := by\n      simp\n    -- Combine the results to get the final answer\n    calc\n      \u222b x in C, (if x \u2208 K then (1 : \u211d) else 0) = \u222b x in C, (0 : \u211d) := h\u2081\n      _ = 0 := h\u2082\n  \n  have h\u2082 : \u222b x in C, (if x \u2208 K then 1 else 0) = 0 := by\n    have h\u2083 : \u222b x in C, (if x \u2208 K then 1 else 0 : \u211d) = 0 := by\n      simpa using h_integral_zero\n    -- Use the fact that the integral of the real-valued function is zero to deduce that the integral of the natural number-valued function is also zero.\n    have h\u2084 : \u222b x in C, (if x \u2208 K then 1 else 0 : \u2115) = 0 := by\n      -- Use the fact that the integral of the real-valued function is zero to deduce that the integral of the natural number-valued function is also zero.\n      norm_cast at h\u2083 \u22a2\n      <;> simp_all [MeasureTheory.setIntegral_congr_ae]\n      <;>\n      (try simp_all [hC_measurable])\n      <;>\n      (try norm_cast)\n      <;>\n      (try simp_all [hC_measurable])\n      <;>\n      (try norm_cast)\n      <;>\n      (try simp_all [hC_measurable])\n      <;>\n      (try norm_cast)\n      <;>\n      (try simp_all [hC_measurable])\n      <;>\n      (try norm_cast)\n    -- Cast the result back to natural numbers.\n    exact_mod_cast h\u2084\n  \n  exact h\u2082", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 2, "endLine": 9, "endColumn": 36, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 17, "column": 14, "endLine": 17, "endColumn": 48, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  MeasurableSet\nhas type\n  Set ?m.2412 \u2192 Prop"}, {"line": 29, "column": 14, "endLine": 29, "endColumn": 47, "data": "unknown identifier 'MeasureTheory.ae_not_mem_None_set'"}, {"line": 30, "column": 8, "endLine": 30, "endColumn": 17, "data": "no goals to be solved"}, {"line": 67, "column": 12, "endLine": 67, "endColumn": 46, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 71, "column": 14, "endLine": 71, "endColumn": 52, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 71, "column": 60, "endLine": 90, "endColumn": 21, "data": "unsolved goals\nn : \u2115\nK C : Set (Fin n \u2192 \u211d)\nhK_zero_measure : MeasureTheory.volume K = 0\nhK_decidable : (x : Fin n \u2192 \u211d) \u2192 Decidable (x \u2208 K)\nhC_cube : (\u2203 x x_1, C = Set.Icc x x_1) \u2227 K \u2286 C\nhK_measurable : MeasurableSet K\nh_ae_zero : (fun x => if x \u2208 K then 1 else 0) =\u1d50[MeasureTheory.volume] fun x => 0\nhC_measurable : MeasurableSet C\nh_integral_zero : (\u222b (x : Fin n \u2192 \u211d) in C, if x \u2208 K then 1 else 0) = 0\n\u22a2 sorry = 0"}, {"line": 94, "column": 8, "endLine": 94, "endColumn": 10, "data": "unknown identifier 'h\u2082'"}, {"line": 9, "column": 44, "endLine": 94, "endColumn": 10, "data": "unsolved goals\ncase refine_2\nn : \u2115\nK C : Set (Fin n \u2192 \u211d)\nhK_zero_measure : MeasureTheory.volume K = 0\nhC_cube : \u2203 a b, C = Set.Icc a b \u2227 K \u2286 C\nhK_decidable : (x : Fin n \u2192 \u211d) \u2192 Decidable (x \u2208 K)\nhK_measurable : MeasurableSet K\nh_ae_zero : (fun x => if x \u2208 K then 1 else 0) =\u1d50[MeasureTheory.volume] fun x => 0\nhC_measurable : MeasurableSet C\nh_integral_zero : (\u222b (x : Fin n \u2192 \u211d) in C, if x \u2208 K then 1 else 0) = 0\n\u22a2 NormedSpace \u211d \u2115\n\ncase refine_3\nn : \u2115\nK C : Set (Fin n \u2192 \u211d)\nhK_zero_measure : MeasureTheory.volume K = 0\nhC_cube : \u2203 a b, C = Set.Icc a b \u2227 K \u2286 C\nhK_decidable : (x : Fin n \u2192 \u211d) \u2192 Decidable (x \u2208 K)\nhK_measurable : MeasurableSet K\nh_ae_zero : (fun x => if x \u2208 K then 1 else 0) =\u1d50[MeasureTheory.volume] fun x => 0\nhC_measurable : MeasurableSet C\nh_integral_zero : (\u222b (x : Fin n \u2192 \u211d) in C, if x \u2208 K then 1 else 0) = 0\nh\u2082 : (\u222b (x : Fin n \u2192 \u211d) in C, if x \u2208 K then 1 else 0) = 0\n\u22a2 (\u222b (x : Fin n \u2192 \u211d) in C, if x \u2208 K then 1 else 0) = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "From this and the definition of the integral, there is a \u03b4>0 such that if P is any partition of C with \u2225P\u2225\u2264\u03b4 and \u03c3 is any Riemann sum of \u03c8_K over P, then 0\u2264\u03c3\u2264\u03b5.", "statement": "We assume:\n\u2022 The integral of \u03c8_K over C is 0 [l1].\n\u2022 \u03b5 is a positive real number [tc_3].\nTherefore, we conclude:\n\u2022 By the definition of the Riemann integral, there exists a number \u03b4 > 0 such that for any partition P of C with norm \u2225P\u2225 \u2264 \u03b4, any corresponding Riemann sum \u03c3 of the non-negative function \u03c8_K over P satisfies 0 \u2264 \u03c3 \u2264 \u03b5 [l2].", "dependencies": ["l1", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (K C : Set \u211d) (\u03b5 : \u211d)\n  (hK_measurable : MeasurableSet K)\n  (hC_measurable : MeasurableSet C)\n  (hK_subset : K \u2286 C)\n  (hK_volume_zero : MeasureTheory.volume K = 0)\n  (tc_3 : 0 < \u03b5) :\n  \u2203 \u03b4 > 0, \u2200 (P : Finset (Set \u211d)),\n    (\u2200 s \u2208 P, MeasurableSet s) \u2192\n    (\u2200 x \u2208 C, \u2203! s \u2208 P, x \u2208 s) \u2192\n    (P.sup (fun s => MeasureTheory.volume s) \u2264 \u03b4) \u2192\n    \u2200 (sample_points : Finset \u211d),\n      (\u2200 p \u2208 sample_points, \u2203 s \u2208 P, p \u2208 s) \u2192\n      let \u03c3 := \u2211 p in sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume (sample_points.filter (fun x => x = p)))\n      0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5 := by sorry", "lean_pass": false, "error_msg": [{"line": 20, "column": 38, "endLine": 20, "endColumn": 60, "data": "failed to synthesize\n  Decidable (p \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 21, "column": 18, "endLine": 21, "endColumn": 19, "data": "type mismatch\n  \u03b5\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 20, "column": 86, "endLine": 20, "endColumn": 125, "data": "application type mismatch\n  MeasureTheory.volume (Finset.filter (fun x => x = p) sample_points)\nargument\n  Finset.filter (fun x => x = p) sample_points\nhas type\n  Finset \u211d : Type\nbut is expected to have type\n  Set (?m.4814 \u03b4 P sample_points p) : Type"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (K C : Set \u211d) (\u03b5 : \u211d)\n  (hK_measurable : MeasurableSet K)\n  (hC_measurable : MeasurableSet C)\n  (hK_subset : K \u2286 C)\n  (hK_volume_zero : MeasureTheory.volume K = 0)\n  (tc_3 : 0 < \u03b5) :\n  \u2203 \u03b4 > 0, \u2200 (P : Finset (Set \u211d)),\n    (\u2200 s \u2208 P, MeasurableSet s) \u2192\n    (\u2200 x \u2208 C, \u2203! s \u2208 P, x \u2208 s) \u2192\n    (P.sup (fun s => MeasureTheory.volume s) \u2264 \u03b4) \u2192\n    \u2200 (sample_points : Finset \u211d),\n      (\u2200 p \u2208 sample_points, \u2203 s \u2208 P, p \u2208 s) \u2192\n      let \u03c3 := \u2211 p in sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume (sample_points.filter (fun x => x = p)))\n      0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5 := by\n  have h_main : \u2203 \u03b4 > 0, \u2200 (P : Finset (Set \u211d)), (\u2200 s \u2208 P, MeasurableSet s) \u2192 (\u2200 x \u2208 C, \u2203! s \u2208 P, x \u2208 s) \u2192 (P.sup (fun s => MeasureTheory.volume s) \u2264 \u03b4) \u2192 \u2200 (sample_points : Finset \u211d), (\u2200 p \u2208 sample_points, \u2203 s \u2208 P, p \u2208 s) \u2192 (let \u03c3 := \u2211 p in sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d)); 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5) := by\n    use 1\n    constructor\n    \u00b7 norm_num\n    intro P hP_measurable hP_partition hP_norm sample_points h_sample_points\n    dsimp\n    have h\u2081 : \u2211 p in sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d)) = 0 := by\n      have h\u2082 : \u2200 p \u2208 sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d)) = 0 := by\n        intro p hp\n        have h\u2083 : MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) = 0 := by\n          have h\u2084 : ((sample_points.filter (fun x => x = p)) : Set \u211d) \u2286 {p} := by\n            intro x hx\n            simp only [Finset.mem_filter] at hx\n            simp only [Set.mem_singleton_iff]\n            aesop\n          have h\u2085 : MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) \u2264 MeasureTheory.volume ({p} : Set \u211d) := by\n            apply MeasureTheory.volume_mono\n            exact h\u2084\n          have h\u2086 : MeasureTheory.volume ({p} : Set \u211d) = 0 := by\n            simp [Real.volume_singleton]\n          have h\u2087 : MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) \u2264 0 := by\n            calc\n              MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) \u2264 MeasureTheory.volume ({p} : Set \u211d) := h\u2085\n              _ = 0 := h\u2086\n          have h\u2088 : MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) \u2265 0 := by\n            apply MeasureTheory.volume_nonneg\n          have h\u2089 : MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) = 0 := by\n            linarith\n          exact h\u2089\n        have h\u2081\u2080 : (if p \u2208 K then 1 else 0 : \u211d) * (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) : \u211d) = 0 := by\n          have h\u2081\u2081 : (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d) : \u211d) = 0 := by\n            norm_cast at h\u2083 \u22a2\n            <;> simp_all [h\u2083]\n          rw [h\u2081\u2081]\n          <;> simp [mul_zero]\n        simpa using h\u2081\u2080\n      calc\n        \u2211 p in sample_points, (if p \u2208 K then 1 else 0) * (MeasureTheory.volume ((sample_points.filter (fun x => x = p)) : Set \u211d)) = \u2211 p in sample_points, 0 := by\n          apply Finset.sum_congr rfl\n          intro p hp\n          rw [h\u2082 p hp]\n        _ = 0 := by simp\n    rw [h\u2081]\n    constructor <;> linarith\n  obtain \u27e8\u03b4, h\u03b4_pos, h\u03b4\u27e9 := h_main\n  refine' \u27e8\u03b4, h\u03b4_pos, _\u27e9\n  intro P hP_measurable hP_partition hP_norm sample_points h_sample_points\n  have h\u2082 := h\u03b4 P hP_measurable hP_partition hP_norm sample_points h_sample_points\n  dsimp at h\u2082 \u22a2\n  <;> simp_all [Finset.sum_const, Finset.card_univ]\n  <;> norm_cast at *\n  <;>\n  (try\n    norm_num at *\n    <;>\n    linarith)\n  <;>\n  (try\n    simp_all [Finset.sum_const, Finset.card_univ]\n    <;>\n    norm_num at *\n    <;>\n    linarith)\n  <;>\n  (try\n    {\n      have h\u2083 := h\u2082\n      simp_all [Finset.sum_const, Finset.card_univ]\n      <;>\n      norm_num at *\n      <;>\n      linarith\n    })\n  <;>\n  (try\n    {\n      have h\u2083 := h\u2082\n      simp_all [Finset.sum_const, Finset.card_univ]\n      <;>\n      norm_num at *\n      <;>\n      linarith\n    })", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 38, "endLine": 17, "endColumn": 60, "data": "failed to synthesize\n  Decidable (p \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 18, "column": 18, "endLine": 18, "endColumn": 19, "data": "type mismatch\n  \u03b5\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 17, "column": 86, "endLine": 17, "endColumn": 125, "data": "application type mismatch\n  MeasureTheory.volume (Finset.filter (fun x => x = p) sample_points)\nargument\n  Finset.filter (fun x => x = p) sample_points\nhas type\n  Finset \u211d : Type\nbut is expected to have type\n  Set (?m.4814 \u03b4 P sample_points p) : Type"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Now suppose that P={C_1,C_2,\u2026,C_k} is a partition of C into cubes with \u2225P\u2225<min(\u03c1,\u03b4),", "statement": "Definition:\n\u2022 Let C be a cube containing K [def_1].\n\u2022 Let \u03c1 > 0 be a given real number [tc_4].\n\u2022 Let \u03b4 > 0 be the number from the definition of the integral limit [l2].\n\u2022 We define a partition P = {C_1, C_2, ..., C_k} of C into sub-cubes such that its norm (the maximum edge length of any sub-cube) satisfies \u2225P\u2225 < min(\u03c1, \u03b4) [def_2].", "dependencies": ["def_1", "tc_4", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (\u03c1 \u03b4 \u03b5 : \u211d)\n  (h\u03c1 : 0 < \u03c1) (h\u03b4 : 0 < \u03b4) (h\u03b5 : 0 < \u03b5)\n  (hK_bounded : BddAbove K \u2227 BddBelow K) :\n  \u2203 (r : \u2115) (a b : Fin r \u2192 Fin n \u2192 \u211d),\n    r > 0 \u2227\n    (\u2200 i : Fin r, \u2200 j : Fin n, b i j - a i j < \u03c1) \u2227\n    (K \u2286 (Finset.univ : Finset (Fin r)).biUnion (fun i => Set.Icc (a i) (b i))) \u2227\n    ((Finset.univ : Finset (Fin r)).sum (fun i => MeasureTheory.volume (Set.Icc (a i) (b i))) < \u03b5) := by sorry", "lean_pass": false, "error_msg": [{"line": 9, "column": 41, "endLine": 9, "endColumn": 42, "data": "unexpected token ':'; expected command"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "def_3": {"id": "def_3", "natural_language": "and let C_1, C_2, \u2026, C_k be numbered so that C_j\u2229K\u2260\u2205 if 1\u2264j\u2264r and C_j\u2229K=\u2205 if r+1\u2264j\u2264k.", "statement": "Definition:\n\u2022 Given the partition P = {C_1, ..., C_k} [def_2], we re-index its cubes.\n\u2022 Let {C_1, ..., C_r} be the sub-collection of cubes in P such that C_j \u2229 K \u2260 \u2205 for 1 \u2264 j \u2264 r.\n\u2022 The remaining cubes {C_{r+1}, ..., C_k} are those for which C_j \u2229 K = \u2205 [def_3].", "dependencies": ["def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_3 {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (\u03c1 \u03b4 : \u211d)\n  (h\u03c1 : 0 < \u03c1) (h\u03b4 : 0 < \u03b4) :\n  \u2203 (r k : \u2115) (P : Fin k \u2192 Set (Fin n \u2192 \u211d)),\n    -- P is a partition of some cube containing K\n    (\u2200 i j, i \u2260 j \u2192 Disjoint (P i) (P j)) \u2227\n    (\u2203 C : Set (Fin n \u2192 \u211d), (\u2200 i, P i \u2286 C) \u2227 K \u2286 C) \u2227\n    -- Each cube in the partition has edge length < min(\u03c1, \u03b4)\n    (\u2200 i, \u2203 (cube : Set (Fin n \u2192 \u211d)), P i = cube \u2227 \n      \u2200 (x y : Fin n \u2192 \u211d), x \u2208 cube \u2192 y \u2208 cube \u2192 \n      \u2200 j, |x j - y j| < min \u03c1 \u03b4) \u2227\n    -- The first r cubes intersect K, the remaining k-r cubes don't\n    (\u2200 j : Fin k, j.val \u2264 r \u2192 (P j) \u2229 K.Nonempty) \u2227\n    (\u2200 j : Fin k, j.val > r \u2192 Disjoint (P j) K) := by sorry", "lean_pass": false, "error_msg": [{"line": 18, "column": 38, "endLine": 18, "endColumn": 48, "data": "application type mismatch\n  \u2191(P j) \u2229 K.Nonempty\nargument\n  K.Nonempty\nhas type\n  Prop : Type\nbut is expected to have type\n  Type : Type 1"}, {"line": 18, "column": 30, "endLine": 18, "endColumn": 48, "data": "failed to synthesize\n  Inter Type\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "Then (7.3.5) holds,", "statement": "We assume:\n\u2022 K is a set contained in a cube C [def_1, tc_1].\n\u2022 P = {C_1, ..., C_k} is a partition of C [def_2].\n\u2022 {C_1, ..., C_r} is the subset of cubes from P that have a non-empty intersection with K [def_3].\nTherefore, we conclude:\n\u2022 K is a subset of the union of the cubes that intersect it: K \u2282 \u22c3_{j=1}^r C_j [l3].", "dependencies": ["tc_1", "def_1", "def_2", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 {n : \u2115} \n  (K : Set (Fin n \u2192 \u211d)) \n  (C : Set (Fin n \u2192 \u211d))\n  (P : Finset (Set (Fin n \u2192 \u211d)))\n  (r : \u2115)\n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hC_cube : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b)\n  (hK_subset : K \u2286 C)\n  (hP_partition : -- P is a partition of C\n    (\u2200 C' \u2208 P, C' \u2286 C) \u2227 \n    (C = \u22c3 C' \u2208 P, C') \u2227\n    (\u2200 C\u2081 C\u2082, C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082))\n  (hP_intersect : \u2203 (intersecting : Finset (Set (Fin n \u2192 \u211d))), \n    intersecting \u2286 P \u2227 \n    intersecting.card = r \u2227\n    (\u2200 C' \u2208 intersecting, (C' \u2229 K).Nonempty) \u2227\n    (\u2200 C' \u2208 P \\ intersecting, C' \u2229 K = \u2205)) :\n  K \u2286 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 {n : \u2115} \n  (K : Set (Fin n \u2192 \u211d)) \n  (C : Set (Fin n \u2192 \u211d))\n  (P : Finset (Set (Fin n \u2192 \u211d)))\n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hC_cube : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b)\n  (hK_subset : K \u2286 C)\n  (hP_partition : (\u2200 C' \u2208 P, C' \u2286 C) \u2227 (C = \u22c3 C' \u2208 P, C') \u2227 (\u2200 C\u2081 C\u2082, C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082)) :\n  K \u2286 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n  classical\n  intro x hx\n  have h\u2081 : x \u2208 C := hK_subset hx\n  have h\u2082 : x \u2208 \u22c3 C' \u2208 P, C' := by\n    have h\u2083 : C = \u22c3 C' \u2208 P, C' := hP_partition.2.1\n    rw [h\u2083] at h\u2081\n    exact h\u2081\n  -- Obtain the set C' in P that contains x\n  have h\u2083 : \u2203 (C' : Set (Fin n \u2192 \u211d)), C' \u2208 P \u2227 x \u2208 C' := by\n    classical\n    -- Use the fact that P is finite to find C' \u2208 P such that x \u2208 C'\n    have h\u2084 : x \u2208 \u22c3 C' \u2208 P, C' := h\u2082\n    -- Use the property of the partition to find the specific C'\n    have h\u2085 : \u2203 (C' : Set (Fin n \u2192 \u211d)), C' \u2208 P \u2227 x \u2208 C' := by\n      classical\n      -- Use the fact that the union of P covers C to find C'\n      have h\u2086 : x \u2208 \u22c3 C' \u2208 P, C' := h\u2082\n      -- Use the Finset property to find the specific C'\n      simp only [Finset.mem_coe, Set.mem_iUnion] at h\u2086 \u22a2\n      obtain \u27e8C', hC'\u27e9 := h\u2086\n      refine' \u27e8C', _\u27e9\n      aesop\n    exact h\u2085\n  obtain \u27e8C', hC'_in_P, hC'_contains_x\u27e9 := h\u2083\n  have h\u2084 : (C' \u2229 K).Nonempty := by\n    -- Show that C' \u2229 K is nonempty because it contains x\n    have h\u2085 : x \u2208 C' := hC'_contains_x\n    have h\u2086 : x \u2208 K := hx\n    have h\u2087 : x \u2208 C' \u2229 K := Set.mem_inter h\u2085 h\u2086\n    exact \u27e8x, h\u2087\u27e9\n  -- Check that C' is in the filtered set\n  have h\u2085 : C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty) := by\n    apply Finset.mem_filter.mpr\n    constructor\n    \u00b7 -- Prove C' \u2208 P\n      exact hC'_in_P\n    \u00b7 -- Prove (C' \u2229 K).Nonempty\n      exact h\u2084\n  -- Conclude that x is in the union of the filtered set\n  have h\u2086 : x \u2208 C' := hC'_contains_x\n  have h\u2087 : x \u2208 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n    classical\n    -- Use the fact that C' is in the filtered set and x \u2208 C' to conclude\n    have h\u2088 : C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty) := h\u2085\n    have h\u2089 : x \u2208 C' := h\u2086\n    -- Use the property of the union to conclude\n    have h\u2081\u2080 : x \u2208 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n      apply Set.mem_iUnion.mpr\n      refine' \u27e8C', _\u27e9\n      <;> simp_all [Finset.mem_filter]\n      <;> aesop\n    exact h\u2081\u2080\n  exact h\u2087", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 12, "column": 13, "endLine": 12, "endColumn": 51, "data": "failed to synthesize\n  DecidablePred fun C' => (C' \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The representation of K as a set contained in cube C is correctly formalized with proper subset relation and cube definition.", "The partition definition correctly captures all three essential properties: subset relation, union property, and disjointness.", "The intersecting cubes subset is properly defined with cardinality r and intersection conditions.", "The conclusion uses P.filter to identify intersecting cubes rather than the explicitly defined 'intersecting' finset from the hypothesis, creating a structural mismatch with the natural language setup that refers to the specific subset {C_1, ..., C_r}.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.75 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 {n : \u2115} \n  (K : Set (Fin n \u2192 \u211d)) \n  (C : Set (Fin n \u2192 \u211d))\n  (P : Finset (Set (Fin n \u2192 \u211d)))\n  (r : \u2115)\n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hC_cube : \u2203 (a b : Fin n \u2192 \u211d), C = Set.Icc a b)\n  (hK_subset : K \u2286 C)\n  (hP_partition : \n    (\u2200 C' \u2208 P, C' \u2286 C) \u2227 \n    (C = \u22c3 C' \u2208 P, C') \u2227\n    (\u2200 C\u2081 C\u2082, C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082))\n  (hP_intersect : \u2203 (intersecting : Finset (Set (Fin n \u2192 \u211d))), \n    intersecting \u2286 P \u2227 \n    intersecting.card = r \u2227\n    (\u2200 C' \u2208 intersecting, (C' \u2229 K).Nonempty) \u2227\n    (\u2200 C' \u2208 P \\ intersecting, C' \u2229 K = \u2205)) :\n  K \u2286 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n  classical\n  have h_main : K \u2286 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n    intro x hx\n    have h\u2081 : x \u2208 C := hK_subset hx\n    have h\u2082 : C = \u22c3 C' \u2208 P, C' := hP_partition.2.1\n    have h\u2083 : x \u2208 \u22c3 C' \u2208 P, C' := by\n      rw [h\u2082] at h\u2081\n      exact h\u2081\n    -- Use Finset.mem_biUnion to find a C' in P such that x \u2208 C'\n    have h\u2084 : \u2203 (C' : Set (Fin n \u2192 \u211d)), C' \u2208 P \u2227 x \u2208 C' := by\n      classical\n      -- Use Finset.mem_biUnion to decompose the union\n      have h\u2085 : x \u2208 \u22c3 C' \u2208 P, C' := h\u2083\n      simp only [Finset.mem_biUnion] at h\u2085\n      obtain \u27e8C', hC'_in_P, hC'_contains_x\u27e9 := h\u2085\n      exact \u27e8C', hC'_in_P, hC'_contains_x\u27e9\n    -- Obtain the C' from the existential statement\n    obtain \u27e8C', hC'_in_P, hC'_contains_x\u27e9 := h\u2084\n    have h\u2085 : (C' \u2229 K).Nonempty := by\n      -- Since x \u2208 C' and x \u2208 K, C' \u2229 K is nonempty\n      have h\u2086 : x \u2208 C' \u2229 K := Set.mem_inter hC'_contains_x hx\n      exact \u27e8x, h\u2086\u27e9\n    -- C' is in the filtered set\n    have h\u2086 : C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty) := by\n      apply Finset.mem_filter.mpr\n      constructor\n      \u00b7 exact hC'_in_P\n      \u00b7 exact h\u2085\n    -- x is in the union of the filtered set\n    have h\u2087 : x \u2208 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n      -- Use Finset.mem_biUnion to show x is in the union\n      have h\u2088 : x \u2208 C' := hC'_contains_x\n      have h\u2089 : C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty) := h\u2086\n      have h\u2081\u2080 : x \u2208 \u22c3 C' \u2208 P.filter (fun C' => (C' \u2229 K).Nonempty), C' := by\n        classical\n        -- Use Finset.mem_biUnion to show x is in the union\n        simp only [Finset.mem_biUnion]\n        refine' \u27e8C', h\u2089, _\u27e9\n        exact h\u2088\n      exact h\u2081\u2080\n    exact h\u2087\n  exact h_main"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "a typical Riemann sum of \u03c8_K over P is of the form \u03c3=\u2211_{j=1}^r \u03c8_K(X_j)V(C_j) with X_j\u2208C_j, 1\u2264j\u2264r.", "statement": "We assume:\n\u2022 P is a partition {C_1, ..., C_k} where cubes {C_1, ..., C_r} intersect K and cubes {C_{r+1}, ..., C_k} do not [def_3].\n\u2022 \u03c8_K is the characteristic function of K.\nTherefore, we conclude:\n\u2022 A general Riemann sum \u03c3 = \u2211_{j=1}^k \u03c8_K(X_j)V(C_j) over P simplifies to \u03c3 = \u2211_{j=1}^r \u03c8_K(X_j)V(C_j), because for j > r, any choice of X_j in C_j will have \u03c8_K(X_j) = 0 [l4].", "dependencies": ["def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (K : Set \u211d) \n  (r k : \u2115)\n  (Cubes : Fin k \u2192 Set \u211d)\n  (\u03c8_K : \u211d \u2192 \u211d)\n  (h_characteristic : \u2200 x, \u03c8_K x = if x \u2208 K then 1 else 0)\n  : \n  (\u2211 j in Finset.range k, \u03c8_K (Classical.choose (sorry : \u2203 x \u2208 Cubes j, True)) * (MeasureTheory.volume (Cubes j))) = \n  (\u2211 j in Finset.range r, \u03c8_K (Classical.choose (sorry : \u2203 x \u2208 Cubes j, True)) * (MeasureTheory.volume (Cubes j))) := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 35, "endLine": 12, "endColumn": 57, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 69, "endLine": 14, "endColumn": 70, "data": "application type mismatch\n  Cubes j\nargument\n  j\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 14, "column": 110, "endLine": 14, "endColumn": 111, "data": "application type mismatch\n  Cubes j\nargument\n  j\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 14, "column": 26, "endLine": 14, "endColumn": 113, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.2565\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 69, "endLine": 15, "endColumn": 70, "data": "application type mismatch\n  Cubes j\nargument\n  j\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 15, "column": 110, "endLine": 15, "endColumn": 111, "data": "application type mismatch\n  Cubes j\nargument\n  j\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 15, "column": 26, "endLine": 15, "endColumn": 113, "data": "failed to synthesize\n  HMul \u211d ENNReal ?m.5809\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (K : Set \u211d) \n  (r k : \u2115)\n  (Cubes : Fin k \u2192 Set \u211d)\n  (\u03c8_K : \u211d \u2192 \u211d)\n  (h_characteristic : \u2200 x, \u03c8_K x = if x \u2208 K then 1 else 0)\n  : \n  (\u2211 j in Finset.range k, \u03c8_K (Classical.choose (by\n    classical\n    have h : Nonempty (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9) := by\n      by_contra! h\u2081\n      simp_all [Set.not_nonempty_iff_eq_empty]\n      <;> aesop\n    exact h\n  )) * (MeasureTheory.volume (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9)).toReal) = \n  (\u2211 j in Finset.range r, \u03c8_K (Classical.choose (by\n    classical\n    have h : Nonempty (Cubes \u27e8j, by\n      have h\u2081 : j < r := Finset.mem_range.mp \u2039_\u203a\n      have h\u2082 : r \u2264 k := by\n        by_contra h\u2083\n        have h\u2084 : k < r := by omega\n        have h\u2085 : k \u2208 Finset.range r := by\n          rw [Finset.mem_range]\n          omega\n        have h\u2086 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n          by_contra! h\u2087\n          simp_all [Set.not_nonempty_iff_eq_empty]\n          <;> aesop\n        simp_all [Fin.ext_iff]\n        <;> omega\n      omega\n      \u27e9) := by\n      by_contra! h\u2081\n      simp_all [Set.not_nonempty_iff_eq_empty]\n      <;> aesop\n    exact h\n  )) * (MeasureTheory.volume (Cubes \u27e8j, by\n    have h\u2081 : j < r := Finset.mem_range.mp \u2039_\u203a\n    have h\u2082 : r \u2264 k := by\n      by_contra h\u2083\n      have h\u2084 : k < r := by omega\n      have h\u2085 : k \u2208 Finset.range r := by\n        rw [Finset.mem_range]\n        omega\n      have h\u2086 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n        by_contra! h\u2087\n        simp_all [Set.not_nonempty_iff_eq_empty]\n        <;> aesop\n      simp_all [Fin.ext_iff]\n      <;> omega\n    omega\n    \u27e9).toReal) := by\n  have h_main : r \u2264 k := by\n    by_contra h\n    have h\u2081 : k < r := by omega\n    have h\u2082 : k \u2208 Finset.range r := by\n      rw [Finset.mem_range]\n      omega\n    have h\u2083 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n      by_contra! h\u2084\n      simp_all [Set.not_nonempty_iff_eq_empty]\n      <;> aesop\n    simp_all [Fin.ext_iff]\n    <;> omega\n  \n  have h_final : (\u2211 j in Finset.range k, \u03c8_K (Classical.choose (by\n    classical\n    have h : Nonempty (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9) := by\n      by_contra! h\u2081\n      simp_all [Set.not_nonempty_iff_eq_empty]\n      <;> aesop\n    exact h\n  )) * (MeasureTheory.volume (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9)).toReal) = (\u2211 j in Finset.range r, \u03c8_K (Classical.choose (by\n    classical\n    have h : Nonempty (Cubes \u27e8j, by\n      have h\u2081 : j < r := Finset.mem_range.mp \u2039_\u203a\n      have h\u2082 : r \u2264 k := by\n        by_contra h\u2083\n        have h\u2084 : k < r := by omega\n        have h\u2085 : k \u2208 Finset.range r := by\n          rw [Finset.mem_range]\n          omega\n        have h\u2086 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n          by_contra! h\u2087\n          simp_all [Set.not_nonempty_iff_eq_empty]\n          <;> aesop\n        simp_all [Fin.ext_iff]\n        <;> omega\n      omega\n      \u27e9) := by\n      by_contra! h\u2081\n      simp_all [Set.not_nonempty_iff_eq_empty]\n      <;> aesop\n    exact h\n  )) * (MeasureTheory.volume (Cubes \u27e8j, by\n    have h\u2081 : j < r := Finset.mem_range.mp \u2039_\u203a\n    have h\u2082 : r \u2264 k := by\n      by_contra h\u2083\n      have h\u2084 : k < r := by omega\n      have h\u2085 : k \u2208 Finset.range r := by\n        rw [Finset.mem_range]\n        omega\n      have h\u2086 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n        by_contra! h\u2087\n        simp_all [Set.not_nonempty_iff_eq_empty]\n        <;> aesop\n      simp_all [Fin.ext_iff]\n      <;> omega\n    omega\n    \u27e9).toReal) := by\n    have h\u2081 : r \u2264 k := h_main\n    have h\u2082 : (\u2211 j in Finset.range k, \u03c8_K (Classical.choose (by\n      classical\n      have h\u2083 : Nonempty (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9) := by\n        by_contra! h\u2084\n        simp_all [Set.not_nonempty_iff_eq_empty]\n        <;> aesop\n      exact h\u2083\n    )) * (MeasureTheory.volume (Cubes \u27e8j, Finset.mem_range.mp \u2039_\u203a\u27e9)).toReal) = (\u2211 j in Finset.range r, \u03c8_K (Classical.choose (by\n      classical\n      have h\u2083 : Nonempty (Cubes \u27e8j, by\n        have h\u2084 : j < r := Finset.mem_range.mp \u2039_\u203a\n        have h\u2085 : r \u2264 k := by\n          by_contra h\u2086\n          have h\u2087 : k < r := by omega\n          have h\u2088 : k \u2208 Finset.range r := by\n            rw [Finset.mem_range]\n            omega\n          have h\u2089 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n            by_contra! h\u2081\u2080\n            simp_all [Set.not_nonempty_iff_eq_empty]\n            <;> aesop\n          simp_all [Fin.ext_iff]\n          <;> omega\n        omega\n        \u27e9) := by\n        by_contra! h\u2084\n        simp_all [Set.not_nonempty_iff_eq_empty]\n        <;> aesop\n      exact h\u2083\n    )) * (MeasureTheory.volume (Cubes \u27e8j, by\n      have h\u2083 : j < r := Finset.mem_range.mp \u2039_\u203a\n      have h\u2084 : r \u2264 k := by\n        by_contra h\u2085\n        have h\u2086 : k < r := by omega\n        have h\u2087 : k \u2208 Finset.range r := by\n          rw [Finset.mem_range]\n          omega\n        have h\u2088 : Nonempty (Cubes \u27e8k, by omega\u27e9) := by\n          by_contra! h\u2089\n          simp_all [Set.not_nonempty_iff_eq_empty]\n          <;> aesop\n        simp_all [Fin.ext_iff]\n        <;> omega\n      omega\n      \u27e9).toReal) := by\n      -- Use the fact that r \u2264 k to relate the two sums\n      have h\u2083 : r \u2264 k := h_main\n      -- Since r \u2264 k, we can use the fact that the sum over range r is a subset of the sum over range k\n      have h\u2084 : Finset.range r \u2286 Finset.range k := by\n        intro x hx\n        simp only [Finset.mem_range] at hx \u22a2\n        omega\n      -- However, we don't have enough information to directly compare the sums, so we use `sorry`\n      sorry\n    exact h\u2082\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 56, "column": 14, "endLine": 56, "endColumn": 17, "data": "unexpected token ':='; expected ')', ',' or ':'"}, {"line": 13, "column": 53, "endLine": 13, "endColumn": 56, "data": "tactic 'assumption' failed\nK : Set \u211d\nr k : \u2115\nCubes : Fin k \u2192 Set \u211d\n\u03c8_K : \u211d \u2192 \u211d\nh_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\nj : \u2115\n\u22a2 j \u2208 Finset.range k"}, {"line": 16, "column": 10, "endLine": 16, "endColumn": 15, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  K : Set \u211d\n  r k : \u2115\n  Cubes : Fin k \u2192 Set \u211d\n  \u03c8_K : \u211d \u2192 \u211d\n  h_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\n  j : \u2115\n  h\u2081 : \u2200 (x : \u211d), x \u2209 Cubes \u27e8j, \u22ef\u27e9\n  \u22a2 False"}, {"line": 22, "column": 45, "endLine": 22, "endColumn": 48, "data": "tactic 'assumption' failed\nK : Set \u211d\nr k : \u2115\nCubes : Fin k \u2192 Set \u211d\n\u03c8_K : \u211d \u2192 \u211d\nh_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\nj : \u2115\n\u22a2 j \u2208 Finset.range r"}, {"line": 29, "column": 41, "endLine": 29, "endColumn": 46, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  c \u2265 0\n  b \u2265 0\n  a \u2265 0\n  a - b \u2265 1\n  a - c \u2265 1\nwhere\n a := \u2191r\n b := \u2191j\n c := \u2191k"}, {"line": 32, "column": 14, "endLine": 32, "endColumn": 19, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  K : Set \u211d\n  r k : \u2115\n  Cubes : Fin k \u2192 Set \u211d\n  \u03c8_K : \u211d \u2192 \u211d\n  h_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\n  j : \u2115\n  h\u2081 : j < r\n  h\u2084 : k < r\n  h\u2087 : \u2200 (x : \u211d), x \u2209 Cubes \u27e8k, \u22ef\u27e9\n  \u22a2 False"}, {"line": 34, "column": 12, "endLine": 34, "endColumn": 17, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  c \u2265 0\n  b \u2265 0\n  a \u2265 0\n  a - b \u2265 1\n  a - c \u2265 1\nwhere\n a := \u2191r\n b := \u2191j\n c := \u2191k"}, {"line": 39, "column": 10, "endLine": 39, "endColumn": 15, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  K : Set \u211d\n  r k : \u2115\n  Cubes : Fin k \u2192 Set \u211d\n  \u03c8_K : \u211d \u2192 \u211d\n  h_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\n  j : \u2115\n  h\u2081 : \u2200 (x : \u211d), x \u2209 Cubes \u27e8j, \u22ef\u27e9\n  \u22a2 False"}, {"line": 42, "column": 43, "endLine": 42, "endColumn": 46, "data": "tactic 'assumption' failed\nK : Set \u211d\nr k : \u2115\nCubes : Fin k \u2192 Set \u211d\n\u03c8_K : \u211d \u2192 \u211d\nh_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\nj : \u2115\n\u22a2 j \u2208 Finset.range r"}, {"line": 49, "column": 39, "endLine": 49, "endColumn": 44, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  c \u2265 0\n  b \u2265 0\n  a \u2265 0\n  a - b \u2265 1\n  a - c \u2265 1\nwhere\n a := \u2191r\n b := \u2191j\n c := \u2191k"}, {"line": 52, "column": 12, "endLine": 52, "endColumn": 17, "data": "tactic 'aesop' failed, made no progress\nInitial goal:\n  K : Set \u211d\n  r k : \u2115\n  Cubes : Fin k \u2192 Set \u211d\n  \u03c8_K : \u211d \u2192 \u211d\n  h_characteristic : \u2200 (x : \u211d), \u03c8_K x = sorry\n  j : \u2115\n  h\u2081 : j < r\n  h\u2084 : k < r\n  h\u2087 : \u2200 (x : \u211d), x \u2209 Cubes \u27e8k, \u22ef\u27e9\n  \u22a2 False"}, {"line": 54, "column": 10, "endLine": 54, "endColumn": 15, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  c \u2265 0\n  b \u2265 0\n  a \u2265 0\n  a - b \u2265 1\n  a - c \u2265 1\nwhere\n a := \u2191r\n b := \u2191j\n c := \u2191k"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "In particular, we can choose X_j from K, so that \u03c8_K(X_j)=1, and \u03c3=\u2211_{j=1}^r V(C_j).", "statement": "We assume:\n\u2022 A Riemann sum over P can be written as \u03c3 = \u2211_{j=1}^r \u03c8_K(X_j)V(C_j) for any choice of points X_j in C_j [l4].\n\u2022 For 1 \u2264 j \u2264 r, the intersection C_j \u2229 K is non-empty [def_3].\nTherefore, we conclude:\n\u2022 We can construct a specific Riemann sum by choosing a sample point X_j from C_j \u2229 K for each j. For these points, \u03c8_K(X_j)=1, so the sum becomes \u03c3 = \u2211_{j=1}^r V(C_j) [l5].", "dependencies": ["def_3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (P : Finset (Set (Fin n \u2192 \u211d))) \n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (hP_disjoint : \u2200 C\u2081 C\u2082, C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082)\n  (hP_cover : \u2203 C, C \u2208 P \u2227 K \u2286 C)\n  (def_3 : \u2200 C \u2208 P, (C \u2229 K).Nonempty \u2192 (C \u2229 K).Nonempty)\n  (l4 : \u2200 (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) :\n  \u2203 (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C \u2227 x \u2208 K) \u2227\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nclassical\ntheorem l5\n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) (P : Finset (Set (Fin n \u2192 \u211d))) \n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (hP_disjoint : \u2200 C\u2081 C\u2082, C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082)\n  (hP_cover : \u2203 C, C \u2208 P \u2227 K \u2286 C)\n  (def_3 : \u2200 C \u2208 P, (C \u2229 K).Nonempty \u2192 (C \u2229 K).Nonempty)\n  (l4 : \u2200 (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) :\n  \u2203 (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C \u2227 x \u2208 K) \u2227\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal := by\n  have h_sum_zero : (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) = 0 := by\n    have h\u2081 : (\u2211 x in (\u2205 : Finset (Fin n \u2192 \u211d)), (if x \u2208 K then 1 else 0)) = 0 := by simp\n    have h\u2082 : (\u2200 x \u2208 (\u2205 : Finset (Fin n \u2192 \u211d)), \u2203 C \u2208 P, x \u2208 C) := by\n      intro x hx\n      exfalso\n      exact Finset.not_mem_empty x hx\n    have h\u2083 : (\u2211 x in (\u2205 : Finset (Fin n \u2192 \u211d)), (if x \u2208 K then 1 else 0)) = \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal := by\n      have h\u2084 := l4 (\u2205 : Finset (Fin n \u2192 \u211d)) h\u2082\n      simpa using h\u2084\n    have h\u2084 : \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal = 0 := by\n      linarith\n    exact h\u2084\n  \n  have h_main : \u2203 (X : Finset (Fin n \u2192 \u211d)), (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C \u2227 x \u2208 K) \u2227 (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal := by\n    refine' \u27e8\u2205, _\u27e9\n    constructor\n    \u00b7 -- Prove that for all x \u2208 \u2205, there exists C \u2208 P such that x \u2208 C and x \u2208 K\n      intro x hx\n      exfalso\n      exact Finset.not_mem_empty x hx\n    \u00b7 -- Prove that the sum over \u2205 equals the sum over P\n      have h\u2081 : (\u2211 x in (\u2205 : Finset (Fin n \u2192 \u211d)), (if x \u2208 K then 1 else 0)) = 0 := by simp\n      have h\u2082 : \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal = 0 := h_sum_zero\n      have h\u2083 : (\u2211 x in (\u2205 : Finset (Fin n \u2192 \u211d)), (if x \u2208 K then 1 else 0)) = \u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal := by\n        rw [h\u2081, h\u2082]\n        <;> simp\n      simpa using h\u2083\n  \n  apply h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 4, "column": 0, "endLine": 4, "endColumn": 9, "data": "unexpected identifier; expected command"}, {"line": 14, "column": 16, "endLine": 14, "endColumn": 38, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 15, "column": 15, "endLine": 15, "endColumn": 48, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 18, "column": 16, "endLine": 18, "endColumn": 38, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 19, "column": 15, "endLine": 19, "endColumn": 48, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 32, "endLine": 20, "endColumn": 65, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 21, "column": 49, "endLine": 21, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 26, "column": 49, "endLine": 26, "endColumn": 71, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 26, "column": 87, "endLine": 26, "endColumn": 120, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 29, "column": 25, "endLine": 29, "endColumn": 58, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 30, "column": 6, "endLine": 30, "endColumn": 14, "data": "linarith failed to find a contradiction\ncase h1.h\nn : \u2115\nK : Set (Fin n \u2192 \u211d)\nP : Finset (Set (Fin n \u2192 \u211d))\nhK_bounded : BddAbove K \u2227 BddBelow K\nhK_zero_measure : MeasureTheory.volume K = 0\nhP_disjoint : \u2200 (C\u2081 C\u2082 : Set (Fin n \u2192 \u211d)), C\u2081 \u2208 P \u2192 C\u2082 \u2208 P \u2192 C\u2081 \u2260 C\u2082 \u2192 Disjoint C\u2081 C\u2082\nhP_cover : \u2203 C \u2208 P, K \u2286 C\ndef_3 : \u2200 C \u2208 P, (C \u2229 K).Nonempty \u2192 (C \u2229 K).Nonempty\nl4 :\n  \u2200 (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C) \u2192 \u2211 x \u2208 X, sorry = \u2211 C \u2208 P, sorry * (MeasureTheory.volume C).toReal\nh\u2081 : \u2211 x \u2208 \u2205, sorry = 0\nh\u2082 : \u2200 x \u2208 \u2205, \u2203 C \u2208 P, x \u2208 C\nh\u2083 : \u2211 x \u2208 \u2205, sorry = \u2211 C \u2208 P, sorry * (MeasureTheory.volume C).toReal\na\u271d : \u2211 C \u2208 P, sorry * (MeasureTheory.volume C).toReal < 0\n\u22a2 False failed"}, {"line": 33, "column": 92, "endLine": 33, "endColumn": 114, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 33, "column": 130, "endLine": 33, "endColumn": 163, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 41, "column": 51, "endLine": 41, "endColumn": 73, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 42, "column": 27, "endLine": 42, "endColumn": 60, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 43, "column": 51, "endLine": 43, "endColumn": 73, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 43, "column": 89, "endLine": 43, "endColumn": 122, "data": "failed to synthesize\n  Decidable (C \u2229 K).Nonempty\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Riemann sum representation in l4 uses a different mathematical structure (finite sets vs indexed sums) but captures similar semantic meaning about sums over partitions with indicator functions.", "The premise def_3 is a logical tautology (A \u2192 A) and completely fails to capture the intended meaning that intersections C_j \u2229 K are non-empty for all partition elements.", "The conclusion partially captures the idea of constructing sample points from intersections, though the formalization differs structurally from the natural language description.", "The conclusion fails to show the key simplification where \u03c8_K(X_j)=1 leads to a sum of just the volumes V(C_j). Instead, it shows equality to the same complex expression from l4, missing the main point of the argument.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Riemann sum representation in l4 uses a different mathematical structure (finite sets vs indexed sums) but captures similar semantic meaning about sums over partitions with indicator functions.', 'The premise def_3 is a logical tautology (A \u2192 A) and completely fails to capture the intended meaning that intersections C_j \u2229 K are non-empty for all partition elements.', 'The conclusion partially captures the idea of constructing sample points from intersections, though the formalization differs structurally from the natural language description.', 'The conclusion fails to show the key simplification where \u03c8_K(X_j)=1 leads to a sum of just the volumes V(C_j). Instead, it shows equality to the same complex expression from l4, missing the main point of the argument.']"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Now (7.3.6) and (7.3.7) imply that C_1, C_2, \u2026, C_r have the required properties.", "statement": "We assume:\n\u2022 For any partition P with \u2225P\u2225 \u2264 \u03b4, any Riemann sum \u03c3 of \u03c8_K satisfies 0 \u2264 \u03c3 \u2264 \u03b5 [l2].\n\u2022 Our chosen partition P has norm \u2225P\u2225 < min(\u03c1, \u03b4), which implies \u2225P\u2225 \u2264 \u03b4 [def_2].\n\u2022 A specific Riemann sum for this partition can be \u03c3 = \u2211_{j=1}^r V(C_j) [l5].\nTherefore, we conclude:\n\u2022 The sum of the volumes of the selected cubes is bounded by \u03b5: \u2211_{j=1}^r V(C_j) \u2264 \u03b5 [l6].", "dependencies": ["l2", "def_2", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) \n  (\u03b5 \u03c1 : \u211d) (h\u03b5 : 0 < \u03b5) (h\u03c1 : 0 < \u03c1)\n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (l2 : \u2200 (P : Finset (Set (Fin n \u2192 \u211d))) (\u03b4 : \u211d),\n    (\u2200 C \u2208 P, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 \u2264 \u03b4) \u2192\n    (\u2200 x \u2208 K, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) \u2264 \u03b5)\n  (def_2 : \u2203 \u03b4 : \u211d, 0 < \u03b4 \u2227 \n    \u2200 (P : Finset (Set (Fin n \u2192 \u211d))) (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 C \u2208 P, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 < \u03b4) \u2192\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal))\n  (l5 : \u2203 (X : Finset (Fin n \u2192 \u211d)) (P : Finset (Set (Fin n \u2192 \u211d))),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C \u2227 x \u2208 K) \u2227\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal)) :\n  \u2203 (Cubes : Finset (Set (Fin n \u2192 \u211d)),\n    (\u2200 C \u2208 Cubes, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 < \u03c1) \u2227\n    (\u2200 x \u2208 K, \u2203 C \u2208 Cubes, x \u2208 C) \u2227\n    (\u2211 C in Cubes, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) < \u03b5 := by sorry", "lean_pass": false, "error_msg": [{"line": 26, "column": 37, "endLine": 26, "endColumn": 38, "data": "unexpected token ','; expected ')'"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  {n : \u2115} (K : Set (Fin n \u2192 \u211d)) \n  (\u03b5 \u03c1 : \u211d) (h\u03b5 : 0 < \u03b5) (h\u03c1 : 0 < \u03c1)\n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (hK_zero_measure : MeasureTheory.volume K = 0)\n  (l2 : \u2200 (P : Finset (Set (Fin n \u2192 \u211d))) (\u03b4 : \u211d),\n    (\u2200 C \u2208 P, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 \u2264 \u03b4) \u2192\n    (\u2200 x \u2208 K, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) \u2264 \u03b5)\n  (def_2 : \u2203 \u03b4 : \u211d, 0 < \u03b4 \u2227 \n    \u2200 (P : Finset (Set (Fin n \u2192 \u211d))) (X : Finset (Fin n \u2192 \u211d)),\n    (\u2200 C \u2208 P, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 < \u03b4) \u2192\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C) \u2192\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal))\n  (l5 : \u2203 (X : Finset (Fin n \u2192 \u211d)) (P : Finset (Set (Fin n \u2192 \u211d))),\n    (\u2200 x \u2208 X, \u2203 C \u2208 P, x \u2208 C \u2227 x \u2208 K) \u2227\n    (\u2211 x in X, (if x \u2208 K then 1 else 0)) = \n    (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal)) :\n  \u2203 (Cubes : Finset (Set (Fin n \u2192 \u211d)),\n    (\u2200 C \u2208 Cubes, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 < \u03c1) \u2227\n    (\u2200 x \u2208 K, \u2203 C \u2208 Cubes, x \u2208 C) \u2227\n    (\u2211 C in Cubes, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) < \u03b5) := by\n  have hK_empty : K = \u2205 := by\n    by_contra h\n    -- Assume K is not empty\n    have h\u2081 : \u2203 x, x \u2208 K := Set.nonempty_iff_ne_empty.mpr h\n    obtain \u27e8x, hx\u27e9 := h\u2081\n    -- Use def_2 to get \u03b4 > 0\n    obtain \u27e8\u03b4, h\u03b4_pos, h\u03b4\u27e9 := def_2\n    -- Define P = {{x}} and X = {x}\n    let P : Finset (Set (Fin n \u2192 \u211d)) := { {x} }\n    let X : Finset (Fin n \u2192 \u211d) := {x}\n    have h\u2082 : (\u2200 C \u2208 P, \u2200 (u v : Fin n \u2192 \u211d), u \u2208 C \u2192 v \u2208 C \u2192 \u2016u - v\u2016 < \u03b4) := by\n      intro C hC u v hu hv\n      simp only [P, Finset.mem_singleton] at hC\n      rw [hC] at hu hv\n      have h\u2083 : u = x := by\n        simp only [Set.mem_singleton_iff] at hu\n        exact hu\n      have h\u2084 : v = x := by\n        simp only [Set.mem_singleton_iff] at hv\n        exact hv\n      rw [h\u2083, h\u2084]\n      simp [norm_eq_abs]\n      <;> linarith [h\u03b4_pos]\n    have h\u2083 : (\u2200 (y : Fin n \u2192 \u211d), y \u2208 X \u2192 \u2203 C \u2208 P, y \u2208 C) := by\n      intro y hy\n      simp only [X, Finset.mem_singleton] at hy \u22a2\n      refine' \u27e8{x}, _\u27e9\n      simp_all [P, Finset.mem_singleton]\n      <;> aesop\n    -- Compute the left-hand side of the equation in def_2\n    have h\u2084 : (\u2211 y in X, (if y \u2208 K then 1 else 0 : \u211d)) = 1 := by\n      simp [X, hx]\n      <;> norm_num\n    -- Compute the right-hand side of the equation in def_2\n    have h\u2085 : (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (MeasureTheory.volume C).toReal) = 0 := by\n      have h\u2085\u2081 : (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (MeasureTheory.volume C).toReal) = (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (0 : \u211d)) := by\n        apply Finset.sum_congr rfl\n        intro C hC\n        have h\u2085\u2082 : C = ({x} : Set (Fin n \u2192 \u211d)) := by\n          simp only [P, Finset.mem_singleton] at hC\n          exact hC\n        rw [h\u2085\u2082]\n        have h\u2085\u2083 : MeasureTheory.volume ({x} : Set (Fin n \u2192 \u211d)) = 0 := by\n          simp [MeasureTheory.volume_singleton]\n        rw [h\u2085\u2083]\n        simp [MeasureTheory.Measure.toReal_zero]\n      rw [h\u2085\u2081]\n      have h\u2085\u2084 : (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (0 : \u211d)) = 0 := by\n        simp [P, Finset.sum_singleton]\n        <;> norm_num\n      rw [h\u2085\u2084]\n    -- Combine the results to get a contradiction\n    have h\u2086 : (\u2211 y in X, (if y \u2208 K then 1 else 0 : \u211d)) = (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) := by\n      have h\u2086\u2081 := h\u03b4 P X h\u2082 h\u2083\n      simp_all [Finset.sum_range_succ]\n      <;>\n      (try norm_num at *) <;>\n      (try ring_nf at *) <;>\n      (try field_simp at *) <;>\n      (try norm_cast at *) <;>\n      (try linarith)\n      <;>\n      (try simp_all [Finset.sum_range_succ])\n      <;>\n      (try norm_num)\n      <;>\n      (try linarith)\n    rw [h\u2084] at h\u2086\n    have h\u2087 : (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) = (0 : \u211d) := by\n      have h\u2087\u2081 : (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (MeasureTheory.volume C).toReal) = 0 := by\n        simpa using h\u2085\n      -- Convert the sum with (1 : \u211d) to the sum with 1 (natural number)\n      have h\u2087\u2082 : (\u2211 C in P, (if (C \u2229 K).Nonempty then (1 : \u211d) else 0) * (MeasureTheory.volume C).toReal) = (\u2211 C in P, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) := by\n        apply Finset.sum_congr rfl\n        intro C hC\n        by_cases h : (C \u2229 K).Nonempty <;> simp [h] <;> norm_num\n      rw [h\u2087\u2082] at h\u2087\u2081\n      simpa using h\u2087\u2081\n    rw [h\u2087] at h\u2086\n    norm_num at h\u2086\n    <;> linarith\n  \n  have h_main : \u2203 (Cubes : Finset (Set (Fin n \u2192 \u211d)),\n    (\u2200 C \u2208 Cubes, \u2200 x y, x \u2208 C \u2192 y \u2208 C \u2192 \u2016x - y\u2016 < \u03c1) \u2227\n    (\u2200 x \u2208 K, \u2203 C \u2208 Cubes, x \u2208 C) \u2227\n    (\u2211 C in Cubes, (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) < \u03b5) := by\n    use \u2205\n    constructor\n    \u00b7 -- Prove that all sets in \u2205 have diameter < \u03c1 (vacuously true)\n      intro C hC\n      exfalso\n      exact Finset.not_mem_empty C hC\n    \u00b7 constructor\n      \u00b7 -- Prove that \u2205 covers K (which is empty)\n        intro x hx\n        exfalso\n        rw [hK_empty] at hx\n        exact Finset.not_mem_empty x hx\n      \u00b7 -- Prove that the sum of volumes is 0 < \u03b5\n        have h\u2081 : (\u2211 C in (\u2205 : Finset (Set (Fin n \u2192 \u211d))), (if (C \u2229 K).Nonempty then 1 else 0) * (MeasureTheory.volume C).toReal) = 0 := by\n          simp\n        rw [h\u2081]\n        linarith\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 23, "column": 37, "endLine": 23, "endColumn": 38, "data": "unexpected token ','; expected ')'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "\u2225P\u2225<min(\u03c1,\u03b4)", "statement": "We assume:\n\u2022 The partition P = {C_1, ..., C_k} was chosen such that its norm satisfies \u2225P\u2225 < min(\u03c1,\u03b4) [def_2].\n\u2022 The norm \u2225P\u2225 is the maximum edge length among all cubes in the partition.\nTherefore, we conclude:\n\u2022 The edge length of each cube C_j, for j=1 to k, is less than \u03c1 [l7].", "dependencies": ["def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  {n : \u2115} \n  (\u03c1 \u03b4 : \u211d) \n  (h\u03c1 : \u03c1 > 0) \n  (h\u03b4 : \u03b4 > 0)\n  (K : Set (Fin n \u2192 \u211d)) \n  (P : Set (Set (Fin n \u2192 \u211d))) \n  (max_edge_length : \u211d)\n  (hP_norm : max_edge_length < min \u03c1 \u03b4)\n  (hP_cubes : \u2200 C \u2208 P, \u2203 (edge : \u211d), edge \u2264 max_edge_length \u2227 -- each cube has edge length \u2264 max_edge_length\n    -- additional constraints ensuring P forms a valid partition of a cube containing K\n    True) :\n  \u2200 C \u2208 P, \u2203 (edge : \u211d), edge < \u03c1 \u2227 -- each cube has edge length < \u03c1\n    -- additional constraints ensuring the cube properties\n    True := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  {n : \u2115} \n  (\u03c1 \u03b4 : \u211d) \n  (h\u03c1 : \u03c1 > 0) \n  (h\u03b4 : \u03b4 > 0)\n  (K : Set (Fin n \u2192 \u211d)) \n  (P : Set (Set (Fin n \u2192 \u211d))) \n  (max_edge_length : \u211d)\n  (hP_norm : max_edge_length < min \u03c1 \u03b4)\n  (hP_cubes : \u2200 C \u2208 P, \u2203 (edge : \u211d), edge \u2264 max_edge_length \u2227 True) :\n  \u2200 C \u2208 P, \u2203 (edge : \u211d), edge < \u03c1 \u2227 True := by\n  have h_max_lt_\u03c1 : max_edge_length < \u03c1 := by\n    have h\u2081 : max_edge_length < min \u03c1 \u03b4 := hP_norm\n    have h\u2082 : min \u03c1 \u03b4 \u2264 \u03c1 := by\n      apply min_le_left\n    linarith\n  \n  have h_main : \u2200 C \u2208 P, \u2203 (edge : \u211d), edge < \u03c1 \u2227 True := by\n    intro C hC\n    have h\u2081 : \u2203 (edge : \u211d), edge \u2264 max_edge_length \u2227 True := hP_cubes C hC\n    obtain \u27e8edge, h\u2082, h\u2083\u27e9 := h\u2081\n    have h\u2084 : edge < \u03c1 := by\n      linarith\n    refine' \u27e8edge, h\u2084, _\u27e9\n    trivial\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The partition representation differs slightly (indexed cubes vs set of sets) but captures the same mathematical concept.", "The norm constraint \u2225P\u2225 < min(\u03c1,\u03b4) is correctly translated to max_edge_length < min \u03c1 \u03b4.", "Critical flaw: The natural language defines the norm as THE maximum edge length, but Lean only constrains edge lengths to be \u2264 max_edge_length. This doesn't establish that max_edge_length equals the actual maximum, breaking the logical foundation.", "The conclusion structure correctly captures that each cube's edge length should be less than \u03c1.", "The overall logical argument is compromised because the key definition linking the norm to the actual maximum edge length is missing, making the conclusion unprovable from the given premises."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The partition representation differs slightly (indexed cubes vs set of sets) but captures the same mathematical concept.', 'The norm constraint \u2225P\u2225 < min(\u03c1,\u03b4) is correctly translated to max_edge_length < min \u03c1 \u03b4.', \"Critical flaw: The natural language defines the norm as THE maximum edge length, but Lean only constrains edge lengths to be \u2264 max_edge_length. This doesn't establish that max_edge_length equals the actual maximum, breaking the logical foundation.\", \"The conclusion structure correctly captures that each cube's edge length should be less than \u03c1.\", 'The overall logical argument is compromised because the key definition linking the norm to the actual maximum edge length is missing, making the conclusion unprovable from the given premises.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Now (7.3.6) and (7.3.7) imply that C_1, C_2, \u2026, C_r have the required properties.", "statement": "We assume:\n\u2022 We have a collection of cubes {C_1, ..., C_r} from a partition P such that for each j, C_j \u2229 K \u2260 \u2205 [def_3].\n\u2022 The edge length of each cube C_j in this collection is less than \u03c1 [l7].\n\u2022 The set K is covered by the union of these cubes: K \u2282 \u22c3_{j=1}^r C_j [l3].\n\u2022 The sum of the volumes of these cubes satisfies \u2211_{j=1}^r V(C_j) \u2264 \u03b5 [l6].\nTherefore, we conclude:\n\u2022 There exist cubes C_1, ..., C_r satisfying all required properties: (1) edge lengths < \u03c1, (2) C_j \u2229 K \u2260 \u2205, (3) K \u2282 \u22c3_{j=1}^r C_j, and (4) \u2211_{j=1}^r V(C_j) < \u03b5 [ts_1].", "dependencies": ["def_3", "l3", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (n : \u2115) (K : Set (Fin n \u2192 \u211d)) (\u03c1 \u03b5 : \u211d) \n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (h\u03c1 : \u03c1 > 0) (h\u03b5 : \u03b5 > 0) :\n  \u2203 (r : \u2115) (C : Fin r \u2192 Set (Fin n \u2192 \u211d)),\n    (\u2200 j, \u2203 (a b : Fin n \u2192 \u211d), C j = Set.Icc a b \u2227 \n      (\u2200 i, (b i - a i) < \u03c1)) \u2227\n    (\u2200 j, (C j \u2229 K).Nonempty) \u2227\n    (K \u2286 \u22c3 j, C j) \u2227\n    (\u2211 j, MeasureTheory.volume (C j) < \u03b5) := by sorry", "lean_pass": false, "error_msg": [{"line": 15, "column": 39, "endLine": 15, "endColumn": 40, "data": "type mismatch\n  \u03b5\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (n : \u2115) (K : Set (Fin n \u2192 \u211d)) (\u03c1 \u03b5 : \u211d) \n  (hK_bounded : BddAbove K \u2227 BddBelow K)\n  (h\u03c1 : \u03c1 > 0) (h\u03b5 : \u03b5 > 0) :\n  \u2203 (r : \u2115) (C : Fin r \u2192 Set (Fin n \u2192 \u211d)),\n    (\u2200 j, \u2203 (a b : Fin n \u2192 \u211d), C j = Set.Icc a b \u2227 \n      (\u2200 i, (b i - a i) < \u03c1)) \u2227\n    (\u2200 j, (C j \u2229 K).Nonempty) \u2227\n    (K \u2286 \u22c3 j, C j) \u2227\n    (\u2211 j, MeasureTheory.volume (C j) < \u03b5) := by\n  by_cases hK : K = \u2205\n  \u00b7 -- Case: K = \u2205\n    use 0\n    use fun j => by exfalso; exact Fin.elim0 j\n    constructor\n    \u00b7 -- Prove the first condition: for all j, C j is a cube with edge lengths < \u03c1\n      intro j\n      exfalso\n      exact Fin.elim0 j\n    constructor\n    \u00b7 -- Prove the second condition: for all j, C j \u2229 K is nonempty\n      intro j\n      exfalso\n      exact Fin.elim0 j\n    constructor\n    \u00b7 -- Prove the third condition: K \u2286 \u22c3 j, C j\n      rw [hK]\n      simp\n    \u00b7 -- Prove the fourth condition: the sum of volumes < \u03b5\n      have h\u2081 : (\u2211 j : Fin 0, (MeasureTheory.volume ( (fun j => by exfalso; exact Fin.elim0 j) j : Set (Fin n \u2192 \u211d))) = 0 := by simp\n      have h\u2082 : (\u2211 j : Fin 0, (MeasureTheory.volume ( (fun j => by exfalso; exact Fin.elim0 j) j : Set (Fin n \u2192 \u211d))) < \u03b5 := by\n        simp_all [hK]\n        <;>\n        (try norm_num)\n        <;>\n        (try linarith)\n      simpa using h\u2082\n  \u00b7 -- Case: K \u2260 \u2205\n    exfalso\n    -- This is a placeholder for a contradiction derivation, which is not actually possible under the given assumptions.\n    -- In reality, the assumptions are consistent, and no contradiction exists. However, since the theorem as stated is incorrect,\n    -- we use this to indicate that we cannot prove it in general.\n    have h\u2081 : False := by\n      exfalso\n      -- Attempt to find a contradiction, but none exists based on the given assumptions.\n      -- For example, take n = 1, K = [0, 2], \u03c1 = 10, \u03b5 = 1; all assumptions are satisfied, but the conclusion is false.\n      -- Therefore, we cannot derive a contradiction here.\n      have h\u2082 : (0 : \u211d) < 1 := by norm_num\n      linarith [h\u03c1, h\u03b5]\n    exact h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 32, "column": 120, "endLine": 32, "endColumn": 123, "data": "unexpected token ':='; expected ')', ',' or ':'"}, {"line": 12, "column": 39, "endLine": 12, "endColumn": 40, "data": "type mismatch\n  \u03b5\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 31, "column": 4, "endLine": 32, "endColumn": 120, "data": "unsolved goals\ncase h\u2081\nn : \u2115\nK : Set (Fin n \u2192 \u211d)\n\u03c1 \u03b5 : \u211d\nhK_bounded : BddAbove K \u2227 BddBelow K\nh\u03c1 : \u03c1 > 0\nh\u03b5 : \u03b5 > 0\nhK : K = \u2205\n\u22a2 \u2211 j : Fin 0, MeasureTheory.volume ((fun j => \u22ef.elim) j) = 0\n\ncase h.right.right.right\nn : \u2115\nK : Set (Fin n \u2192 \u211d)\n\u03c1 \u03b5 : \u211d\nhK_bounded : BddAbove K \u2227 BddBelow K\nh\u03c1 : \u03c1 > 0\nh\u03b5 : \u03b5 > 0\nhK : K = \u2205\nh\u2081 : \u2211 j : Fin 0, MeasureTheory.volume ((fun j => \u22ef.elim) j) = 0\n\u22a2 sorry"}, {"line": 12, "column": 45, "endLine": 32, "endColumn": 120, "data": "unsolved goals\ncase neg\nn : \u2115\nK : Set (Fin n \u2192 \u211d)\n\u03c1 \u03b5 : \u211d\nhK_bounded : BddAbove K \u2227 BddBelow K\nh\u03c1 : \u03c1 > 0\nh\u03b5 : \u03b5 > 0\nhK : \u00acK = \u2205\n\u22a2 \u2203 r C,\n    (\u2200 (j : Fin r), \u2203 a b, C j = Set.Icc a b \u2227 \u2200 (i : Fin n), b i - a i < \u03c1) \u2227\n      (\u2200 (j : Fin r), (C j \u2229 K).Nonempty) \u2227 K \u2286 \u22c3 j, C j \u2227 sorry"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_4", "label": "tc_4", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#fa2c07", "highlight": {"background": "#a3c2a8", "border": "#fa2c07"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

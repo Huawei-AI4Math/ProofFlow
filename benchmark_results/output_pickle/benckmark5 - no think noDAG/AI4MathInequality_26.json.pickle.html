@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for any triangle with side lengths $a, b, c$ and semi-perimeter $s$, the following inequality holds: $a^{2}(s-a) + b^{2}(s-a) + c^{2}(s-a) \\leq \\frac{3}{2} a b c$.
+
+Proof: Let $E=a^{2}(s-a)+b^{2}(s-b)+c^{2}(s-c)$ with $s=	frac{a+b+c}{2}$. Substituting $s-a=	frac{b+c-a}{2}$ and similar expressions gives $2E=(a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b)-(a^{3}+b^{3}+c^{3})$. On the other hand, expanding $(b+c-a)(c+a-b)(a+b-c)$ yields the same expression but with an extra $-2abc$, so $2E=(b+c-a)(c+a-b)(a+b-c)+2abc$, hence $E=	frac{(b+c-a)(c+a-b)(a+b-c)}{2}+abc$. To prove $E\leq 	frac{3}{2}abc$ it suffices to show $(b+c-a)(c+a-b)(a+b-c)\leq abc$. Setting $a=	frac{y+z}{2},\;b=	frac{x+z}{2},\;c=	frac{x+y}{2}$ with $x,y,z>0$, this becomes $8xyz\leq (x+y)(y+z)(z+x)$. Expanding the right-hand side gives $2xyz+(x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z)$, so the inequality reduces to $6xyz\leq x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z$. Grouping terms shows the right-hand side equals $x(y^{2}+z^{2})+y(x^{2}+z^{2})+z(x^{2}+y^{2})$, which is at least $2yzx+2xzy+2xy z=6xyz$ by AM–GM. Therefore the inequality holds, and we conclude $E\leq	frac{3}{2}abc$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "for any triangle with side lengths $a, b, c$", "statement": "Premise:\n\u2022 $a, b, c$ are the side lengths of a triangle, which implies $a, b, c > 0$ and the triangle inequalities $a+b>c$, $a+c>b$, $b+c>a$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b c : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c are side lengths of a triangle by declaring them as real numbers and imposing the triangle inequality conditions", "The positivity condition a, b, c > 0 is perfectly captured by 0 < a \u2227 0 < b \u2227 0 < c in Lean", "The triangle inequality a + b > c is directly and perfectly represented in Lean", "The triangle inequality a + c > b is directly and perfectly represented in Lean", "The triangle inequality b + c > a is directly and perfectly represented in Lean"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "semi-perimeter $s$", "statement": "Premise:\n\u2022 $s$ is the semi-perimeter of the triangle with sides $a, b, c$, so $s = \\frac{a+b+c}{2}$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b c : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization declares a, b, c as real numbers representing triangle sides, which matches the natural language. The additional constraint tc_1 ensuring positive side lengths and triangle inequalities is consistent with having a valid triangle, even though not explicitly stated in the natural language premise.", "The concept of s being the semi-perimeter is captured through the defining equation tc_2, which is mathematically equivalent to stating that s is the semi-perimeter.", "The Lean formalization tc_2: s = (a + b + c) / 2 exactly matches the mathematical formula s = (a+b+c)/2 from the natural language conclusion."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Let $E=a^{2}(s-a)+b^{2}(s-b)+c^{2}(s-c)$ with $s=\tfrac{a+b+c}{2}$.", "statement": "Definition:\n\u2022 Let $E$ be the expression $a^{2}(s-a)+b^{2}(s-b)+c^{2}(s-c)$ [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b c : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)\n  (def_1 : a ^ 2 * (s - a) + b ^ 2 * (s - b) + c ^ 2 * (s - c) = E)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The natural language states no conditions, but Lean includes additional conditions about triangle inequalities and semi-perimeter definition. These are reasonable mathematical context that don't contradict the definition but add extra constraints not mentioned in the natural language.", "The conclusion matches perfectly - both define E as the same expression, just with the equation written in opposite directions (E = expression vs expression = E), which is mathematically equivalent."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The natural language states no conditions, but Lean includes additional conditions about triangle inequalities and semi-perimeter definition. These are reasonable mathematical context that don't contradict the definition but add extra constraints not mentioned in the natural language.\", 'The conclusion matches perfectly - both define E as the same expression, just with the equation written in opposite directions (E = expression vs expression = E), which is mathematically equivalent.']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Substituting $s-a=\tfrac{b+c-a}{2}$ and similar expressions gives $2E=(a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b)-(a^{3}+b^{3}+c^{3})$.", "statement": "We assume:\n\u2022 $a, b, c$ are triangle side lengths [tc_1];\n\u2022 $s = \\frac{a+b+c}{2}$ [tc_2];\n\u2022 $E = a^{2}(s-a)+b^{2}(s-b)+c^{2}(s-c)$ [def_1].\nTherefore, we conclude:\n\u2022 $2E = (a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b)-(a^{3}+b^{3}+c^{3})$ [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a b c s E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)\n  (def_1 : a ^ 2 * (s - a) + b ^ 2 * (s - b) + c ^ 2 * (s - c) = E) :\n  2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a b c s E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)\n  (def_1 : E = a ^ 2 * (s - a) + b ^ 2 * (s - b) + c ^ 2 * (s - c)) :\n  2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) := by\n  rw [def_1]\n  rw [tc_2]\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The triangle side lengths condition is correctly formalized with both positivity and triangle inequality constraints, which is the complete mathematical meaning of 'triangle side lengths'", "The semi-perimeter formula is translated exactly from natural language to Lean notation", "The definition of E is mathematically identical, with only the equation order reversed (which is logically equivalent)", "The conclusion formula is translated exactly, with all terms and operations matching perfectly"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "On the other hand, expanding $(b+c-a)(c+a-b)(a+b-c)$ yields the same expression but with an extra $-2abc$", "statement": "We assume:\n\u2022 $a, b, c$ are real numbers [tc_1].\nTherefore, we conclude:\n\u2022 $(b+c-a)(c+a-b)(a+b-c) = (a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b) - (a^{3}+b^{3}+c^{3}) - 2abc$ [l2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a b c : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a)) :\n  (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a b c : \u211d) :\n  (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c := by\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization adds significant constraints (positivity and triangle inequalities) that are not mentioned in the natural language, which only states that a, b, c are real numbers. While these might be contextually relevant, they represent substantial additions to the stated assumptions.", "The algebraic identity is perfectly translated from mathematical notation to Lean syntax, with all terms and operations correctly represented."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization adds significant constraints (positivity and triangle inequalities) that are not mentioned in the natural language, which only states that a, b, c are real numbers. While these might be contextually relevant, they represent substantial additions to the stated assumptions.', 'The algebraic identity is perfectly translated from mathematical notation to Lean syntax, with all terms and operations correctly represented.']"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "so $2E=(b+c-a)(c+a-b)(a+b-c)+2abc$, hence $E=\tfrac{(b+c-a)(c+a-b)(a+b-c)}{2}+abc$.", "statement": "We assume:\n\u2022 $2E = (a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b)-(a^{3}+b^{3}+c^{3})$ [l1];\n\u2022 $(b+c-a)(c+a-b)(a+b-c) = (a^{2}b+a^{2}c+b^{2}a+b^{2}c+c^{2}a+c^{2}b) - (a^{3}+b^{3}+c^{3}) - 2abc$ [l2].\nTherefore, we conclude:\n\u2022 $E = \\frac{(b+c-a)(c+a-b)(a+b-c)}{2} + abc$ [l3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a b c E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (l1 : 2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3))\n  (l2 : (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c) :\n  E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a b c E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (l1 : 2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3))\n  (l2 : (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c) :\n  E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c := by\n  rw [\u2190 l1]\n  rw [l2]\n  rw [sub_sub]\n  rw [eq_sub_iff_add_eq]\n  rw [add_comm]\n  field_simp\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 6, "endLine": 11, "endColumn": 10, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3)\na b c E : \u211d\ntc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 a + b > c \u2227 a + c > b \u2227 b + c > a\nl1 : 2 * E = a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3)\nl2 :\n  (b + c - a) * (c + a - b) * (a + b - c) =\n    a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c\n\u22a2 E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable type declarations (\u211d) add helpful mathematical precision without contradicting the natural language", "The triangle inequality constraints (tc_1) are additional conditions not mentioned in natural language, but they appear to be reasonable mathematical context and don't contradict the stated problem", "Assumption l1 is perfectly translated with correct Lean syntax for mathematical operations", "Assumption l2 is perfectly translated with proper operator precedence and syntax", "The conclusion l3 and overall logical structure correctly capture the mathematical reasoning from assumptions to conclusion", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3\n  (a b c E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (l1 : 2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3))\n  (l2 : (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c) :\n  \u00ac (E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c) := by\n  intro h\n  rw [h] at l1\n  rw [l2] at l1\n  ring_nf at l1\n  have : 2 * (a * b * c) = 2 * (a * b * c) + 0 := by ring\n  rw [l1] at this\n  norm_num at this"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "To prove $E\\leq \tfrac{3}{2}abc$ it suffices to show $(b+c-a)(c+a-b)(a+b-c)\\leq abc$.", "statement": "We assume:\n\u2022 $E = \\frac{(b+c-a)(c+a-b)(a+b-c)}{2} + abc$ [l3].\nTherefore, we conclude:\n\u2022 The inequality $E \\leq \\frac{3}{2}abc$ is equivalent to $(b+c-a)(c+a-b)(a+b-c) \\leq abc$ [l4].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a b c E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (l1 : 2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3))\n  (l2 : (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c)\n  (l3 : E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c) :\n  (E \u2264 (3 / 2) * a * b * c) \u2194 ((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a b c E : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (l1 : 2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3))\n  (l2 : (b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c)\n  (l3 : E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c) :\n  (E \u2264 (3 / 2) * a * b * c) \u2194 ((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c) := by\n  rw [l3]\n  constructor\n  \u00b7 intro h\n    rw [add_le_iff_nonpos_right] at h\n    simp at h\n    rw [div_le_iff (by norm_num : (0:\u211d) < 2)] at h\n    simp at h\n    exact h\n  \u00b7 intro h\n    rw [add_le_iff_nonpos_right]\n    simp\n    rw [div_le_iff (by norm_num : (0:\u211d) < 2)]\n    simp\n    exact h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 8, "endLine": 15, "endColumn": 31, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a + ?b \u2264 ?a\ncase mp\na b c E : \u211d\ntc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 a + b > c \u2227 a + c > b \u2227 b + c > a\nl1 : 2 * E = a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3)\nl2 :\n  (b + c - a) * (c + a - b) * (a + b - c) =\n    a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c\nl3 : E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c\nh : (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c \u2264 3 / 2 * a * b * c\n\u22a2 (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c"}, {"line": 21, "column": 8, "endLine": 21, "endColumn": 31, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a + ?b \u2264 ?a\ncase mpr\na b c E : \u211d\ntc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 a + b > c \u2227 a + c > b \u2227 b + c > a\nl1 : 2 * E = a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3)\nl2 :\n  (b + c - a) * (c + a - b) * (a + b - c) =\n    a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c\nl3 : E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c\nh : (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c\n\u22a2 (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c \u2264 3 / 2 * a * b * c"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the essential mathematical content from the natural language. The assumption E = (b+c-a)(c+a-b)(a+b-c)/2 + abc is precisely formalized as l3, and the main conclusion about the equivalence of the two inequalities is accurately represented using the biconditional (\u2194). The additional premises l1 and l2, while not mentioned in the natural language, provide supporting algebraic relationships that don't contradict the stated problem. The triangle inequality constraints and explicit type declarations are reasonable mathematical context additions.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4 :\n  \u2203 (a b c E : \u211d),\n    (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a) \u2227\n    (2 * E = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3)) \u2227\n    ((b + c - a) * (c + a - b) * (a + b - c) = (a ^ 2 * b + a ^ 2 * c + b ^ 2 * a + b ^ 2 * c + c ^ 2 * a + c ^ 2 * b) - (a ^ 3 + b ^ 3 + c ^ 3) - 2 * a * b * c) \u2227\n    (E = (b + c - a) * (c + a - b) * (a + b - c) / 2 + a * b * c) \u2227\n    \u00ac((E \u2264 (3 / 2) * a * b * c) \u2194 ((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c)) := by\n  use 2, 2, 1\n  have E := (2 + 1 - 2) * (1 + 2 - 2) * (2 + 2 - 1) / 2 + 2 * 2 * 1\n  use E\n  refine \u27e8by norm_num, by norm_num, ?_, ?_, ?_, ?_\u27e9\n  \u00b7 simp [E]\n    ring\n  \u00b7 simp [E]\n    ring\n  \u00b7 simp [E]\n    ring\n  \u00b7 simp [E]\n    norm_num"}, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Setting $a=\tfrac{y+z}{2},\\;b=\tfrac{x+z}{2},\\;c=\tfrac{x+y}{2}$ with $x,y,z>0$", "statement": "Definition:\n\u2022 Let $x, y, z$ be positive real numbers defined by the Ravi substitution: $a = \\frac{y+z}{2}$, $b = \\frac{x+z}{2}$, $c = \\frac{x+y}{2}$. This implies $x=b+c-a$, $y=c+a-b$, and $z=a+b-c$. The condition $x,y,z>0$ is guaranteed by the triangle inequalities [tc_1] [def_2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (x y z : \u211d)\n  (a b c : \u211d)\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language states x, y, z are positive real numbers, but Lean only declares them as real numbers without the positivity constraint in the variable declaration. The positivity is handled separately in def_2.", "The Lean formalization exactly matches the mathematical definition a = (y + z) / 2", "The Lean formalization exactly matches the mathematical definition b = (x + z) / 2", "The Lean formalization exactly matches the mathematical definition c = (x + y) / 2", "The natural language mentions triangle inequalities [tc_1] [def_2] hold, but the Lean code does not include any triangle inequality conditions. Only def_2 appears as a positivity condition, not as triangle inequalities.", "The Lean formalization exactly matches the mathematical conclusion x = b + c - a", "The Lean formalization exactly matches the mathematical conclusion y = c + a - b", "The Lean formalization exactly matches the mathematical conclusion z = a + b - c", "The natural language states that x, y, z > 0 is guaranteed (as a conclusion), while Lean treats this as an explicit hypothesis (def_2). The semantic meaning is the same but the logical structure differs slightly."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language states x, y, z are positive real numbers, but Lean only declares them as real numbers without the positivity constraint in the variable declaration. The positivity is handled separately in def_2.', 'The Lean formalization exactly matches the mathematical definition a = (y + z) / 2', 'The Lean formalization exactly matches the mathematical definition b = (x + z) / 2', 'The Lean formalization exactly matches the mathematical definition c = (x + y) / 2', 'The natural language mentions triangle inequalities [tc_1] [def_2] hold, but the Lean code does not include any triangle inequality conditions. Only def_2 appears as a positivity condition, not as triangle inequalities.', 'The Lean formalization exactly matches the mathematical conclusion x = b + c - a', 'The Lean formalization exactly matches the mathematical conclusion y = c + a - b', 'The Lean formalization exactly matches the mathematical conclusion z = a + b - c', 'The natural language states that x, y, z > 0 is guaranteed (as a conclusion), while Lean treats this as an explicit hypothesis (def_2). The semantic meaning is the same but the logical structure differs slightly.']"}, "type": "definition"}, "l5": {"id": "l5", "natural_language": "this becomes $8xyz\\leq (x+y)(y+z)(z+x)$.", "statement": "We assume:\n\u2022 The inequality to prove is $(b+c-a)(c+a-b)(a+b-c) \\leq abc$ [l4];\n\u2022 The substitutions $a=\\frac{y+z}{2}, b=\\frac{x+z}{2}, c=\\frac{x+y}{2}$, and their inverses $x=b+c-a$, etc. [def_2].\nTherefore, we conclude:\n\u2022 The inequality $(b+c-a)(c+a-b)(a+b-c) \\leq abc$ is equivalent to $8xyz \\leq (x+y)(y+z)(z+x)$ [l5].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (x y z : \u211d)\n  (a b c : \u211d)\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0)\n  (l4 : (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c) :\n  (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (x y z : \u211d)\n  (a b c : \u211d)\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0)\n  (l4 : (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c) :\n  (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x) := by\n  rw [hrev.1, hrev.2.1, hrev.2.2]\n  rw [hypr.1, hypr.2.1, hypr.2.2]\n  field_simp\n  ring_nf\n  simp only [mul_assoc]\n  have h : 0 < 8 * x * y * z := by\n    apply mul_pos (mul_pos (mul_pos (by linarith) (by linarith)) (by linarith))\n    linarith\n  nth_rewrite 1 [\u2190 mul_le_mul_left h]\n  simp only [mul_add, mul_pow, mul_one]\n  ring_nf\n  simp", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 24, "column": 2, "endLine": 24, "endColumn": 6, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations correctly capture all variables as real numbers as implied by the mathematical context", "Both forward and inverse substitution relationships are accurately formalized, with the 'etc.' properly expanded", "The positivity constraint is an additional assumption not mentioned in natural language, but it's mathematically reasonable and doesn't contradict anything stated", "The original inequality l4 is perfectly captured with correct mathematical notation", "The equivalence statement l5 correctly uses biconditional logic and preserves all mathematical details including the factor of 8", "The overall logical structure appropriately translates the natural language reasoning into a formal lemma with proper hypothesis-conclusion structure", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l5\n  (x y z : \u211d)\n  (a b c : \u211d)\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0) :\n  \u00ac((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x)) := by\n  intro h\n  have h1 : (b + c - a) * (c + a - b) * (a + b - c) = x * y * z := by\n    rw [hrev.1, hrev.2.1, hrev.2.2]\n    ring\n  have h2 : a * b * c = (x + y) * (y + z) * (z + x) / 8 := by\n    rw [hypr.1, hypr.2.1, hypr.2.2]\n    field_simp\n    ring\n  rw [h1, h2] at h\n  have h3 : x * y * z \u2264 (x + y) * (y + z) * (z + x) / 8 \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x) := by\n    constructor\n    \u00b7 intro h'\n      field_simp at h'\n      exact h'\n    \u00b7 intro h'\n      field_simp\n      exact h'\n  rw [h3] at h\n  have h4 : \u2200 x y z : \u211d, x > 0 \u2192 y > 0 \u2192 z > 0 \u2192 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x) := by\n    intro x y z hx hy hz\n    have hxy : x + y \u2265 2 * Real.sqrt (x * y) := by\n      exact Real.two_mul_le_add_sq (le_of_lt hx) (le_of_lt hy)\n    have hyz : y + z \u2265 2 * Real.sqrt (y * z) := by\n      exact Real.two_mul_le_add_sq (le_of_lt hy) (le_of_lt hz)\n    have hzx : z + x \u2265 2 * Real.sqrt (z * x) := by\n      exact Real.two_mul_le_add_sq (le_of_lt hz) (le_of_lt hx)\n    have := mul_le_mul (mul_le_mul hxy hyz (by positivity) (by positivity)) hzx (by positivity) (by positivity)\n    simp [\u2190 mul_assoc, Real.sqrt_mul_self (le_of_lt hx), Real.sqrt_mul_self (le_of_lt hy), Real.sqrt_mul_self (le_of_lt hz)] at this\n    linarith\n  exact h4 x y z def_2.1 def_2.2.1 def_2.2.2 h"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Expanding the right-hand side gives $2xyz+(x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z)$, so the inequality reduces to $6xyz\\leq x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z$.", "statement": "We assume:\n\u2022 The inequality to prove is $8xyz \\leq (x+y)(y+z)(z+x)$ [l5].\nTherefore, we conclude:\n\u2022 The inequality $8xyz \\leq (x+y)(y+z)(z+x)$ is equivalent to $6xyz \\leq x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z$ [l6].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "def_2", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (x y z : \u211d) :\n  (8 * x * y * z \u2264 (x + y) * (y + z) * (z + x)) \u2194 (6 * x * y * z \u2264 x^2 * y + x * y^2 + y^2 * z + y * z^2 + z^2 * x + x^2 * z) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (x y z : \u211d) :\n  (8 * x * y * z \u2264 (x + y) * (y + z) * (z + x)) \u2194 (6 * x * y * z \u2264 x^2 * y + x * y^2 + y^2 * z + y * z^2 + z^2 * x + x^2 * z) := by\n  have h1 : (x + y) * (y + z) * (z + x) = (x + y + z) * (x * y + y * z + z * x) - x * y * z := by ring\n  have h2 : x^2 * y + x * y^2 + y^2 * z + y * z^2 + z^2 * x + x^2 * z = (x + y + z) * (x * y + y * z + z * x) - 3 * x * y * z := by ring\n  rw [h1, h2]\n  constructor\n  \u00b7 intro h\n    linarith\n  \u00b7 intro h\n    linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The original inequality is correctly formalized with proper operator precedence and variable types", "The equivalent inequality is correctly formalized with all terms properly represented", "The biconditional operator correctly captures the equivalence relationship stated in natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Grouping terms shows the right-hand side equals $x(y^{2}+z^{2})+y(x^{2}+z^{2})+z(x^{2}+y^{2})$, which is at least $2yzx+2xzy+2xy z=6xyz$ by AM\u2013GM.", "statement": "We assume:\n\u2022 $x,y,z$ are positive real numbers [def_2].\nTherefore, we conclude:\n\u2022 $x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z \\ge 6xyz$ [l7].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "def_2", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (x y z : \u211d)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0) :\n  x ^ 2 * y + x * y ^ 2 + y ^ 2 * z + y * z ^ 2 + z ^ 2 * x + x ^ 2 * z \u2265 6 * x * y * z := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (x y z : \u211d)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0) :\n  x ^ 2 * y + x * y ^ 2 + y ^ 2 * z + y * z ^ 2 + z ^ 2 * x + x ^ 2 * z \u2265 6 * x * y * z := by\n  have hx := def_2.1\n  have hy := def_2.2.1\n  have hz := def_2.2.2\n  have h1 : x^2*y + x*z^2 \u2265 2*x*y*z := by\n    rw [\u2190mul_assoc (2*x) y z, \u2190mul_assoc x y z]\n    apply mul_le_mul_of_nonneg_left (by rw [add_comm]; apply add_le_add <;> apply le_mul_of_one_le_right (le_of_lt hx) <;> assumption) (le_of_lt hx)\n  have h2 : x*y^2 + y*z^2 \u2265 2*x*y*z := by\n    rw [\u2190mul_assoc (2*x) y z, \u2190mul_assoc x y z]\n    apply mul_le_mul_of_nonneg_left (by rw [add_comm]; apply add_le_add <;> apply le_mul_of_one_le_right (le_of_lt hy) <;> assumption) (le_of_lt hy)\n  have h3 : y^2*z + z^2*x \u2265 2*x*y*z := by\n    rw [\u2190mul_assoc (2*x) y z, \u2190mul_assoc x y z]\n    apply mul_le_mul_of_nonneg_left (by rw [add_comm]; apply add_le_add <;> apply le_mul_of_one_le_right (le_of_lt hz) <;> assumption) (le_of_lt hz)\n  have h4 : x^2*y + x*y^2 + y^2*z + y*z^2 + z^2*x + x^2*z = (x^2*y + x*z^2) + (x*y^2 + y*z^2) + (y^2*z + z^2*x) := by ring\n  rw [h4]\n  linarith", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 8, "endLine": 13, "endColumn": 28, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2 * x * (y * z)\nx y z : \u211d\ndef_2 : x > 0 \u2227 y > 0 \u2227 z > 0\nhx : x > 0\nhy : y > 0\nhz : z > 0\n\u22a2 x ^ 2 * y + x * z ^ 2 \u2265 2 * x * y * z"}, {"line": 16, "column": 8, "endLine": 16, "endColumn": 28, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2 * x * (y * z)\nx y z : \u211d\ndef_2 : x > 0 \u2227 y > 0 \u2227 z > 0\nhx : x > 0\nhy : y > 0\nhz : z > 0\nh1 : x ^ 2 * y + x * z ^ 2 \u2265 2 * x * y * z\n\u22a2 x * y ^ 2 + y * z ^ 2 \u2265 2 * x * y * z"}, {"line": 19, "column": 8, "endLine": 19, "endColumn": 28, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2 * x * (y * z)\nx y z : \u211d\ndef_2 : x > 0 \u2227 y > 0 \u2227 z > 0\nhx : x > 0\nhy : y > 0\nhz : z > 0\nh1 : x ^ 2 * y + x * z ^ 2 \u2265 2 * x * y * z\nh2 : x * y ^ 2 + y * z ^ 2 \u2265 2 * x * y * z\n\u22a2 y ^ 2 * z + z ^ 2 * x \u2265 2 * x * y * z"}, {"line": 21, "column": 115, "endLine": 21, "endColumn": 122, "data": "unsolved goals\nx y z : \u211d\ndef_2 : x > 0 \u2227 y > 0 \u2227 z > 0\nhx : x > 0\nhy : y > 0\nhz : z > 0\nh1 : x ^ 2 * y + x * z ^ 2 \u2265 2 * x * y * z\nh2 : x * y ^ 2 + y * z ^ 2 \u2265 2 * x * y * z\nh3 : y ^ 2 * z + z ^ 2 * x \u2265 2 * x * y * z\n\u22a2 x * y ^ 2 + x * z ^ 2 + x ^ 2 * y + x ^ 2 * z + y * z ^ 2 + y ^ 2 * z =\n    x * y ^ 2 + x * z ^ 2 * 2 + x ^ 2 * y + y * z ^ 2 + y ^ 2 * z"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized in Lean, with x, y, z declared as real numbers and the positivity conditions properly encoded as conjunctive hypotheses.", "The mathematical inequality is perfectly translated with exact correspondence between each term in the natural language expression and its Lean counterpart, maintaining proper operator precedence and grouping.", "The logical structure correctly captures the assumption-conclusion relationship from natural language through Lean's hypothesis-goal framework, preserving the mathematical reasoning flow.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l7 :\n    \u2203 (x y z : \u211d), x > 0 \u2227 y > 0 \u2227 z > 0 \u2227 \n    x ^ 2 * y + x * y ^ 2 + y ^ 2 * z + y * z ^ 2 + z ^ 2 * x + x ^ 2 * z < 6 * x * y * z := by\n  use 1, 1, 1/10\n  constructor\n  \u00b7 norm_num\n  constructor\n  \u00b7 norm_num\n  constructor\n  \u00b7 norm_num\n  \u00b7 ring_nf\n    norm_num"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore the inequality holds, and we conclude $E\\leq\tfrac{3}{2}abc$.", "statement": "We assume:\n\u2022 The initial inequality $E \\leq \\frac{3}{2}abc$ is equivalent to $(b+c-a)(c+a-b)(a+b-c) \\leq abc$ [l4];\n\u2022 The inequality $(b+c-a)(c+a-b)(a+b-c) \\leq abc$ is equivalent to proving $6xyz \\leq x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z$ after substitution [l5, l6];\n\u2022 The inequality $x^{2}y+xy^{2}+y^{2}z+yz^{2}+z^{2}x+x^{2}z \\ge 6xyz$ is true [l7].\nTherefore, we conclude:\n\u2022 $a^{2}(s-a) + b^{2}(s-a) + c^{2}(s-a) \\leq \\frac{3}{2} a b c$ [ts_1].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "def_2", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a b c s E : \u211d)\n  (x y z : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)\n  (def_1 : a ^ 2 * (s - a) + b ^ 2 * (s - b) + c ^ 2 * (s - c) = E)\n  (l4 : (E \u2264 (3 / 2) * a * b * c) \u2194 ((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c))\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0)\n  (l5 : (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x))\n  (l6 : (8 * x * y * z \u2264 (x + y) * (y + z) * (z + x)) \u2194 (6 * x * y * z \u2264 x^2 * y + x * y^2 + y^2 * z + y * z^2 + z^2 * x + x^2 * z))\n  (l7 : x ^ 2 * y + x * y ^ 2 + y ^ 2 * z + y * z ^ 2 + z ^ 2 * x + x ^ 2 * z \u2265 6 * x * y * z) :\n  E \u2264 (3 / 2) * a * b * c := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a b c s E : \u211d)\n  (x y z : \u211d)\n  (tc_1 : (0 < a \u2227 0 < b \u2227 0 < c) \u2227 (a + b > c \u2227 a + c > b \u2227 b + c > a))\n  (tc_2 : s = (a + b + c) / 2)\n  (def_1 : a ^ 2 * (s - a) + b ^ 2 * (s - b) + c ^ 2 * (s - c) = E)\n  (l4 : (E \u2264 (3 / 2) * a * b * c) \u2194 ((b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c))\n  (hypr : a = (y + z) / 2 \u2227 b = (x + z) / 2 \u2227 c = (x + y) / 2)\n  (hrev : x = b + c - a \u2227 y = c + a - b \u2227 z = a + b - c)\n  (def_2 : x > 0 \u2227 y > 0 \u2227 z > 0)\n  (l5 : (b + c - a) * (c + a - b) * (a + b - c) \u2264 a * b * c \u2194 8 * x * y * z \u2264 (x + y) * (y + z) * (z + x))\n  (l6 : (8 * x * y * z \u2264 (x + y) * (y + z) * (z + x)) \u2194 (6 * x * y * z \u2264 x^2 * y + x * y^2 + y^2 * z + y * z^2 + z^2 * x + x^2 * z))\n  (l7 : x ^ 2 * y + x * y ^ 2 + y ^ 2 * z + y * z ^ 2 + z ^ 2 * x + x ^ 2 * z \u2265 6 * x * y * z) :\n  E \u2264 (3 / 2) * a * b * c := by\n  rw [\u2190def_1] at l4 \u22a2\n  rw [l4]\n  rw [l5]\n  rw [l6]\n  exact l7", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Triangle conditions are properly formalized with positivity and triangle inequality constraints", "Semiperimeter definition correctly captured", "Expression E properly defined using the correct formula", "First equivalence (l4) perfectly matches the natural language statement", "Variable substitutions are formalized but not explicitly mentioned in natural language - this is acceptable additional detail", "Positivity conditions for x,y,z are reasonable additional constraints", "The natural language doesn't mention the intermediate step with 8xyz, but the final form matches - minor structural difference", "The equivalence l6 correctly captures the transformation to the 6xyz inequality", "The final inequality l7 perfectly matches the natural language statement", "Major error in natural language conclusion: states 'a\u00b2(s-a) + b\u00b2(s-a) + c\u00b2(s-a)' but should be 'a\u00b2(s-a) + b\u00b2(s-b) + c\u00b2(s-c)' as correctly formalized in Lean"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Triangle conditions are properly formalized with positivity and triangle inequality constraints', 'Semiperimeter definition correctly captured', 'Expression E properly defined using the correct formula', 'First equivalence (l4) perfectly matches the natural language statement', 'Variable substitutions are formalized but not explicitly mentioned in natural language - this is acceptable additional detail', 'Positivity conditions for x,y,z are reasonable additional constraints', \"The natural language doesn't mention the intermediate step with 8xyz, but the final form matches - minor structural difference\", 'The equivalence l6 correctly captures the transformation to the 6xyz inequality', 'The final inequality l7 perfectly matches the natural language statement', \"Major error in natural language conclusion: states 'a\u00b2(s-a) + b\u00b2(s-a) + c\u00b2(s-a)' but should be 'a\u00b2(s-a) + b\u00b2(s-b) + c\u00b2(s-c)' as correctly formalized in Lean\"]"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

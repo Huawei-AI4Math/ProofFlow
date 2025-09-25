@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number and $\operatorname{Log}(z)$ denote its principal logarithm. If $\operatorname{Re}(\operatorname{Log}(z)) = \ln(\sqrt{8})$, $\operatorname{Im}(z) = \operatorname{Re}(z)$, and $\operatorname{Re}(z) > 0$, then $z = 2+2i$.
+
+Proof: From the condition $\operatorname{Re}(\operatorname{Log}(z)) = \ln(\sqrt{8})$ and the definition $\operatorname{Re}(\operatorname{Log}(z)) = \ln|z|$, we deduce that $|z| = \sqrt{8}$. Letting $z = x+iy$, this implies $x^2+y^2 = 8$. Using the condition $\operatorname{Im}(z) = \operatorname{Re}(z)$, we substitute $y=x$ into the previous equation to get $x^2+x^2=8$, which simplifies to $x^2=4$. Given that $\operatorname{Re}(z) > 0$, we must have $x>0$, so we take the positive root $x=2$, which in turn implies $y=2$. Therefore, since $z=x+iy$, we conclude that $z = 2+2i$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let z be a complex number and Log(z) denote its principal logarithm.", "statement": "Premise:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  z = 2 + 2 * Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The declaration of z as a complex number matches perfectly between natural language and Lean formalization", "The natural language only states that Log(z) is the principal logarithm of z without any specific constraints, and claims no conclusions are derived. However, the Lean theorem introduces three specific conditions about the logarithm and complex number properties (h1, h2, h3) that are not mentioned in the natural language, and derives a specific conclusion z = 2 + 2*I that contradicts the statement that no conclusions are derived"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The declaration of z as a complex number matches perfectly between natural language and Lean formalization', 'The natural language only states that Log(z) is the principal logarithm of z without any specific constraints, and claims no conclusions are derived. However, the Lean theorem introduces three specific conditions about the logarithm and complex number properties (h1, h2, h3) that are not mentioned in the natural language, and derives a specific conclusion z = 2 + 2*I that contradicts the statement that no conclusions are derived']"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If Re(Log(z)) = ln(sqrt(8))", "statement": "Premise:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) :\n  Complex.re (Complex.log z) = Real.log (Real.sqrt 8) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number. While it doesn't explicitly state 'principal logarithm', Complex.log in Lean is by definition the principal logarithm, so the mathematical meaning is preserved.", "The equation is perfectly translated: Re(Log(z)) becomes Complex.re (Complex.log z) and ln(sqrt(8)) becomes Real.log (Real.sqrt 8), which are mathematically equivalent.", "The natural language explicitly states no conclusions are derived and only presents conditions, but the Lean formalization presents this as a theorem statement to be proved. This is a structural difference in presentation rather than mathematical content."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "Im(z) = Re(z)", "statement": "Premise:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  z = 2 + 2 * Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration (z : \u2102) correctly captures that z is a complex number. The principal logarithm aspect is implicit in Complex.log which represents the principal branch.", "The Lean condition h1 perfectly matches the natural language condition, with Complex.re corresponding to Re, Complex.log to Log, and Real.log (Real.sqrt 8) to ln(sqrt(8)).", "The Lean condition h2 exactly matches the natural language condition Im(z) = Re(z).", "This is an additional condition in Lean not mentioned in the natural language. However, this is acceptable as extra conditions are allowed and don't constitute an inconsistency.", "This is a conclusion in the Lean theorem that wasn't mentioned in the natural language premise. Since the natural language explicitly states there are no conclusions derived, this represents additional content that is logically consistent with the given conditions."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_4": {"id": "tc_4", "natural_language": "Re(z) > 0", "statement": "Premise:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_4 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0)\n  (h4 : z = 2 + 2 * Complex.I) :\n  Complex.abs z = Real.sqrt 8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean declaration 'z : \u2102' correctly captures that z is a complex number, and Complex.log in Lean represents the principal logarithm", "The Lean hypothesis 'h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8)' perfectly matches the condition Re(Log(z)) = ln(sqrt(8))", "The Lean hypothesis 'h2 : Complex.im z = Complex.re z' exactly matches the condition Im(z) = Re(z)", "The Lean hypothesis 'h3 : Complex.re z > 0' exactly matches the condition Re(z) > 0", "The Lean theorem includes an additional hypothesis 'h4 : z = 2 + 2 * Complex.I' that is not present in the natural language conditions. This introduces a specific constraint that contradicts the generality of the natural language statement, which treats z as an arbitrary complex number satisfying the given conditions"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean declaration 'z : \u2102' correctly captures that z is a complex number, and Complex.log in Lean represents the principal logarithm\", \"The Lean hypothesis 'h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8)' perfectly matches the condition Re(Log(z)) = ln(sqrt(8))\", \"The Lean hypothesis 'h2 : Complex.im z = Complex.re z' exactly matches the condition Im(z) = Re(z)\", \"The Lean hypothesis 'h3 : Complex.re z > 0' exactly matches the condition Re(z) > 0\", \"The Lean theorem includes an additional hypothesis 'h4 : z = 2 + 2 * Complex.I' that is not present in the natural language conditions. This introduces a specific constraint that contradicts the generality of the natural language statement, which treats z as an arbitrary complex number satisfying the given conditions\"]"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "the definition Re(Log(z)) = ln|z|", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\nTherefore, we conclude:\n\u2022 Re(Log(z)) = ln(|z|) [l1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  Complex.re (Complex.log z) = Real.log (Complex.abs z) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n  have h4 : Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n    have h5 : Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n      -- Use the property that the real part of the complex logarithm is the logarithm of the absolute value of the complex number.\n      have h6 : Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n        -- Prove that the real part of the complex logarithm is the logarithm of the absolute value.\n        simp [Complex.log_re, Complex.abs, Complex.normSq, Real.log_sqrt, Real.log_mul, Real.log_rpow,\n          Real.log_pow, Real.log_inv, Real.log_div]\n        <;> ring_nf\n        <;> field_simp [Real.log_mul, Real.log_rpow, Real.log_pow, Real.log_inv, Real.log_div]\n        <;> ring_nf\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, pow_two]\n        <;> nlinarith\n      exact h6\n    exact h5\n  exact h4", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The complex number declaration is correctly captured with the appropriate type annotation.", "The condition Re(Log(z)) = ln(sqrt(8)) is perfectly translated using the appropriate Mathlib functions for complex logarithm real part, real logarithm, and square root.", "The condition Im(z) = Re(z) is correctly formalized using the complex imaginary and real part functions.", "The condition Re(z) > 0 is directly and correctly translated.", "The conclusion Re(Log(z)) = ln(|z|) is perfectly captured, with |z| correctly represented as Complex.abs z and all other components matching exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "From the condition Re(Log(z)) = ln(sqrt(8)) and the definition Re(Log(z)) = ln|z|, we deduce that |z| = sqrt(8).", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\nTherefore, we conclude:\n\u2022 |z| = sqrt(8) [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102)\n  (tc_1 : \u2203 (z : \u2102), z = 2 + 2 * Complex.I)\n  (tc_2 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (tc_3 : Complex.im z = Complex.re z)\n  (tc_4 : Complex.re z > 0)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z)) :\n  Complex.abs z = Real.sqrt 8 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102)\n  (tc_1 : \u2203 (z : \u2102), z = 2 + 2 * Complex.I)\n  (tc_2 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (tc_3 : Complex.im z = Complex.re z)\n  (tc_4 : Complex.re z > 0)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z)) :\n  Complex.abs z = Real.sqrt 8 := by\n  have h\u2081 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by\n    linarith\n  have h\u2082 : Complex.abs z > 0 := by\n    -- Prove that the modulus of z is positive since Re(z) > 0\n    have h\u2083 : 0 < Complex.re z := by simpa using tc_4\n    have h\u2084 : 0 < Complex.abs z := by\n      -- Since the real part of z is positive, the modulus is positive\n      have h\u2085 : 0 < Complex.abs z := by\n        -- Use the fact that the real part is positive and the square root of a sum of squares is positive\n        have h\u2086 : 0 < Complex.re z := by simpa using tc_4\n        have h\u2087 : 0 \u2264 Complex.im z := by\n          -- Since Im(z) = Re(z) > 0, Im(z) is non-negative\n          have h\u2088 : Complex.im z = Complex.re z := by simpa using tc_3\n          have h\u2089 : 0 < Complex.re z := by simpa using tc_4\n          linarith\n        have h\u2088 : 0 < Complex.abs z := by\n          -- Compute the modulus and show it's positive\n          have h\u2089 : Complex.abs z = Real.sqrt (Complex.re z * Complex.re z + Complex.im z * Complex.im z) := by\n            simp [Complex.abs, Complex.normSq]\n            <;> ring_nf\n            <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n            <;> ring_nf\n          rw [h\u2089]\n          have h\u2081\u2080 : 0 < Real.sqrt (Complex.re z * Complex.re z + Complex.im z * Complex.im z) := by\n            apply Real.sqrt_pos_of_pos\n            have h\u2081\u2081 : 0 < Complex.re z * Complex.re z + Complex.im z * Complex.im z := by\n              nlinarith [sq_pos_of_pos h\u2086]\n            linarith\n          linarith\n        exact h\u2088\n      exact h\u2085\n    exact h\u2084\n  -- Use the injectivity of the logarithm function to conclude that |z| = sqrt(8)\n  have h\u2083 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by simpa using h\u2081\n  have h\u2084 : Complex.abs z = Real.sqrt 8 := by\n    -- Apply the injectivity of the logarithm function\n    have h\u2085 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by simpa using h\u2081\n    have h\u2086 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by simpa using h\u2081\n    have h\u2087 : Complex.abs z > 0 := by simpa using h\u2082\n    have h\u2088 : Real.sqrt 8 > 0 := by positivity\n    -- Use the injectivity of the logarithm to deduce the equality\n    have h\u2089 : Complex.abs z = Real.sqrt 8 := by\n      apply Real.log_injOn_pos (Set.mem_Ioi.mpr h\u2087) (Set.mem_Ioi.mpr (by positivity))\n      linarith\n    exact h\u2089\n  exact h\u2084", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0.0, "semantic_feedback": ["tc_1 has a major inconsistency. The natural language states that z is a complex number and Log(z) is the principal logarithm, but the Lean formalization introduces an unrelated existential statement about a specific complex number (2 + 2*I).", "tc_2 perfectly matches - both express that the real part of the principal logarithm of z equals the natural logarithm of sqrt(8).", "tc_3 perfectly matches - both state that the imaginary part of z equals its real part.", "tc_4 perfectly matches - both state that the real part of z is positive.", "l1 perfectly matches - both express that the real part of the logarithm of z equals the natural logarithm of the absolute value of z.", "l2 perfectly matches - both conclude that the absolute value of z equals sqrt(8)."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['tc_1 has a major inconsistency. The natural language states that z is a complex number and Log(z) is the principal logarithm, but the Lean formalization introduces an unrelated existential statement about a specific complex number (2 + 2*I).', 'tc_2 perfectly matches - both express that the real part of the principal logarithm of z equals the natural logarithm of sqrt(8).', 'tc_3 perfectly matches - both state that the imaginary part of z equals its real part.', 'tc_4 perfectly matches - both state that the real part of z is positive.', 'l1 perfectly matches - both express that the real part of the logarithm of z equals the natural logarithm of the absolute value of z.', 'l2 perfectly matches - both conclude that the absolute value of z equals sqrt(8).']"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Letting z = x+iy", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\nDefinition:\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102) (x y : \u211d)\n  (def_1 : z = x + y * Complex.I)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Lean declares z as complex number but doesn't mention Log(z) or principal logarithm property", "The condition Re(Log(z)) = ln(sqrt(8)) is completely missing from Lean formalization", "The condition Im(z) = Re(z) is completely missing from Lean formalization", "The condition Re(z) > 0 is completely missing from Lean formalization", "The condition Re(Log(z)) = ln(|z|) is completely missing from Lean formalization", "Lean has z = x + y * Complex.I which matches z = x + iy, but doesn't explicitly define x = Re(z) and y = Im(z)", "The conclusion |z| = sqrt(8) is completely missing from Lean formalization"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"Lean declares z as complex number but doesn't mention Log(z) or principal logarithm property\", 'The condition Re(Log(z)) = ln(sqrt(8)) is completely missing from Lean formalization', 'The condition Im(z) = Re(z) is completely missing from Lean formalization', 'The condition Re(z) > 0 is completely missing from Lean formalization', 'The condition Re(Log(z)) = ln(|z|) is completely missing from Lean formalization', \"Lean has z = x + y * Complex.I which matches z = x + iy, but doesn't explicitly define x = Re(z) and y = Im(z)\", 'The conclusion |z| = sqrt(8) is completely missing from Lean formalization']"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "Letting z = x+iy, this implies x^2+y^2 = 8.", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\nTherefore, we conclude:\n\u2022 x^2 + y^2 = 8 [l3].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n\ntheorem l3 :\n  x^2 + y^2 = 8 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 :\n  x^2 + y^2 = 8 := by\n  have h\u2081 : x ^ 2 + y ^ 2 = 8 := by\n    have h\u2082 : x = Complex.re z := by\n      have h\u2082\u2081 : z = x + y * Complex.I := h_def\n      simp [Complex.ext_iff, pow_two] at h\u2082\u2081 \u22a2\n      <;>\n      (try ring_nf at * <;> norm_num at * <;> linarith)\n      <;>\n      (try simp_all [Complex.ext_iff, pow_two])\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, pow_two]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try simp_all [Complex.ext_iff, pow_two])\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n    have h\u2083 : y = Complex.im z := by\n      have h\u2083\u2081 : z = x + y * Complex.I := h_def\n      simp [Complex.ext_iff, pow_two] at h\u2083\u2081 \u22a2\n      <;>\n      (try ring_nf at * <;> norm_num at * <;> linarith)\n      <;>\n      (try simp_all [Complex.ext_iff, pow_two])\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, pow_two]\n          <;>\n          ring_nf at *\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try simp_all [Complex.ext_iff, pow_two])\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n    have h\u2084 : Complex.abs z = Real.sqrt 8 := by\n      have h\u2084\u2081 : Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n        rw [Complex.log_re]\n        <;> simp [Complex.abs, Complex.normSq]\n        <;>\n        (try simp_all [Complex.ext_iff, pow_two])\n        <;>\n        (try ring_nf at * <;> norm_num at * <;> linarith)\n        <;>\n        (try simp_all [Complex.ext_iff, pow_two])\n        <;>\n        (try linarith)\n        <;>\n        (try nlinarith)\n        <;>\n        (try\n          {\n            simp_all [Complex.ext_iff, pow_two]\n            <;>\n            ring_nf at *\n            <;>\n            norm_num at *\n            <;>\n            linarith\n          })\n      have h\u2084\u2082 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by\n        have h\u2084\u2083 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8) := by\n          simpa [h_def] using h_re\n        linarith\n      have h\u2084\u2083 : Complex.abs z > 0 := by\n        apply Complex.abs.pos\n        intro h\n        have h\u2084\u2084 : z = 0 := by\n          simp_all [Complex.ext_iff]\n          <;>\n          (try ring_nf at * <;> norm_num at * <;> linarith)\n          <;>\n          (try simp_all [Complex.ext_iff, pow_two])\n          <;>\n          (try linarith)\n          <;>\n          (try nlinarith)\n        simp_all [Complex.ext_iff]\n        <;> linarith\n      have h\u2084\u2084 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by linarith\n      have h\u2084\u2085 : Complex.abs z = Real.sqrt 8 := by\n        apply Real.log_injOn_pos (Set.mem_Ioi.mpr h\u2084\u2083) (Set.mem_Ioi.mpr (Real.sqrt_pos.mpr (by norm_num : (0 : \u211d) < 8)))\n        linarith\n      rw [h\u2084\u2085]\n    have h\u2085 : x ^ 2 + y ^ 2 = (Complex.abs z) ^ 2 := by\n      have h\u2085\u2081 : x = Complex.re z := h\u2082\n      have h\u2085\u2082 : y = Complex.im z := h\u2083\n      calc\n        x ^ 2 + y ^ 2 = (Complex.re z) ^ 2 + (Complex.im z) ^ 2 := by rw [h\u2085\u2081, h\u2085\u2082]\n        _ = (Complex.abs z) ^ 2 := by\n          simp [Complex.sq_abs, Complex.normSq]\n          <;> ring_nf\n          <;> simp [Complex.normSq]\n          <;> ring_nf\n          <;> norm_num\n          <;>\n          (try simp_all [Complex.ext_iff, pow_two])\n          <;>\n          (try linarith)\n          <;>\n          (try ring_nf at * <;> norm_num at * <;> linarith)\n          <;>\n          (try nlinarith)\n          <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, pow_two]\n              <;>\n              ring_nf at *\n              <;>\n              norm_num at *\n              <;>\n              linarith\n            })\n    have h\u2086 : (Complex.abs z) ^ 2 = 8 := by\n      have h\u2086\u2081 : Complex.abs z = Real.sqrt 8 := h\u2084\n      rw [h\u2086\u2081]\n      have h\u2086\u2082 : (Real.sqrt 8 : \u211d) \u2265 0 := Real.sqrt_nonneg _\n      have h\u2086\u2083 : (Real.sqrt 8 : \u211d) ^ 2 = 8 := by norm_num [Real.sqrt_eq_iff_sq_eq]\n      nlinarith\n    linarith\n  exact h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 7, "column": 29, "endLine": 7, "endColumn": 30, "data": "unknown identifier 'z'"}, {"line": 8, "column": 17, "endLine": 8, "endColumn": 18, "data": "unknown identifier 'z'"}, {"line": 8, "column": 42, "endLine": 8, "endColumn": 47, "data": "unknown identifier 'h_def'"}, {"line": 35, "column": 29, "endLine": 35, "endColumn": 30, "data": "unknown identifier 'z'"}, {"line": 36, "column": 17, "endLine": 36, "endColumn": 18, "data": "unknown identifier 'z'"}, {"line": 36, "column": 42, "endLine": 36, "endColumn": 47, "data": "unknown identifier 'h_def'"}, {"line": 63, "column": 26, "endLine": 63, "endColumn": 27, "data": "unknown identifier 'z'"}, {"line": 64, "column": 41, "endLine": 64, "endColumn": 42, "data": "unknown identifier 'z'"}, {"line": 64, "column": 68, "endLine": 64, "endColumn": 69, "data": "unknown identifier 'z'"}, {"line": 88, "column": 39, "endLine": 88, "endColumn": 40, "data": "unknown identifier 'z'"}, {"line": 89, "column": 43, "endLine": 89, "endColumn": 44, "data": "unknown identifier 'z'"}, {"line": 90, "column": 17, "endLine": 90, "endColumn": 22, "data": "unknown identifier 'h_def'"}, {"line": 90, "column": 30, "endLine": 90, "endColumn": 34, "data": "unknown identifier 'h_re'"}, {"line": 92, "column": 29, "endLine": 92, "endColumn": 30, "data": "unknown identifier 'z'"}, {"line": 95, "column": 19, "endLine": 95, "endColumn": 20, "data": "unknown identifier 'z'"}, {"line": 95, "column": 28, "endLine": 104, "endColumn": 25, "data": "unsolved goals\nx y : \u2115\nh\u2082 : x = 0\nh\u2083 : y = 0\nh\u2084\u2082 : 0 = Real.log \u221a8\nh : sorry.re = Real.log \u221a8 \u2227 sorry.im = Real.log \u221a8\n\u22a2 sorry = 0"}, {"line": 106, "column": 12, "endLine": 106, "endColumn": 20, "data": "linarith failed to find a contradiction\nx y : \u2115\nh\u2082 : x = 0\nh\u2083 : y = 0\nh\u2084\u2082 : 0 = Real.log \u221a8\nh : sorry.re = Real.log \u221a8 \u2227 sorry.im = Real.log \u221a8\nh\u2084\u2084 : sorry = 0\n\u22a2 False failed"}, {"line": 107, "column": 39, "endLine": 107, "endColumn": 40, "data": "unknown identifier 'z'"}, {"line": 108, "column": 29, "endLine": 108, "endColumn": 30, "data": "unknown identifier 'z'"}, {"line": 112, "column": 43, "endLine": 112, "endColumn": 44, "data": "unknown identifier 'z'"}, {"line": 113, "column": 32, "endLine": 113, "endColumn": 33, "data": "unknown identifier 'z'"}, {"line": 114, "column": 32, "endLine": 114, "endColumn": 33, "data": "unknown identifier 'z'"}, {"line": 116, "column": 36, "endLine": 116, "endColumn": 37, "data": "unknown identifier 'z'"}, {"line": 116, "column": 57, "endLine": 116, "endColumn": 58, "data": "unknown identifier 'z'"}, {"line": 117, "column": 25, "endLine": 117, "endColumn": 26, "data": "unknown identifier 'z'"}, {"line": 142, "column": 27, "endLine": 142, "endColumn": 28, "data": "unknown identifier 'z'"}, {"line": 143, "column": 29, "endLine": 143, "endColumn": 30, "data": "unknown identifier 'z'"}, {"line": 148, "column": 4, "endLine": 148, "endColumn": 12, "data": "linarith failed to find a contradiction\ncase h1.h\nx y : \u2115\nh\u2082 : \u2191x = sorry.re\nh\u2083 : \u2191y = sorry.im\nh\u2084 : Complex.abs sorry = \u221a8\nh\u2085 : \u2191x ^ 2 + \u2191y ^ 2 = Complex.abs sorry ^ 2\nh\u2086 : Complex.abs sorry ^ 2 = 8\na\u271d : x ^ 2 + y ^ 2 < 8\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The declaration of z as a complex number is correctly captured", "The condition Re(Log(z)) = ln(sqrt(8)) is perfectly translated to Lean", "The condition Im(z) = Re(z) is perfectly captured", "The condition Re(z) > 0 is perfectly captured", "The statement 'Re(Log(z)) = ln(|z|)' [l1] is completely missing from the Lean formalization", "The statement '|z| = sqrt(8)' [l2] is completely missing from the Lean formalization", "The definition states 'Let x = Re(z) and y = Im(z) such that z = x + iy' but the Lean code only has 'z = x + y * Complex.I' without explicitly constraining x and y to be the real and imaginary parts of z", "The conclusion x^2 + y^2 = 8 is perfectly captured in the theorem statement", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The declaration of z as a complex number is correctly captured', 'The condition Re(Log(z)) = ln(sqrt(8)) is perfectly translated to Lean', 'The condition Im(z) = Re(z) is perfectly captured', 'The condition Re(z) > 0 is perfectly captured', \"The statement 'Re(Log(z)) = ln(|z|)' [l1] is completely missing from the Lean formalization\", \"The statement '|z| = sqrt(8)' [l2] is completely missing from the Lean formalization\", \"The definition states 'Let x = Re(z) and y = Im(z) such that z = x + iy' but the Lean code only has 'z = x + y * Complex.I' without explicitly constraining x and y to be the real and imaginary parts of z\", 'The conclusion x^2 + y^2 = 8 is perfectly captured in the theorem statement']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Using the condition Im(z) = Re(z), we substitute y=x", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\nTherefore, we conclude:\n\u2022 y = x [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8) :\n  y = x := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8) :\n  y = x := by\n  have h4 : x > 0 := by\n    have h4\u2081 : Complex.re z = x := by\n      simp [h_def, Complex.ext_iff]\n      <;> norm_num\n      <;> linarith\n    have h4\u2082 : Complex.re z > 0 := h_pos\n    linarith\n  \n  have h5 : y = x := by\n    have h5\u2081 : y = Complex.im z := by\n      have h5\u2082 : Complex.im z = y := by\n        simp [h_def, Complex.ext_iff]\n        <;> norm_num\n        <;> linarith\n      linarith\n    have h5\u2082 : Complex.im z = Complex.re z := by\n      exact h_im\n    have h5\u2083 : Complex.re z = x := by\n      have h5\u2084 : Complex.re z = x := by\n        simp [h_def, Complex.ext_iff]\n        <;> norm_num\n        <;> linarith\n      exact h5\u2084\n    have h5\u2084 : y = x := by\n      linarith\n    exact h5\u2084\n  \n  exact h5", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical content from the natural language. All assumptions (tc_1 through l3) are properly translated using appropriate Mathlib functions and types. The complex number representation, logarithm operations, and algebraic relationships are accurately formalized. The conclusion y = x is correctly stated as the theorem goal. The formalization is mathematically equivalent to the natural language description."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "we substitute y=x into the previous equation to get x^2+x^2=8, which simplifies to x^2=4.", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\n\u2022 y = x [l4].\nTherefore, we conclude:\n\u2022 x^2 = 4 [l5].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x) :\n  x^2 = 4 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x) :\n  x^2 = 4 := by\n  have h1 : x ^ 2 + y ^ 2 = 8 := l3\n  have h2 : y = x := l4\n  have h3 : x ^ 2 = 4 := by\n    have h4 : y = x := h2\n    have h5 : x ^ 2 + y ^ 2 = 8 := h1\n    rw [h4] at h5\n    have h6 : x ^ 2 + x ^ 2 = 8 := by linarith\n    have h7 : 2 * x ^ 2 = 8 := by linarith\n    have h8 : x ^ 2 = 4 := by linarith\n    exact h8\n  exact h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures most of the logical content correctly, but there is a structural difference in how variables x and y are defined. The natural language explicitly states 'Let x = Re(z) and y = Im(z)', while the Lean version treats x and y as independent variables that happen to satisfy z = x + y*I. This could potentially allow for cases where x \u2260 Re(z) or y \u2260 Im(z), though in practice the constraint z = x + y*I should enforce the intended relationship. The mathematical meaning is preserved but the logical structure is slightly different from the natural language specification."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures most of the logical content correctly, but there is a structural difference in how variables x and y are defined. The natural language explicitly states 'Let x = Re(z) and y = Im(z)', while the Lean version treats x and y as independent variables that happen to satisfy z = x + y*I. This could potentially allow for cases where x \u2260 Re(z) or y \u2260 Im(z), though in practice the constraint z = x + y*I should enforce the intended relationship. The mathematical meaning is preserved but the logical structure is slightly different from the natural language specification.\"]"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Given that Re(z) > 0, we must have x>0,", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\n\u2022 y = x [l4].\n\u2022 x^2 = 4 [l5].\nTherefore, we conclude:\n\u2022 x > 0 [l6].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4) :\n  x > 0 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4) :\n  x > 0 := by\n  have h_main : x > 0 := by\n    have h6 : x^2 = 4 := l5\n    have h7 : x = 2 \u2228 x = -2 := by\n      apply or_iff_not_imp_left.mpr\n      intro h8\n      apply eq_of_sub_eq_zero\n      apply mul_left_cancel\u2080 (sub_ne_zero.mpr h8)\n      nlinarith\n    cases h7 with\n    | inl h7 =>\n      -- Case x = 2\n      linarith\n    | inr h7 =>\n      -- Case x = -2\n      have h8 : Complex.re z > 0 := h_pos\n      have h9 : z = x + y * Complex.I := h_def\n      have h10 : Complex.re z = x := by\n        simp [h9, Complex.ext_iff, pow_two]\n        <;> ring_nf\n        <;> norm_num\n        <;> linarith\n      rw [h10] at h8\n      linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures most of the mathematical content correctly, but there's a structural gap in the variable definitions. The natural language explicitly states 'Let x = Re(z) and y = Im(z) such that z = x + iy', but the Lean code only provides 'h_def : z = x + y * Complex.I' without explicitly constraining that x and y are the real and imaginary parts of z respectively. While this might be derivable in context, the explicit relationship stated in the natural language is not directly captured in the formalization. All other mathematical relationships and the logical flow are correctly represented."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures most of the mathematical content correctly, but there's a structural gap in the variable definitions. The natural language explicitly states 'Let x = Re(z) and y = Im(z) such that z = x + iy', but the Lean code only provides 'h_def : z = x + y * Complex.I' without explicitly constraining that x and y are the real and imaginary parts of z respectively. While this might be derivable in context, the explicit relationship stated in the natural language is not directly captured in the formalization. All other mathematical relationships and the logical flow are correctly represented.\"]"}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "so we take the positive root x=2", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\n\u2022 y = x [l4].\n\u2022 x^2 = 4 [l5].\n\u2022 x > 0 [l6].\nTherefore, we conclude:\n\u2022 x = 2 [l7].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  z = 2 + 2 * Complex.I := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 (z : \u2102) \n  (h1 : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h2 : Complex.im z = Complex.re z)\n  (h3 : Complex.re z > 0) :\n  z = 2 + 2 * Complex.I := by\n  have h4 : Complex.abs z = Real.sqrt 8 := by\n    have h4\u2081 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := by\n      have h4\u2082 : Complex.re (Complex.log z) = Real.log (Complex.abs z) := by\n        simp [Complex.log_re]\n      rw [h4\u2082] at h1\n      linarith\n    have h4\u2083 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := h4\u2081\n    have h4\u2084 : Complex.abs z > 0 := by\n      apply Complex.abs.pos\n      intro h4\u2085\n      simp_all [Complex.ext_iff]\n      <;>\n      (try norm_num at h3 \u22a2) <;>\n      (try linarith) <;>\n      (try nlinarith [Real.sqrt_nonneg 8, Real.sq_sqrt (show (0 : \u211d) \u2264 8 by norm_num)])\n    have h4\u2085 : Real.log (Complex.abs z) = Real.log (Real.sqrt 8) := h4\u2081\n    have h4\u2086 : Complex.abs z = Real.sqrt 8 := by\n      apply Real.log_injOn_pos (Set.mem_Ioi.mpr h4\u2084) (Set.mem_Ioi.mpr (Real.sqrt_pos.mpr (by norm_num)))\n      linarith\n    exact h4\u2086\n  \n  have h5 : Complex.re z ^ 2 + Complex.im z ^ 2 = 8 := by\n    have h5\u2081 : Complex.abs z ^ 2 = 8 := by\n      calc\n        Complex.abs z ^ 2 = (Real.sqrt 8) ^ 2 := by rw [h4]\n        _ = 8 := by norm_num [Real.sqrt_eq_iff_sq_eq]\n    have h5\u2082 : Complex.abs z ^ 2 = Complex.re z ^ 2 + Complex.im z ^ 2 := by\n      simp [Complex.sq_abs, Complex.normSq]\n      <;> ring_nf\n      <;> field_simp [Complex.normSq_apply]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, pow_two]\n      <;> nlinarith\n    linarith\n  \n  have h6 : Complex.im z = Complex.re z := h2\n  \n  have h7 : Complex.re z ^ 2 = 4 := by\n    have h7\u2081 : Complex.im z = Complex.re z := h6\n    have h7\u2082 : Complex.re z ^ 2 + Complex.im z ^ 2 = 8 := h5\n    rw [h7\u2081] at h7\u2082\n    ring_nf at h7\u2082 \u22a2\n    nlinarith\n  \n  have h8 : Complex.re z = 2 := by\n    have h8\u2081 : Complex.re z > 0 := h3\n    have h8\u2082 : Complex.re z ^ 2 = 4 := h7\n    have h8\u2083 : Complex.re z = 2 := by\n      nlinarith\n    exact h8\u2083\n  \n  have h9 : Complex.im z = 2 := by\n    have h9\u2081 : Complex.im z = Complex.re z := h6\n    rw [h9\u2081]\n    have h9\u2082 : Complex.re z = 2 := h8\n    linarith\n  \n  have h10 : z = 2 + 2 * Complex.I := by\n    have h10\u2081 : z.re = 2 := by\n      have h10\u2082 : Complex.re z = 2 := h8\n      simp_all [Complex.ext_iff]\n      <;>\n      (try norm_num at h3 \u22a2) <;>\n      (try linarith) <;>\n      (try nlinarith [Real.sqrt_nonneg 8, Real.sq_sqrt (show (0 : \u211d) \u2264 8 by norm_num)])\n    have h10\u2082 : z.im = 2 := by\n      have h10\u2083 : Complex.im z = 2 := h9\n      simp_all [Complex.ext_iff]\n      <;>\n      (try norm_num at h3 \u22a2) <;>\n      (try linarith) <;>\n      (try nlinarith [Real.sqrt_nonneg 8, Real.sq_sqrt (show (0 : \u211d) \u2264 8 by norm_num)])\n    apply Complex.ext <;> simp_all [Complex.ext_iff, pow_two]\n    <;>\n    (try norm_num at h3 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith [Real.sqrt_nonneg 8, Real.sq_sqrt (show (0 : \u211d) \u2264 8 by norm_num)])\n  \n  exact h10", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the essential mathematical content from the natural language. The three hypotheses (h1, h2, h3) correspond directly to the key conditions stated in the natural language (tc_2, tc_3, tc_4). The conclusion z = 2 + 2 * Complex.I is mathematically equivalent to the derived result that x = 2 and y = x = 2, giving z = 2 + 2i. While the intermediate derivation steps (l1-l6) are not explicitly stated as hypotheses, they represent the proof strategy rather than the theorem statement itself, and can be derived from the given conditions. The formalization is mathematically sound and complete.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "which in turn implies y=2.", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\n\u2022 y = x [l4].\n\u2022 x^2 = 4 [l5].\n\u2022 x > 0 [l6].\n\u2022 x = 2 [l7].\nTherefore, we conclude:\n\u2022 y = 2 [l8].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4)\n  (l6 : x > 0)\n  (l7 : z = 2 + 2 * Complex.I) :\n  y = 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4)\n  (l6 : x > 0)\n  (l7 : z = 2 + 2 * Complex.I) :\n  y = 2 := by\n  have h1 : x = 2 := by\n    have h2 : x ^ 2 = 4 := l5\n    have h3 : x > 0 := l6\n    have h4 : x = 2 := by\n      nlinarith\n    exact h4\n  \n  have h2 : y = 2 := by\n    have h3 : y = x := l4\n    rw [h3]\n    linarith\n  \n  exact h2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.9, "semantic_feedback": ["Complex number type and principal logarithm correctly represented", "Real part of logarithm equation correctly formalized", "Imaginary part equals real part condition correctly captured", "Positivity condition correctly represented", "Logarithm property correctly formalized", "Absolute value equation correctly represented", "Variable definitions and complex number representation correctly captured", "Pythagorean relationship correctly formalized", "Equality y = x correctly represented", "Equation x^2 = 4 correctly formalized", "Natural language states 'x = 2' but Lean has 'z = 2 + 2 * Complex.I' - this changes the logical structure from deriving x = 2 to assuming the final form of z", "Conclusion y = 2 correctly represented as the goal"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, since z=x+iy, we conclude that z = 2+2i.", "statement": "We assume:\n\u2022 z is a complex number and Log(z) is the principal logarithm of z [tc_1].\n\u2022 Re(Log(z)) = ln(sqrt(8)) [tc_2].\n\u2022 Im(z) = Re(z) [tc_3].\n\u2022 Re(z) > 0 [tc_4].\n\u2022 Re(Log(z)) = ln(|z|) [l1].\n\u2022 |z| = sqrt(8) [l2].\n\u2022 Let x = Re(z) and y = Im(z) such that z = x + iy [def_1].\n\u2022 x^2 + y^2 = 8 [l3].\n\u2022 y = x [l4].\n\u2022 x^2 = 4 [l5].\n\u2022 x > 0 [l6].\n\u2022 x = 2 [l7].\n\u2022 y = 2 [l8].\nTherefore, we conclude:\n\u2022 z = 2 + 2i [ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4)\n  (l6 : x > 0)\n  (l7 : y = 2) :\n  z = 2 + 2 * Complex.I := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102) (x y : \u211d)\n  (h_re : Complex.re (Complex.log z) = Real.log (Real.sqrt 8))\n  (h_im : Complex.im z = Complex.re z)\n  (h_pos : Complex.re z > 0)\n  (h_def : z = x + y * Complex.I)\n  (l1 : Complex.re (Complex.log z) = Real.log (Complex.abs z))\n  (l2 : Complex.abs z = Real.sqrt 8)\n  (l3 : x^2 + y^2 = 8)\n  (l4 : y = x)\n  (l5 : x^2 = 4)\n  (l6 : x > 0)\n  (l7 : y = 2) :\n  z = 2 + 2 * Complex.I := by\n  have h8 : x = 2 := by\n    have h8\u2081 : x ^ 2 = 4 := l5\n    have h8\u2082 : x > 0 := l6\n    have h8\u2083 : x = 2 := by\n      nlinarith\n    exact h8\u2083\n  \n  have h9 : y = 2 := l7\n  \n  have h10 : z = 2 + 2 * Complex.I := by\n    rw [h_def]\n    have h11 : x = 2 := h8\n    have h12 : y = 2 := h9\n    rw [h11, h12]\n    <;> simp [Complex.ext_iff, pow_two]\n    <;> norm_num\n  \n  exact h10", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures almost all the logical content from the natural language correctly. The mathematical relationships, variable declarations, and conclusion are properly represented. However, there is one missing hypothesis: the natural language statement 'l7: x = 2' is not included in the Lean formalization, while 'l8: y = 2' appears as 'l7: y = 2' (with renumbered label). This omission is minor since the missing constraint 'x = 2' could potentially be derived from the existing hypotheses (x^2 = 4 and x > 0), but it should have been explicitly included to perfectly match the natural language structure."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures almost all the logical content from the natural language correctly. The mathematical relationships, variable declarations, and conclusion are properly represented. However, there is one missing hypothesis: the natural language statement 'l7: x = 2' is not included in the Lean formalization, while 'l8: y = 2' appears as 'l7: y = 2' (with renumbered label). This omission is minor since the missing constraint 'x = 2' could potentially be derived from the existing hypotheses (x^2 = 4 and x > 0), but it should have been explicitly included to perfectly match the natural language structure.\"]"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_4", "label": "tc_4", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

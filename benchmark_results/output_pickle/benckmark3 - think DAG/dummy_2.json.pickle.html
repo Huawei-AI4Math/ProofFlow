@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f: [0, 2] 	o \mathbb{R}$ be a continuous function. If $f(0) = 3$, $f(1) = -1$, and $f(2) = 4$, then there exist at least two points $c_1, c_2 \in [0, 2]$ such that $f(c_1) = 0$ and $f(c_2) = 1$.
+
+Proof: Since $f$ is continuous on $[0, 1]$ and $f(0) = 3 > 0$ while $f(1) = -1 < 0$, by the Intermediate Value Theorem, there exists $c_1 \in (0, 1)$ such that $f(c_1) = 0$. Next, we consider two cases. If $f$ attains the value $1$ on $[0, 1]$, then we have found our $c_2$ in $[0, 1]$. Otherwise, since $f(0) = 3 > 1$ and $f(1) = -1 < 1$, we know that $f$ crosses the value $1$ somewhere in $(0, 1)$ by continuity. Alternatively, we can look at $[1, 2]$ where $f(1) = -1 < 1$ and $f(2) = 4 > 1$. Since $f$ is continuous on $[1, 2]$, by the Intermediate Value Theorem, there exists $c_2 \in (1, 2)$ such that $f(c_2) = 1$. Therefore, we have found both required points.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f: [0, 2] \to \\mathbb{R}$ be a continuous function.", "statement": "Premise:\n\u2022 $f$ is a continuous function from the interval $[0, 2]$ to $\\mathbb{R}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u211d \u2192 \u211d)\n(tc_1 : ContinuousOn f (Set.Icc 0 2))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical statement. The function f is declared as \u211d \u2192 \u211d (from reals to reals) and ContinuousOn f (Set.Icc 0 2) precisely expresses that f is continuous on the closed interval [0,2]. Set.Icc 0 2 represents the closed interval [0,2] in Lean. Both formulations contain only conditions with no conclusions, which matches perfectly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $f(0) = 3$, $f(1) = -1$, and $f(2) = 4$", "statement": "Premise:\n\u2022 For the function $f$ from [tc_1], we have the following values: $f(0)=3$, $f(1)=-1$, and $f(2)=4$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h0 : f 0 = 3)\n  (h1 : f 1 = -1) \n  (h2 : f 2 = 4) :\n  \u2203 c\u2081 c\u2082 : \u211d, c\u2081 \u2208 Set.Icc 0 2 \u2227 c\u2082 \u2208 Set.Icc 0 2 \u2227 f c\u2081 = 0 \u2227 f c\u2082 = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language refers to 'function f from [tc_1]' without specifying the domain/codomain or continuity, while Lean explicitly declares f as \u211d \u2192 \u211d with continuity on [0,2]. The continuity condition is an additional constraint not mentioned in the natural language, but the function type specification is reasonable.", "Both state f(0) = 3 exactly", "Both state f(1) = -1 exactly", "Both state f(2) = 4 exactly", "The natural language explicitly states no conclusions are derived and this is only a premise, but the Lean formalization includes a substantial conclusion about the existence of points c\u2081 and c\u2082 where f takes values 0 and 1 respectively"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language refers to 'function f from [tc_1]' without specifying the domain/codomain or continuity, while Lean explicitly declares f as \u211d \u2192 \u211d with continuity on [0,2]. The continuity condition is an additional constraint not mentioned in the natural language, but the function type specification is reasonable.\", 'Both state f(0) = 3 exactly', 'Both state f(1) = -1 exactly', 'Both state f(2) = 4 exactly', 'The natural language explicitly states no conclusions are derived and this is only a premise, but the Lean formalization includes a substantial conclusion about the existence of points c\u2081 and c\u2082 where f takes values 0 and 1 respectively']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "by the Intermediate Value Theorem", "statement": "Definition:\n\u2022 The Intermediate Value Theorem (IVT) states that for a function $g$ that is continuous on a closed interval $[a, b]$, and for any value $y_0$ between $g(a)$ and $g(b)$ (i.e., $g(a) < y_0 < g(b)$ or $g(b) < y_0 < g(a)$), there exists a point $c \\in (a, b)$ such that $g(c) = y_0$ [def_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem IVT (g : \u211d \u2192 \u211d) (a b : \u211d) (h_ab : a < b) \n  (h_cont : ContinuousOn g (Set.Icc a b)) \n  (y\u2080 : \u211d) (h_between : (g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b) \u2228 (g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a)) :\n  \u2203 c \u2208 Set.Ioo a b, g c = y\u2080 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that g is continuous on the closed interval [a,b] using ContinuousOn g (Set.Icc a b)", "The natural language specifies strict inequalities: g(a) < y\u2080 < g(b) or g(b) < y\u2080 < g(a), meaning y\u2080 is strictly between the function values. However, the Lean version uses non-strict inequalities: g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b or g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a, which allows y\u2080 to equal g(a) or g(b). This is a significant logical difference that changes the meaning of the theorem", "The Lean formalization correctly captures that there exists a point c in the open interval (a,b) such that g(c) = y\u2080 using Set.Ioo a b"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that g is continuous on the closed interval [a,b] using ContinuousOn g (Set.Icc a b)', 'The natural language specifies strict inequalities: g(a) < y\u2080 < g(b) or g(b) < y\u2080 < g(a), meaning y\u2080 is strictly between the function values. However, the Lean version uses non-strict inequalities: g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b or g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a, which allows y\u2080 to equal g(a) or g(b). This is a significant logical difference that changes the meaning of the theorem', 'The Lean formalization correctly captures that there exists a point c in the open interval (a,b) such that g(c) = y\u2080 using Set.Ioo a b']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Since $f$ is continuous on $[0, 1]$ and $f(0) = 3 > 0$ while $f(1) = -1 < 0$, by the Intermediate Value Theorem, there exists $c_1 \\in (0, 1)$ such that $f(c_1) = 0$.", "statement": "We assume:\n\u2022 $f$ is a continuous function from $[0, 2]$ to $\\mathbb{R}$ [tc_1].\n\u2022 $f(0)=3$ and $f(1)=-1$ [tc_2].\n\u2022 The Intermediate Value Theorem [def_1].\nTherefore, we conclude:\n\u2022 There exists an element $c_1 \\in (0, 1)$ such that $f(c_1) = 0$ [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h_f0 : f 0 = 3)\n  (h_f1 : f 1 = -1)\n  (h_ivt : \u2200 g : \u211d \u2192 \u211d, \u2200 a b : \u211d, a < b \u2192 ContinuousOn g (Set.Icc a b) \u2192 \n    \u2200 y\u2080 : \u211d, ((g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b) \u2228 (g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a)) \u2192 \n      \u2203 c \u2208 Set.Ioo a b, g c = y\u2080) :\n  \u2203 c\u2081 \u2208 Set.Ioo 0 1, f c\u2081 = 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h_f0 : f 0 = 3)\n  (h_f1 : f 1 = -1)\n  (h_ivt : \u2200 g : \u211d \u2192 \u211d, \u2200 a b : \u211d, a < b \u2192 ContinuousOn g (Set.Icc a b) \u2192 \n    \u2200 y\u2080 : \u211d, ((g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b) \u2228 (g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a)) \u2192 \n      \u2203 c \u2208 Set.Ioo a b, g c = y\u2080) :\n  \u2203 c\u2081 \u2208 Set.Ioo 0 1, f c\u2081 = 0 := by\n  have h_cont_01 : ContinuousOn f (Set.Icc 0 1) := by\n    apply ContinuousOn.mono h_cont\n    intro x hx\n    simp only [Set.mem_Icc] at hx \u22a2\n    constructor <;> linarith\n  \n  have h_main : \u2203 c\u2081 \u2208 Set.Ioo 0 1, f c\u2081 = 0 := by\n    have h\u2081 : (f 1 \u2264 (0 : \u211d) \u2227 (0 : \u211d) \u2264 f 0) := by\n      constructor\n      \u00b7 -- Prove f 1 \u2264 0\n        rw [h_f1]\n        norm_num\n      \u00b7 -- Prove 0 \u2264 f 0\n        rw [h_f0]\n        norm_num\n    -- Apply the intermediate value theorem\n    have h\u2082 : \u2203 c \u2208 Set.Ioo 0 1, f c = 0 := by\n      have h\u2083 : \u2203 c \u2208 Set.Ioo 0 1, f c = 0 := by\n        have h\u2084 : ((f 0 \u2264 (0 : \u211d) \u2227 (0 : \u211d) \u2264 f 1) \u2228 (f 1 \u2264 (0 : \u211d) \u2227 (0 : \u211d) \u2264 f 0)) := by\n          -- Use the second disjunct since f(1) \u2264 0 \u2264 f(0)\n          apply Or.inr\n          exact h\u2081\n        -- Use the given intermediate value theorem\n        have h\u2085 : \u2203 c \u2208 Set.Ioo 0 1, f c = 0 := by\n          have h\u2086 : (0 : \u211d) < (1 : \u211d) := by norm_num\n          have h\u2087 : ContinuousOn f (Set.Icc 0 1) := h_cont_01\n          have h\u2088 : ((f 0 \u2264 (0 : \u211d) \u2227 (0 : \u211d) \u2264 f 1) \u2228 (f 1 \u2264 (0 : \u211d) \u2227 (0 : \u211d) \u2264 f 0)) := h\u2084\n          -- Apply the intermediate value theorem with y\u2080 = 0\n          have h\u2089 : \u2203 c \u2208 Set.Ioo 0 1, f c = (0 : \u211d) := by\n            apply h_ivt f 0 1 (by norm_num) h_cont_01 (0 : \u211d)\n            exact h\u2088\n          -- Simplify the result\n          simpa using h\u2089\n        exact h\u2085\n      exact h\u2083\n    exact h\u2082\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The function definition and continuity constraint are correctly formalized using appropriate Lean types and ContinuousOn predicate on the closed interval [0,2]", "The boundary conditions f(0)=3 and f(1)=-1 are directly and accurately translated", "The Intermediate Value Theorem is properly formalized as a general statement covering both increasing and decreasing function cases, which is mathematically sound", "The conclusion about existence of c\u2081 in the open interval (0,1) with f(c\u2081)=0 is perfectly captured using Set.Ioo", "The overall logical structure correctly represents the mathematical reasoning from assumptions to conclusion"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Alternatively, we can look at $[1, 2]$ where $f(1) = -1 < 1$ and $f(2) = 4 > 1$. Since $f$ is continuous on $[1, 2]$, by the Intermediate Value Theorem, there exists $c_2 \\in (1, 2)$ such that $f(c_2) = 1$.", "statement": "We assume:\n\u2022 $f$ is a continuous function from $[0, 2]$ to $\\mathbb{R}$ [tc_1].\n\u2022 $f(1)=-1$ and $f(2)=4$ [tc_2].\n\u2022 The Intermediate Value Theorem [def_1].\nTherefore, we conclude:\n\u2022 There exists an element $c_2 \\in (1, 2)$ such that $f(c_2) = 1$ [l2].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h1 : f 1 = -1) \n  (h2 : f 2 = 4)\n  (IVT : \u2200 g : \u211d \u2192 \u211d, \u2200 a b : \u211d, a < b \u2192 ContinuousOn g (Set.Icc a b) \u2192 \n    \u2200 y\u2080 : \u211d, ((g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b) \u2228 (g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a)) \u2192 \n    \u2203 c \u2208 Set.Ioo a b, g c = y\u2080) :\n  \u2203 c\u2082 \u2208 Set.Ioo 1 2, f c\u2082 = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h1 : f 1 = -1) \n  (h2 : f 2 = 4)\n  (IVT : \u2200 g : \u211d \u2192 \u211d, \u2200 a b : \u211d, a < b \u2192 ContinuousOn g (Set.Icc a b) \u2192 \n    \u2200 y\u2080 : \u211d, ((g a \u2264 y\u2080 \u2227 y\u2080 \u2264 g b) \u2228 (g b \u2264 y\u2080 \u2227 y\u2080 \u2264 g a)) \u2192 \n    \u2203 c \u2208 Set.Ioo a b, g c = y\u2080) :\n  \u2203 c\u2082 \u2208 Set.Ioo 1 2, f c\u2082 = 1 := by\n  have h_cont_sub : ContinuousOn f (Set.Icc 1 2) := by\n    apply ContinuousOn.mono h_cont\n    intro x hx\n    simp only [Set.mem_Icc] at hx \u22a2\n    <;>\n    (try norm_num at hx \u22a2) <;>\n    (try constructor <;> linarith) <;>\n    (try linarith)\n    <;>\n    (try nlinarith)\n  \n  have h_ivt_condition : (f 1 \u2264 1 \u2227 1 \u2264 f 2) \u2228 (f 2 \u2264 1 \u2227 1 \u2264 f 1) := by\n    have h3 : f 1 \u2264 1 := by\n      rw [h1]\n      norm_num\n    have h4 : 1 \u2264 f 2 := by\n      rw [h2]\n      norm_num\n    exact Or.inl \u27e8h3, h4\u27e9\n  \n  have h_main : \u2203 c\u2082 \u2208 Set.Ioo 1 2, f c\u2082 = 1 := by\n    have h3 : \u2203 c \u2208 Set.Ioo 1 2, f c = 1 := by\n      have h4 : (1 : \u211d) < 2 := by norm_num\n      have h5 : ContinuousOn f (Set.Icc 1 2) := h_cont_sub\n      have h6 : (f 1 \u2264 1 \u2227 1 \u2264 f 2) \u2228 (f 2 \u2264 1 \u2227 1 \u2264 f 1) := h_ivt_condition\n      have h7 : \u2203 c \u2208 Set.Ioo 1 2, f c = 1 := by\n        -- Apply the given IVT to f on [1, 2] with y\u2080 = 1\n        have h8 : \u2203 c \u2208 Set.Ioo 1 2, f c = 1 := by\n          apply IVT f 1 2 (by norm_num) h_cont_sub 1\n          -- Verify that 1 is between f(1) and f(2)\n          exact h_ivt_condition\n        exact h8\n      exact h7\n    obtain \u27e8c\u2082, hc\u2082, hc\u2082'\u27e9 := h3\n    refine' \u27e8c\u2082, hc\u2082, _\u27e9\n    exact hc\u2082'\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The continuity condition is correctly formalized using ContinuousOn with the appropriate closed interval Set.Icc 0 2", "The function values f(1)=-1 and f(2)=4 are directly and accurately translated", "The Intermediate Value Theorem is properly formalized with correct quantifiers and handles both increasing/decreasing cases", "The conclusion correctly uses the open interval Set.Ioo 1 2 and states the existence of the required point"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, we have found both required points.", "statement": "We assume:\n\u2022 There exists an element $c_1 \\in (0, 1)$ such that $f(c_1) = 0$ [l1].\n\u2022 There exists an element $c_2 \\in (1, 2)$ such that $f(c_2) = 1$ [l2].\nTherefore, we conclude:\n\u2022 There exist at least two points $c_1', c_2' \\in [0, 2]$ such that $f(c_1') = 0$ and $f(c_2') = 1$ [ts_1].", "dependencies": ["l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h_f0 : f 0 = 3)\n  (h_f1 : f 1 = -1)\n  (h_f2 : f 2 = 4)\n  (l1 : \u2203 c\u2081 \u2208 Set.Ioo 0 1, f c\u2081 = 0)\n  (l2 : \u2203 c\u2082 \u2208 Set.Ioo 1 2, f c\u2082 = 1) :\n  \u2203 c\u2081' c\u2082' : \u211d, c\u2081' \u2208 Set.Icc 0 2 \u2227 c\u2082' \u2208 Set.Icc 0 2 \u2227 f c\u2081' = 0 \u2227 f c\u2082' = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d) \n  (h_cont : ContinuousOn f (Set.Icc 0 2))\n  (h_f0 : f 0 = 3)\n  (h_f1 : f 1 = -1)\n  (h_f2 : f 2 = 4)\n  (l1 : \u2203 c\u2081 \u2208 Set.Ioo 0 1, f c\u2081 = 0)\n  (l2 : \u2203 c\u2082 \u2208 Set.Ioo 1 2, f c\u2082 = 1) :\n  \u2203 c\u2081' c\u2082' : \u211d, c\u2081' \u2208 Set.Icc 0 2 \u2227 c\u2082' \u2208 Set.Icc 0 2 \u2227 f c\u2081' = 0 \u2227 f c\u2082' = 1 := by\n  have h_main : \u2203 (c\u2081' c\u2082' : \u211d), c\u2081' \u2208 Set.Icc 0 2 \u2227 c\u2082' \u2208 Set.Icc 0 2 \u2227 f c\u2081' = 0 \u2227 f c\u2082' = 1 := by\n    obtain \u27e8c\u2081, \u27e8hc\u2081_left, hc\u2081_right\u27e9, hc\u2081_val\u27e9 := l1\n    obtain \u27e8c\u2082, \u27e8hc\u2082_left, hc\u2082_right\u27e9, hc\u2082_val\u27e9 := l2\n    refine' \u27e8c\u2081, c\u2082, \u27e8by linarith, by linarith\u27e9, \u27e8by linarith, by linarith\u27e9, _, _\u27e9\n    \u00b7 -- Prove f(c\u2081) = 0\n      exact hc\u2081_val\n    \u00b7 -- Prove f(c\u2082) = 1\n      exact hc\u2082_val\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The function setup and continuity assumption in Lean provide appropriate mathematical context that's consistent with the natural language premise.", "Assumption l1 is perfectly captured - the existence of c\u2081 in open interval (0,1) with f(c\u2081)=0 matches exactly.", "Assumption l2 is perfectly captured - the existence of c\u2082 in open interval (1,2) with f(c\u2082)=1 matches exactly.", "The conclusion correctly formalizes the existence of two points in the closed interval [0,2] with the required function values. The extra boundary value assumptions (h_f0, h_f1, h_f2) are additional consistent constraints not mentioned in natural language but don't create any logical inconsistency."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

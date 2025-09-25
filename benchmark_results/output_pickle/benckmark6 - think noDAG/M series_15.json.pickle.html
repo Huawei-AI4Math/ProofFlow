@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \geq 3$. Prove that for all integers $n \geq 1$, the inequality $a_n \leq 2^{n-1}$ holds.
+
+Proof: For $n=1$, we have $a_1=1$. The inequality is $1 \leq 2^{1-1}=2^0=1$. This holds. For $n=2$, we have $a_2=1$. The inequality is $1 \leq 2^{2-1}=2^1=2$. This also holds. Now for the inductive step, assume the inequality holds for all integers $j$ such that $1 \leq j \leq k$ for some integer $k \geq 2$. So, we assume $a_j \leq 2^{j-1}$ for $1 \leq j \leq k$. We must prove the inequality holds for $n=k+1$, i.e., $a_{k+1} \leq 2^{k}$. From the recurrence relation, we have $a_{k+1} = a_k + a_{k-1}$. By the inductive hypothesis, we know that $a_k \leq 2^{k-1}$ and $a_{k-1} \leq 2^{k-2}$. Therefore, we can write $a_{k+1} \leq 2^{k-1} + 2^{k-2}$. Now we simplify the right-hand side: $a_{k+1} \leq 2^{k-2}(2+1) = 3 \cdot 2^{k-2}$. We need to show that $3 \cdot 2^{k-2} \leq 2^k$. Dividing both sides by $2^{k-2}$ gives $3 \leq 2^2=4$. This is true. Thus, $a_{k+1} \leq 2^{k}$. By the principle of **strong mathematical induction**, the inequality $a_n \leq 2^{n-1}$ holds for all integers $n \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$.", "statement": "Premise:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2)) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The condition a_1 = 1 matches exactly with h1 : a 1 = 1", "The condition a_2 = 1 matches exactly with h2 : a 2 = 1", "The recurrence relation a_n = a_{n-1} + a_{n-2} for n \u2265 3 matches exactly with h3", "The sequence of integers condition matches with the type declaration (a : \u2115 \u2192 \u2124)", "The natural language conclusion states that the sequence is completely defined for all n \u2265 1, but the Lean proposition proves an upper bound inequality a n \u2264 2^(n - 1). These are completely different mathematical statements - one about existence/definition and one about a specific bound"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The condition a_1 = 1 matches exactly with h1 : a 1 = 1', 'The condition a_2 = 1 matches exactly with h2 : a 2 = 1', 'The recurrence relation a_n = a_{n-1} + a_{n-2} for n \u2265 3 matches exactly with h3', 'The sequence of integers condition matches with the type declaration (a : \u2115 \u2192 \u2124)', 'The natural language conclusion states that the sequence is completely defined for all n \u2265 1, but the Lean proposition proves an upper bound inequality a n \u2264 2^(n - 1). These are completely different mathematical statements - one about existence/definition and one about a specific bound']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "For $n=1$, we have $a_1=1$. The inequality is $1 \\leq 2^{1-1}=2^0=1$. This holds.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1].\nTherefore, we conclude:\n\u2022 $a_1 \\leq 2^{1-1}$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2)) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by sorry\n\ntheorem l1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2)) :\n  a 1 \u2264 2^(1 - 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2)) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by\n  have h_main : \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by\n    intro n hn\n    have h\u2084 : \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2 ^ (n - 1) := by\n      intro n hn\n      induction' n using Nat.strong_induction_on with n ih\n      match n with\n      | 0 =>\n        -- This case is impossible because hn : 0 \u2265 1 is false.\n        exfalso\n        linarith\n      | 1 =>\n        -- Base case: n = 1\n        norm_num [h1]\n      | 2 =>\n        -- Base case: n = 2\n        norm_num [h1, h2]\n      | 3 =>\n        -- Base case: n = 3\n        have h\u2085 := h3 3 (by norm_num)\n        norm_num [h1, h2] at h\u2085 \u22a2\n        <;>\n        (try omega) <;>\n        (try linarith)\n      | n + 4 =>\n        -- Inductive step for n \u2265 4\n        have h\u2085 := h3 (n + 4) (by omega)\n        have h\u2086 := ih (n + 3) (by omega)\n        have h\u2087 := ih (n + 2) (by omega)\n        have h\u2088 : (n + 4 : \u2115) - 1 = n + 3 := by\n          omega\n        have h\u2089 : (n + 4 : \u2115) - 2 = n + 2 := by\n          omega\n        have h\u2081\u2080 : (n + 3 : \u2115) \u2265 1 := by\n          omega\n        have h\u2081\u2081 : (n + 2 : \u2115) \u2265 1 := by\n          omega\n        have h\u2081\u2082 : (2 : \u2124) ^ ((n + 3 : \u2115) - 1 : \u2115) = (2 : \u2124) ^ (n + 2 : \u2115) := by\n          have h\u2081\u2083 : ((n + 3 : \u2115) - 1 : \u2115) = (n + 2 : \u2115) := by\n            omega\n          rw [h\u2081\u2083]\n        have h\u2081\u2083 : (2 : \u2124) ^ ((n + 2 : \u2115) - 1 : \u2115) = (2 : \u2124) ^ (n + 1 : \u2115) := by\n          have h\u2081\u2084 : ((n + 2 : \u2115) - 1 : \u2115) = (n + 1 : \u2115) := by\n            omega\n          rw [h\u2081\u2084]\n        have h\u2081\u2084 : (2 : \u2124) ^ (n + 2 : \u2115) + (2 : \u2124) ^ (n + 1 : \u2115) \u2264 (2 : \u2124) ^ (n + 3 : \u2115) := by\n          have h\u2081\u2085 : (2 : \u2124) ^ (n + 2 : \u2115) + (2 : \u2124) ^ (n + 1 : \u2115) \u2264 (2 : \u2124) ^ (n + 2 : \u2115) + (2 : \u2124) ^ (n + 2 : \u2115) := by\n            have h\u2081\u2086 : (2 : \u2124) ^ (n + 1 : \u2115) \u2264 (2 : \u2124) ^ (n + 2 : \u2115) := by\n              apply pow_le_pow_right (by norm_num)\n              <;> omega\n            linarith\n          have h\u2081\u2087 : (2 : \u2124) ^ (n + 2 : \u2115) + (2 : \u2124) ^ (n + 2 : \u2115) = 2 * (2 : \u2124) ^ (n + 2 : \u2115) := by ring\n          have h\u2081\u2088 : 2 * (2 : \u2124) ^ (n + 2 : \u2115) = (2 : \u2124) ^ (n + 3 : \u2115) := by\n            ring_nf\n            <;> simp [pow_succ]\n            <;> ring_nf\n          have h\u2081\u2089 : (2 : \u2124) ^ (n + 2 : \u2115) + (2 : \u2124) ^ (n + 1 : \u2115) \u2264 (2 : \u2124) ^ (n + 3 : \u2115) := by\n            linarith\n          linarith\n        simp [h\u2088, h\u2089] at h\u2085 \u22a2\n        simp_all [h\u2081\u2082, h\u2081\u2083]\n        <;>\n        (try omega) <;>\n        (try linarith)\n    exact h\u2084 n hn\n  exact h_main\n  \ntheorem l1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2)) :\n  a 1 \u2264 2^(1 - 1) := by\n  have h_main : a 1 \u2264 2^(1 - 1) := by\n    norm_num [h1]\n    <;>\n    (try omega) <;>\n    (try linarith)\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language indicates that [tc_1] refers to the definition of the Fibonacci-like sequence, but in the Lean formalization, theorem tc_1 proves a general inequality \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) rather than just stating the definition. The sequence definition itself is correctly formalized, but it's embedded in a theorem that proves something beyond what the natural language suggests tc_1 should contain.", "The conclusion about a_1 \u2264 2^(1-1) is perfectly captured in theorem l1, with the correct statement and appropriate hypotheses about the sequence definition."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language indicates that [tc_1] refers to the definition of the Fibonacci-like sequence, but in the Lean formalization, theorem tc_1 proves a general inequality \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) rather than just stating the definition. The sequence definition itself is correctly formalized, but it's embedded in a theorem that proves something beyond what the natural language suggests tc_1 should contain.\", 'The conclusion about a_1 \u2264 2^(1-1) is perfectly captured in theorem l1, with the correct statement and appropriate hypotheses about the sequence definition.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For $n=2$, we have $a_2=1$. The inequality is $1 \\leq 2^{2-1}=2^1=2$. This also holds.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1].\nTherefore, we conclude:\n\u2022 $a_2 \\leq 2^{2-1}$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (l1 : a 1 \u2264 2^(1 - 1)) :\n  a 2 \u2264 2^(2 - 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (l1 : a 1 \u2264 2^(1 - 1)) :\n  a 2 \u2264 2^(2 - 1) := by\n  have h_main : a 2 \u2264 (2 : \u2124) := by\n    rw [h2]\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : a 2 \u2264 2^(2 - 1) := by\n    have h4 : (2 : \u2115) ^ (2 - 1) = 2 := by norm_num\n    have h5 : (a 2 : \u2124) \u2264 (2 : \u2124) := h_main\n    -- Use the fact that 2^(2-1) is 2 and the coercion from \u2115 to \u2124 is monotonic\n    have h6 : (a 2 : \u2124) \u2264 (2 : \u2115) ^ (2 - 1) := by\n      norm_cast at h5 \u22a2\n      <;> simp_all [h4]\n      <;> norm_num\n      <;> linarith\n    -- Since the coercion is monotonic, we can directly use the result\n    exact_mod_cast h6\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition with integer type, initial values a\u2081=1 and a\u2082=1, and recurrence relation for n\u22653 is correctly formalized", "The assumption l1: a\u2081 \u2264 2^(1-1) is exactly translated", "The conclusion l2: a\u2082 \u2264 2^(2-1) is exactly translated", "The overall logical structure as a theorem with premises leading to conclusion perfectly matches the natural language presentation"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Now for the inductive step, assume the inequality holds for all integers $j$ such that $1 \\leq j \\leq k$ for some integer $k \\geq 2$. So, we assume $a_j \\leq 2^{j-1}$ for $1 \\leq j \\leq k$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2].\nDefinition:\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_inductive : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization declares `a` as a general function from naturals to integers, but completely omits the crucial recurrence relation definition $a_1=1$, $a_2=1$ and $a_n = a_{n-1} + a_{n-2}$ for $n \u2265 3$. This is a major omission of key mathematical content.", "The specific initial condition $a_1 \u2264 2^{1-1}$ (which equals $a_1 \u2264 1$) is completely missing from the Lean formalization.", "The specific initial condition $a_2 \u2264 2^{2-1}$ (which equals $a_2 \u2264 2$) is completely missing from the Lean formalization.", "The condition that k is an integer with k \u2265 2 is correctly captured in Lean as `(k : \u2115)` and `(h_k_ge_2 : k \u2265 2)`.", "The inductive hypothesis is correctly formalized in Lean as `\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)`."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization declares `a` as a general function from naturals to integers, but completely omits the crucial recurrence relation definition $a_1=1$, $a_2=1$ and $a_n = a_{n-1} + a_{n-2}$ for $n \u2265 3$. This is a major omission of key mathematical content.', 'The specific initial condition $a_1 \u2264 2^{1-1}$ (which equals $a_1 \u2264 1$) is completely missing from the Lean formalization.', 'The specific initial condition $a_2 \u2264 2^{2-1}$ (which equals $a_2 \u2264 2$) is completely missing from the Lean formalization.', 'The condition that k is an integer with k \u2265 2 is correctly captured in Lean as `(k : \u2115)` and `(h_k_ge_2 : k \u2265 2)`.', 'The inductive hypothesis is correctly formalized in Lean as `\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)`.']"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "From the recurrence relation, we have $a_{k+1} = a_k + a_{k-1}$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2];\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1].\nTherefore, we conclude:\n\u2022 $a_{k+1} = a_k + a_{k-1}$ [l3].", "dependencies": ["tc_1", "l1", "l2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_inductive : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (l3 : a (k + 1) = a k + a (k - 1)) :\n  a (k + 1) \u2264 2^k := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_inductive : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (l3 : a (k + 1) = a k + a (k - 1)) :\n  a (k + 1) \u2264 2^k := by\n  have h_a_k : a k \u2264 2^(k - 1) := by\n    have h\u2081 : 1 \u2264 k \u2227 k \u2264 k := by\n      constructor\n      \u00b7 -- Prove 1 \u2264 k\n        omega\n      \u00b7 -- Prove k \u2264 k\n        omega\n    have h\u2082 : a k \u2264 (2 : \u2124) ^ (k - 1) := by\n      have h\u2083 := h_inductive k h\u2081\n      norm_cast at h\u2083 \u22a2\n      <;> simpa using h\u2083\n    exact h\u2082\n  \n  have h_a_k_minus_1 : a (k - 1) \u2264 2^(k - 2) := by\n    have h\u2081 : 1 \u2264 (k - 1 : \u2115) \u2227 (k - 1 : \u2115) \u2264 k := by\n      have h\u2082 : k \u2265 2 := h_k_ge_2\n      have h\u2083 : 1 \u2264 (k - 1 : \u2115) := by\n        have h\u2084 : k \u2265 2 := h_k_ge_2\n        omega\n      have h\u2084 : (k - 1 : \u2115) \u2264 k := by\n        omega\n      exact \u27e8h\u2083, h\u2084\u27e9\n    have h\u2082 : a (k - 1) \u2264 (2 : \u2124) ^ ((k - 1 : \u2115) - 1) := by\n      have h\u2083 := h_inductive (k - 1) h\u2081\n      norm_cast at h\u2083 \u22a2\n      <;> simpa using h\u2083\n    have h\u2083 : ((2 : \u2124) : \u2124) ^ ((k - 1 : \u2115) - 1) = (2 : \u2124) ^ (k - 2) := by\n      have h\u2084 : (k - 1 : \u2115) - 1 = k - 2 := by\n        have h\u2085 : k \u2265 2 := h_k_ge_2\n        cases k with\n        | zero => contradiction\n        | succ k' =>\n          cases k' with\n          | zero => contradiction\n          | succ k'' =>\n            simp [Nat.succ_eq_add_one, Nat.add_assoc] at h\u2085 \u22a2\n            <;> ring_nf at *\n            <;> omega\n      rw [h\u2084]\n      <;> norm_cast\n    rw [h\u2083] at h\u2082\n    exact h\u2082\n  \n  have h_sum_le : a (k + 1) \u2264 (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) := by\n    have h\u2081 : a (k + 1) = a k + a (k - 1) := l3\n    rw [h\u2081]\n    have h\u2082 : (a k : \u2124) \u2264 (2 : \u2124) ^ (k - 1) := by exact_mod_cast h_a_k\n    have h\u2083 : (a (k - 1) : \u2124) \u2264 (2 : \u2124) ^ (k - 2) := by exact_mod_cast h_a_k_minus_1\n    have h\u2084 : (a k : \u2124) + (a (k - 1) : \u2124) \u2264 (2 : \u2124) ^ (k - 1) + (2 : \u2124) ^ (k - 2) := by\n      linarith\n    exact_mod_cast h\u2084\n  \n  have h_pow_ineq : (2 : \u2124)^(k - 2) \u2264 (2 : \u2124)^(k - 1) := by\n    have h\u2081 : (k : \u2115) \u2265 2 := by exact_mod_cast h_k_ge_2\n    have h\u2082 : (k - 2 : \u2115) \u2264 (k - 1 : \u2115) := by\n      have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h_k_ge_2\n      omega\n    have h\u2083 : (2 : \u2124) ^ (k - 2 : \u2115) \u2264 (2 : \u2124) ^ (k - 1 : \u2115) := by\n      -- Use the fact that the exponential function with base > 1 is increasing\n      have h\u2084 : (k - 2 : \u2115) \u2264 (k - 1 : \u2115) := h\u2082\n      have h\u2085 : (2 : \u2124) ^ (k - 2 : \u2115) \u2264 (2 : \u2124) ^ (k - 1 : \u2115) := by\n        exact pow_le_pow_right (by norm_num) (by exact_mod_cast h\u2084)\n      exact h\u2085\n    -- Convert the result to the correct type\n    simpa using h\u2083\n  \n  have h_sum_le_pow_k : (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) \u2264 (2 : \u2124)^k := by\n    have h\u2081 : (k : \u2115) \u2265 2 := by exact_mod_cast h_k_ge_2\n    have h\u2082 : (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 2 : \u2115) \u2264 (2 : \u2124) ^ k := by\n      have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h_k_ge_2\n      have h\u2084 : (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 2 : \u2115) \u2264 (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 1 : \u2115) := by\n        -- Use the fact that 2^(k-2) \u2264 2^(k-1)\n        have h\u2085 : (2 : \u2124) ^ (k - 2 : \u2115) \u2264 (2 : \u2124) ^ (k - 1 : \u2115) := by\n          exact pow_le_pow_right (by norm_num) (by\n            have h\u2086 : (k - 2 : \u2115) \u2264 (k - 1 : \u2115) := by\n              omega\n            exact_mod_cast h\u2086\n          )\n        linarith\n      have h\u2085 : (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 1 : \u2115) = 2 * (2 : \u2124) ^ (k - 1 : \u2115) := by\n        ring\n      have h\u2086 : 2 * (2 : \u2124) ^ (k - 1 : \u2115) = (2 : \u2124) ^ ((k - 1 : \u2115) + 1) := by\n        -- Use properties of exponents\n        have h\u2087 : (2 : \u2124) ^ ((k - 1 : \u2115) + 1) = (2 : \u2124) ^ (k - 1 : \u2115) * 2 := by\n          rw [pow_succ]\n          <;> ring\n        have h\u2088 : 2 * (2 : \u2124) ^ (k - 1 : \u2115) = (2 : \u2124) ^ (k - 1 : \u2115) * 2 := by ring\n        linarith\n      have h\u2087 : (2 : \u2124) ^ ((k - 1 : \u2115) + 1) = (2 : \u2124) ^ k := by\n        -- Simplify the exponent\n        have h\u2088 : (k - 1 : \u2115) + 1 = k := by\n          have h\u2089 : (k : \u2115) \u2265 2 := by exact_mod_cast h_k_ge_2\n          have h\u2081\u2080 : (k - 1 : \u2115) + 1 = k := by\n            omega\n          exact h\u2081\u2080\n        rw [h\u2088]\n      have h\u2088 : (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 1 : \u2115) = (2 : \u2124) ^ k := by\n        linarith\n      linarith\n    -- Convert the result to the correct type\n    simpa using h\u2082\n  \n  have h_final : a (k + 1) \u2264 (2 : \u2124)^k := by\n    have h\u2081 : a (k + 1) \u2264 (2 : \u2124) ^ (k - 1) + (2 : \u2124) ^ (k - 2) := h_sum_le\n    have h\u2082 : (2 : \u2124) ^ (k - 1) + (2 : \u2124) ^ (k - 2) \u2264 (2 : \u2124) ^ k := h_sum_le_pow_k\n    linarith\n  \n  have h\u2081 : (a (k + 1) : \u2124) \u2264 (2 : \u2124) ^ k := by exact_mod_cast h_final\n  norm_cast at h\u2081 \u22a2\n  <;> simpa using h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization is missing the fundamental sequence definition with initial conditions a\u2081=1, a\u2082=1 and the general recurrence relation a\u2099 = a\u2099\u208b\u2081 + a\u2099\u208b\u2082 for n \u2265 3. This is essential context for the theorem.", "The base cases l1 (a\u2081 \u2264 2^(1-1)) and l2 (a\u2082 \u2264 2^(2-1)) are completely absent from the Lean formalization, which are important components of the inductive proof structure.", "The inductive hypothesis is correctly formalized as a universal quantification over the range 1 \u2264 j \u2264 k with the inequality a\u2c7c \u2264 2^(j-1).", "The recurrence relation instance l3 for the specific case a(k+1) = a(k) + a(k-1) is accurately captured.", "The goal statement a(k+1) \u2264 2^k correctly represents the inductive step that needs to be proven."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization is missing the fundamental sequence definition with initial conditions a\u2081=1, a\u2082=1 and the general recurrence relation a\u2099 = a\u2099\u208b\u2081 + a\u2099\u208b\u2082 for n \u2265 3. This is essential context for the theorem.', 'The base cases l1 (a\u2081 \u2264 2^(1-1)) and l2 (a\u2082 \u2264 2^(2-1)) are completely absent from the Lean formalization, which are important components of the inductive proof structure.', 'The inductive hypothesis is correctly formalized as a universal quantification over the range 1 \u2264 j \u2264 k with the inequality a\u2c7c \u2264 2^(j-1).', 'The recurrence relation instance l3 for the specific case a(k+1) = a(k) + a(k-1) is accurately captured.', 'The goal statement a(k+1) \u2264 2^k correctly represents the inductive step that needs to be proven.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By the inductive hypothesis, we know that $a_k \\leq 2^{k-1}$ and $a_{k-1} \\leq 2^{k-2}$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2];\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1];\n\u2022 $a_{k+1} = a_k + a_{k-1}$ [l3].\nTherefore, we conclude:\n\u2022 $a_k \\leq 2^{k-1}$ and $a_{k-1} \\leq 2^{k-2}$ [l4].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1)) :\n  a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1)) :\n  a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2) := by\n  have h1 : a k \u2264 (2 : \u2124) ^ (k - 1) := by\n    have h1\u2081 : 1 \u2264 (k : \u2115) := by\n      omega\n    have h1\u2082 : (k : \u2115) \u2264 k := by\n      omega\n    have h1\u2083 : a k \u2264 (2 : \u2124) ^ (k - 1) := by\n      have h1\u2084 : a k \u2264 (2 : \u2124) ^ (k - 1) := by\n        have h1\u2085 : (1 : \u2115) \u2264 k \u2227 k \u2264 k := by\n          exact \u27e8by omega, by omega\u27e9\n        have h1\u2086 : a k \u2264 (2 : \u2124) ^ (k - 1) := by\n          have h1\u2087 := h_def_1 k \u27e8by omega, by omega\u27e9\n          norm_cast at h1\u2087 \u22a2\n          <;>\n          (try omega) <;>\n          (try simp_all [Nat.pow_succ, Nat.mul_sub_left_distrib]) <;>\n          (try ring_nf at * <;> omega)\n          <;>\n          (try norm_num at * <;> omega)\n          <;>\n          (try linarith)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n          <;>\n          (try nlinarith)\n          <;>\n          (try omega)\n        exact h1\u2086\n      exact h1\u2084\n    exact h1\u2083\n  \n  have h2 : a (k - 1) \u2264 (2 : \u2124) ^ (k - 2) := by\n    have h2\u2081 : 1 \u2264 (k - 1 : \u2115) := by\n      have h\u2082 : k \u2265 2 := h_k_ge_2\n      have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h\u2082\n      have h\u2084 : (k : \u2115) - 1 \u2265 1 := by\n        omega\n      exact by\n        have h\u2085 : (k : \u2115) - 1 \u2265 1 := h\u2084\n        omega\n    have h2\u2082 : (k - 1 : \u2115) \u2264 k := by\n      have h\u2082 : k \u2265 2 := h_k_ge_2\n      have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h\u2082\n      omega\n    have h2\u2083 : a (k - 1) \u2264 (2 : \u2124) ^ ((k - 1 : \u2115) - 1) := by\n      have h2\u2084 : 1 \u2264 (k - 1 : \u2115) \u2227 (k - 1 : \u2115) \u2264 k := \u27e8h2\u2081, h2\u2082\u27e9\n      have h2\u2085 : a (k - 1) \u2264 (2 : \u2124) ^ ((k - 1 : \u2115) - 1) := by\n        have h2\u2086 := h_def_1 (k - 1) \u27e8by\n          -- Prove 1 \u2264 k - 1\n          have h\u2082 : k \u2265 2 := h_k_ge_2\n          have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h\u2082\n          have h\u2084 : (k : \u2115) - 1 \u2265 1 := by\n            omega\n          omega, by\n          -- Prove k - 1 \u2264 k\n          omega\u27e9\n        norm_cast at h2\u2086 \u22a2\n        <;>\n        (try omega) <;>\n        (try simp_all [Nat.pow_succ, Nat.mul_sub_left_distrib]) <;>\n        (try ring_nf at * <;> omega)\n        <;>\n        (try norm_num at * <;> omega)\n        <;>\n        (try linarith)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n        <;>\n        (try nlinarith)\n        <;>\n        (try omega)\n      exact h2\u2085\n    have h2\u2084 : (2 : \u2124) ^ ((k - 1 : \u2115) - 1) = (2 : \u2124) ^ (k - 2) := by\n      have h\u2082 : k \u2265 2 := h_k_ge_2\n      have h\u2083 : (k : \u2115) \u2265 2 := by exact_mod_cast h\u2082\n      have h\u2084 : (k - 1 : \u2115) - 1 = k - 2 := by\n        have h\u2085 : k \u2265 2 := h\u2082\n        have h\u2086 : (k : \u2115) \u2265 2 := by exact_mod_cast h\u2085\n        cases k with\n        | zero => contradiction\n        | succ k' =>\n          cases k' with\n          | zero => contradiction\n          | succ k'' =>\n            simp [Nat.succ_eq_add_one, Nat.add_assoc] at h\u2086 \u22a2\n            <;> ring_nf at *\n            <;> omega\n      rw [h\u2084]\n      <;> norm_cast\n      <;> simp [pow_succ]\n      <;> ring_nf\n      <;> norm_num\n      <;> omega\n    have h2\u2085 : a (k - 1) \u2264 (2 : \u2124) ^ (k - 2) := by\n      calc\n        a (k - 1) \u2264 (2 : \u2124) ^ ((k - 1 : \u2115) - 1) := h2\u2083\n        _ = (2 : \u2124) ^ (k - 2) := by rw [h2\u2084]\n    exact h2\u2085\n  \n  have h_main : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2) := by\n    have h\u2082 : a k \u2264 (2 : \u2124) ^ (k - 1) := h1\n    have h\u2083 : a (k - 1) \u2264 (2 : \u2124) ^ (k - 2) := h2\n    have h\u2084 : a k \u2264 2 ^ (k - 1) := by\n      norm_cast at h\u2082 \u22a2\n      <;>\n      (try omega) <;>\n      (try simp_all [Nat.pow_succ, Nat.mul_sub_left_distrib]) <;>\n      (try ring_nf at * <;> omega)\n      <;>\n      (try norm_num at * <;> omega)\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n    have h\u2085 : a (k - 1) \u2264 2 ^ (k - 2) := by\n      norm_cast at h\u2083 \u22a2\n      <;>\n      (try omega) <;>\n      (try simp_all [Nat.pow_succ, Nat.mul_sub_left_distrib]) <;>\n      (try ring_nf at * <;> omega)\n      <;>\n      (try norm_num at * <;> omega)\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n    exact \u27e8h\u2084, h\u2085\u27e9\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition with initial values and recurrence relation is correctly formalized with appropriate hypotheses h_a1, h_a2, and h_rec.", "The base case inequalities l1 and l2 are precisely captured in the Lean hypotheses h_l1 and h_l2.", "The inductive hypothesis setup including the constraint k\u22652 and the universal quantification over valid indices is accurately represented.", "The recurrence relation application for the (k+1)-th term is correctly stated as hypothesis h_l3.", "The conclusion correctly captures both required inequalities as a conjunction, matching the natural language statement exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore, we can write $a_{k+1} \\leq 2^{k-1} + 2^{k-2}$. Now we simplify the right-hand side: $a_{k+1} \\leq 2^{k-2}(2+1) = 3 \\cdot 2^{k-2}$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2];\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1];\n\u2022 $a_{k+1} = a_k + a_{k-1}$ [l3];\n\u2022 $a_k \\leq 2^{k-1}$ and $a_{k-1} \\leq 2^{k-2}$ [l4].\nTherefore, we conclude:\n\u2022 $a_{k+1} \\leq 3 \\cdot 2^{k-2}$ [l5].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2)) :\n  a (k + 1) \u2264 3 * 2^(k - 2) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2)) :\n  a (k + 1) \u2264 3 * 2^(k - 2) := by\n  have h_sum : (a k : \u2124) + a (k - 1) \u2264 (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) := by\n    have h\u2081 : (a k : \u2124) \u2264 (2 : \u2124)^(k - 1) := by\n      have h\u2082 : a k \u2264 2 ^ (k - 1) := h_l4.1\n      exact_mod_cast h\u2082\n    have h\u2082 : (a (k - 1) : \u2124) \u2264 (2 : \u2124)^(k - 2) := by\n      have h\u2083 : a (k - 1) \u2264 2 ^ (k - 2) := h_l4.2\n      exact_mod_cast h\u2083\n    -- Combine the two inequalities using linear arithmetic\n    linarith\n  \n  have h_power : (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) = 3 * (2 : \u2124)^(k - 2) := by\n    have h\u2081 : k \u2265 2 := h_k_ge_2\n    have h\u2082 : (k : \u2115) - 1 = (k - 2 : \u2115) + 1 := by\n      have h\u2083 : k \u2265 2 := h_k_ge_2\n      have h\u2084 : (k : \u2115) - 2 + 1 = (k : \u2115) - 1 := by\n        have h\u2085 : k \u2265 2 := h_k_ge_2\n        omega\n      omega\n    have h\u2083 : (2 : \u2124) ^ (k - 1 : \u2115) = 2 * (2 : \u2124) ^ (k - 2 : \u2115) := by\n      have h\u2084 : (k - 1 : \u2115) = (k - 2 : \u2115) + 1 := by\n        have h\u2085 : k \u2265 2 := h_k_ge_2\n        omega\n      rw [h\u2084]\n      simp [pow_add, pow_one, mul_comm]\n      <;> ring_nf\n      <;> norm_cast\n      <;> simp [pow_add, pow_one, mul_comm]\n      <;> ring_nf\n      <;> norm_cast\n    calc\n      (2 : \u2124) ^ (k - 1 : \u2115) + (2 : \u2124) ^ (k - 2 : \u2115) = 2 * (2 : \u2124) ^ (k - 2 : \u2115) + (2 : \u2124) ^ (k - 2 : \u2115) := by rw [h\u2083]\n      _ = 3 * (2 : \u2124) ^ (k - 2 : \u2115) := by ring\n      _ = 3 * (2 : \u2124) ^ (k - 2 : \u2115) := by rfl\n  \n  have h_main : a (k + 1) \u2264 3 * (2 : \u2124)^(k - 2) := by\n    have h\u2081 : a (k + 1) = a k + a (k - 1) := h_l3\n    have h\u2082 : (a k : \u2124) + a (k - 1) \u2264 (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) := h_sum\n    have h\u2083 : (2 : \u2124)^(k - 1) + (2 : \u2124)^(k - 2) = 3 * (2 : \u2124)^(k - 2) := h_power\n    have h\u2084 : (a k : \u2124) + a (k - 1) \u2264 3 * (2 : \u2124)^(k - 2) := by\n      linarith\n    have h\u2085 : a (k + 1) \u2264 3 * (2 : \u2124)^(k - 2) := by\n      calc\n        a (k + 1) = a k + a (k - 1) := by rw [h\u2081]\n        _ \u2264 3 * (2 : \u2124)^(k - 2) := by\n          -- Convert the sum to integers and use the previous inequality\n          have h\u2086 : (a k + a (k - 1) : \u2124) \u2264 3 * (2 : \u2124)^(k - 2) := by\n            exact_mod_cast h\u2084\n          exact_mod_cast h\u2086\n    exact h\u2085\n  \n  have h_final : a (k + 1) \u2264 3 * 2^(k - 2) := by\n    have h\u2081 : a (k + 1) \u2264 3 * (2 : \u2124)^(k - 2) := h_main\n    have h\u2082 : (3 * (2 : \u2124)^(k - 2) : \u2124) = (3 * 2^(k - 2) : \u2124) := by\n      norm_cast\n    have h\u2083 : a (k + 1) \u2264 (3 * 2^(k - 2) : \u2124) := by\n      linarith\n    exact_mod_cast h\u2083\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly and completely captures all logical and mathematical content from the natural language. The sequence definition, initial conditions, recurrence relation, inductive hypothesis, and conclusion are all accurately represented. The additional type declarations and variable constraints are appropriate and consistent with the mathematical context."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "We need to show that $3 \\cdot 2^{k-2} \\leq 2^k$. Dividing both sides by $2^{k-2}$ gives $3 \\leq 2^2=4$. This is true.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2];\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1];\n\u2022 $a_{k+1} = a_k + a_{k-1}$ [l3];\n\u2022 $a_k \\leq 2^{k-1}$ and $a_{k-1} \\leq 2^{k-2}$ [l4];\n\u2022 $a_{k+1} \\leq 3 \\cdot 2^{k-2}$ [l5].\nTherefore, we conclude:\n\u2022 $3 \\cdot 2^{k-2} \\leq 2^k$ [l6].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (h_l5 : a (k + 1) \u2264 3 * 2^(k - 2)) :\n  3 * 2^(k - 2) \u2264 2^k := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (h_l5 : a (k + 1) \u2264 3 * 2^(k - 2)) :\n  3 * 2^(k - 2) \u2264 2^k := by\n  have h_sum : (k - 2) + 2 = k := by\n    have h\u2081 : k \u2265 2 := h_k_ge_2\n    have h\u2082 : k - 2 + 2 = k := by\n      have h\u2083 : k - 2 + 2 = k := by\n        omega\n      exact h\u2083\n    exact h\u2082\n  \n  have h_pow : 2 ^ k = 4 * 2 ^ (k - 2) := by\n    have h\u2081 : 2 ^ k = 2 ^ ((k - 2) + 2) := by\n      rw [h_sum]\n    rw [h\u2081]\n    have h\u2082 : 2 ^ ((k - 2) + 2) = 2 ^ (k - 2) * 2 ^ 2 := by\n      rw [pow_add]\n      <;> ring_nf\n    rw [h\u2082]\n    <;> norm_num\n    <;> ring_nf\n    <;> simp [pow_succ]\n    <;> ring_nf\n  \n  have h_main : 3 * 2 ^ (k - 2) \u2264 4 * 2 ^ (k - 2) := by\n    have h\u2081 : 3 \u2264 4 := by norm_num\n    have h\u2082 : 0 \u2264 2 ^ (k - 2) := by positivity\n    have h\u2083 : 3 * 2 ^ (k - 2) \u2264 4 * 2 ^ (k - 2) := by\n      nlinarith\n    exact h\u2083\n  \n  have h_final : 3 * 2 ^ (k - 2) \u2264 2 ^ k := by\n    have h\u2081 : 3 * 2 ^ (k - 2) \u2264 4 * 2 ^ (k - 2) := h_main\n    have h\u2082 : 4 * 2 ^ (k - 2) = 2 ^ k := by\n      linarith\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures all components of the natural language premise. The sequence definition with initial conditions and recurrence relation is correctly formalized. All the assumptions including the base cases, inductive hypothesis, specific bounds, and derived inequalities are accurately represented. The conclusion statement matches exactly. The formalization includes appropriate type declarations and maintains the logical structure of the mathematical argument."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Thus, $a_{k+1} \\leq 2^{k}$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 $a_1 \\leq 2^{1-1}$ [l1];\n\u2022 $a_2 \\leq 2^{2-1}$ [l2];\n\u2022 Let $k \\geq 2$ be an integer, and assume as the inductive hypothesis that for all integers $j$ with $1 \\leq j \\leq k$, the inequality $a_j \\leq 2^{j-1}$ holds [def_1];\n\u2022 $a_{k+1} = a_k + a_{k-1}$ [l3];\n\u2022 $a_k \\leq 2^{k-1}$ and $a_{k-1} \\leq 2^{k-2}$ [l4];\n\u2022 $a_{k+1} \\leq 3 \\cdot 2^{k-2}$ [l5];\n\u2022 $3 \\cdot 2^{k-2} \\leq 2^k$ [l6].\nTherefore, we conclude:\n\u2022 $a_{k+1} \\leq 2^k$ [l7].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (h_l5 : a (k + 1) \u2264 3 * 2^(k - 2))\n  (h_l6 : 3 * 2^(k - 2) \u2264 2^k) :\n  a (k + 1) \u2264 2^k := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a : \u2115 \u2192 \u2124) (k : \u2115)\n  (h_k_ge_2 : k \u2265 2)\n  (h_a1 : a 1 = 1)\n  (h_a2 : a 2 = 1)\n  (h_rec : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (h_l1 : a 1 \u2264 2^(1 - 1))\n  (h_l2 : a 2 \u2264 2^(2 - 1))\n  (h_def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1))\n  (h_l3 : a (k + 1) = a k + a (k - 1))\n  (h_l4 : a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (h_l5 : a (k + 1) \u2264 3 * 2^(k - 2))\n  (h_l6 : 3 * 2^(k - 2) \u2264 2^k) :\n  a (k + 1) \u2264 2^k := by\n  have h_int : (3 : \u2124) * (2 : \u2124)^(k - 2) \u2264 (2 : \u2124)^k := by\n    have h\u2081 : (3 : \u2115) * 2 ^ (k - 2) \u2264 2 ^ k := by simpa using h_l6\n    norm_cast at h\u2081 \u22a2\n    <;>\n    (try cases k with\n    | zero => contradiction\n    | succ k' =>\n      cases k' with\n      | zero => contradiction\n      | succ k'' =>\n        simp_all [Nat.pow_succ, Nat.mul_assoc]\n        <;>\n        ring_nf at *\n        <;>\n        norm_num at *\n        <;>\n        nlinarith) <;>\n    (try omega)\n    <;>\n    (try nlinarith)\n  \n  have h_main : a (k + 1) \u2264 (2 : \u2124)^k := by\n    have h\u2081 : (a (k + 1) : \u2124) \u2264 (3 : \u2124) * (2 : \u2124) ^ (k - 2) := by\n      -- Use the given inequality h_l5 and cast it to integers\n      norm_cast at h_l5 \u22a2 <;>\n      (try omega) <;>\n      (try simp_all [pow_succ, mul_assoc]) <;>\n      (try ring_nf at * <;> norm_num at * <;> linarith) <;>\n      (try omega)\n      <;>\n      (try nlinarith)\n      <;>\n      (try simp_all [h_a1, h_a2, h_rec, h_l3, h_l4, h_l5, h_l6])\n      <;>\n      (try nlinarith)\n      <;>\n      (try omega)\n      <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n    -- Use the transitivity of inequalities to combine h\u2081 and h_int\n    have h\u2082 : (a (k + 1) : \u2124) \u2264 (2 : \u2124) ^ k := by\n      linarith\n    -- Cast the result back to the original type if necessary\n    exact_mod_cast h\u2082\n  \n  exact_mod_cast h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition with initial conditions and recurrence relation is correctly captured in h_a1, h_a2, and h_rec", "The base case inequalities l1 and l2 are precisely formalized as h_l1 and h_l2", "The inductive hypothesis def_1 is accurately represented as h_def_1 with proper quantification", "The recurrence application l3 is exactly captured as h_l3", "The bounds l4 from the inductive hypothesis are correctly formalized as a conjunction in h_l4", "The intermediate bound l5 is precisely captured as h_l5", "The key inequality l6 is exactly formalized as h_l6", "The conclusion l7 is correctly stated as the theorem goal"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By the principle of **strong mathematical induction**, the inequality $a_n \\leq 2^{n-1}$ holds for all integers $n \\geq 1$.", "statement": "We assume:\n\u2022 The sequence $(a_n)$ of integers is defined by $a_1=1$, $a_2=1$ and the recurrence relation $a_n = a_{n-1} + a_{n-2}$ for $n \\geq 3$ [tc_1];\n\u2022 The base case for n=1, $a_1 \\leq 2^{1-1}$, holds [l1];\n\u2022 The base case for n=2, $a_2 \\leq 2^{2-1}$, holds [l2];\n\u2022 Assuming the strong induction hypothesis that for all integers $j$ with $1 \\leq j \\leq k$ where $k \\geq 2$ the inequality $a_j \\leq 2^{j-1}$ holds [def_1], we have shown that $a_{k+1} \\leq 2^k$ [l7].\nTherefore, we conclude:\n\u2022 For all integers $n \\geq 1$, $a_n \\leq 2^{n-1}$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (l1 : a 1 \u2264 2^(1 - 1))\n  (l2 : a 2 \u2264 2^(2 - 1))\n  (def_1 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 2^k)\n  (l3 : \u2200 k : \u2115, k \u2265 2 \u2192 a (k + 1) = a k + a (k - 1))\n  (l4 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (l5 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 3 * 2^(k - 2))\n  (l6 : \u2200 k : \u2115, k \u2265 2 \u2192 3 * 2^(k - 2) \u2264 2^k)\n  (l7 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 2^k) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a : \u2115 \u2192 \u2124)\n  (h1 : a 1 = 1)\n  (h2 : a 2 = 1)\n  (h3 : \u2200 n : \u2115, n \u2265 3 \u2192 a n = a (n - 1) + a (n - 2))\n  (l1 : a 1 \u2264 2^(1 - 1))\n  (l2 : a 2 \u2264 2^(2 - 1))\n  (def_1 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 2^k)\n  (l3 : \u2200 k : \u2115, k \u2265 2 \u2192 a (k + 1) = a k + a (k - 1))\n  (l4 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a k \u2264 2^(k - 1) \u2227 a (k - 1) \u2264 2^(k - 2))\n  (l5 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 3 * 2^(k - 2))\n  (l6 : \u2200 k : \u2115, k \u2265 2 \u2192 3 * 2^(k - 2) \u2264 2^k)\n  (l7 : \u2200 k : \u2115, k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j \u2264 2^(j - 1)) \u2192 a (k + 1) \u2264 2^k) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by\n  have h_main : \u2200 (n : \u2115), n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by\n    intro n hn\n    have h : a n \u2264 2^(n - 1) := by\n      -- Use strong induction on n\n      have h\u2081 : \u2200 (n : \u2115), n \u2265 1 \u2192 a n \u2264 2^(n - 1) := by\n        intro n hn\n        induction' n using Nat.strong_induction_on with n ih\n        match n with\n        | 0 =>\n          -- This case is impossible because hn : 0 \u2265 1 is false\n          exfalso\n          linarith\n        | 1 =>\n          -- Base case n = 1\n          norm_num [h1] at l1 \u22a2\n          <;>\n          (try omega) <;>\n          (try linarith)\n        | 2 =>\n          -- Base case n = 2\n          norm_num [h2] at l2 \u22a2\n          <;>\n          (try omega) <;>\n          (try linarith)\n        | k + 3 =>\n          -- Inductive step for n \u2265 3\n          have h\u2082 : a (k + 3) = a (k + 2) + a (k + 1) := by\n            have h\u2083 : (k + 3 : \u2115) \u2265 3 := by omega\n            have h\u2084 : a (k + 3) = a ((k + 3) - 1) + a ((k + 3) - 2) := h3 (k + 3) (by omega)\n            have h\u2085 : (k + 3 : \u2115) - 1 = k + 2 := by\n              omega\n            have h\u2086 : (k + 3 : \u2115) - 2 = k + 1 := by\n              omega\n            rw [h\u2084, h\u2085, h\u2086]\n            <;> ring_nf at *\n            <;> simp_all\n          have h\u2083 : a (k + 3) \u2264 (2 : \u2124) ^ ((k + 3) - 1) := by\n            have h\u2084 : a (k + 2) \u2264 (2 : \u2124) ^ ((k + 2) - 1) := by\n              have h\u2085 : (k + 2 : \u2115) \u2265 1 := by omega\n              have h\u2086 : a (k + 2) \u2264 (2 : \u2124) ^ ((k + 2) - 1) := ih (k + 2) (by omega) (by omega)\n              exact h\u2086\n            have h\u2085 : a (k + 1) \u2264 (2 : \u2124) ^ ((k + 1) - 1) := by\n              have h\u2086 : (k + 1 : \u2115) \u2265 1 := by omega\n              have h\u2087 : a (k + 1) \u2264 (2 : \u2124) ^ ((k + 1) - 1) := ih (k + 1) (by omega) (by omega)\n              exact h\u2087\n            have h\u2086 : a (k + 3) = a (k + 2) + a (k + 1) := h\u2082\n            rw [h\u2086]\n            have h\u2087 : (2 : \u2124) ^ ((k + 2) - 1) + (2 : \u2124) ^ ((k + 1) - 1) \u2264 (2 : \u2124) ^ ((k + 3) - 1) := by\n              have h\u2088 : (k : \u2115) \u2265 0 := by omega\n              have h\u2089 : (2 : \u2124) ^ ((k + 2) - 1) = (2 : \u2124) ^ (k + 1) := by\n                cases k with\n                | zero => norm_num\n                | succ k' =>\n                  simp [Nat.succ_eq_add_one, pow_add, pow_one]\n                  <;> ring_nf at * <;> simp_all [Nat.add_assoc]\n                  <;> norm_num\n                  <;> linarith\n              have h\u2081\u2080 : (2 : \u2124) ^ ((k + 1) - 1) = (2 : \u2124) ^ k := by\n                cases k with\n                | zero => norm_num\n                | succ k' =>\n                  simp [Nat.succ_eq_add_one, pow_add, pow_one]\n                  <;> ring_nf at * <;> simp_all [Nat.add_assoc]\n                  <;> norm_num\n                  <;> linarith\n              have h\u2081\u2081 : (2 : \u2124) ^ ((k + 3) - 1) = (2 : \u2124) ^ (k + 2) := by\n                cases k with\n                | zero => norm_num\n                | succ k' =>\n                  simp [Nat.succ_eq_add_one, pow_add, pow_one]\n                  <;> ring_nf at * <;> simp_all [Nat.add_assoc]\n                  <;> norm_num\n                  <;> linarith\n              rw [h\u2089, h\u2081\u2080, h\u2081\u2081]\n              have h\u2081\u2082 : (2 : \u2124) ^ (k + 1) + (2 : \u2124) ^ k \u2264 (2 : \u2124) ^ (k + 2) := by\n                have h\u2081\u2083 : (2 : \u2124) ^ (k + 2) = (2 : \u2124) ^ (k + 1) * 2 := by\n                  ring_nf\n                  <;> simp [pow_add, pow_one, mul_assoc]\n                  <;> ring_nf\n                rw [h\u2081\u2083]\n                have h\u2081\u2084 : (2 : \u2124) ^ (k + 1) + (2 : \u2124) ^ k \u2264 (2 : \u2124) ^ (k + 1) * 2 := by\n                  have h\u2081\u2085 : (2 : \u2124) ^ k \u2265 0 := by positivity\n                  have h\u2081\u2086 : (2 : \u2124) ^ (k + 1) = (2 : \u2124) ^ k * 2 := by\n                    ring_nf\n                    <;> simp [pow_add, pow_one, mul_assoc]\n                    <;> ring_nf\n                  rw [h\u2081\u2086]\n                  nlinarith [pow_pos (by norm_num : (0 : \u2124) < 2) k]\n                linarith\n              linarith\n            linarith\n          exact h\u2083\n      exact h\u2081 n hn\n    exact h\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition with initial conditions and recurrence relation is correctly formalized.", "Both base cases for the induction are properly captured with the correct inequalities.", "The strong induction hypothesis and its application are correctly formalized, though there's some redundancy between def_1 and l7.", "The final conclusion matches the natural language statement exactly.", "The additional hypotheses (l3-l6) in the Lean code represent valid intermediate proof steps that are logically consistent with the overall argument, even though not explicitly mentioned in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

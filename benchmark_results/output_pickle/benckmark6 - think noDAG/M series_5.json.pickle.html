@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be an arithmetic sequence with $a_3=10$ and $a_7=22$. Let $S_n$ be the sum of the first $n$ terms of $(a_n)$. Then the sum of the first $10$ terms, $S_{10}$, is $175$.
+
+Proof: First, we find the common difference $d$ and the first term $a_1$ of the arithmetic sequence. The formula for the $n$-th term is $a_n = a_1 + (n-1)d$. We are given $a_3 = 10$ and $a_7 = 22$. We can write these as $10=a_1+2d$ and $22=a_1+6d$. Subtracting the first equation from the second gives $12=4d$, so $d=3$. Substituting $d=3$ into the first equation gives $10=a_1+2(3)$, so $a_1=4$. Next, we find the expression for the $n$-th term, $a_n$. Using $a_1=4$ and $d=3$, we get $a_n=4+(n-1)3=4+3n-3=3n+1$. Now, we find the sum of the first 10 terms, $S_{10}$. The formula for the sum of an arithmetic series is $S_n = \frac{n}{2}(a_1+a_n)$. For $n=10$, we need to find $a_{10}$. We use the expression for $a_n$ to find $a_{10}=3(10)+1=31$. Finally, we use the sum formula for $n=10$ with $a_1=4$ and $a_{10}=31$. We have $S_{10}=\frac{10}{2}(4+31)=5(35)=175$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let (a_n) be an arithmetic sequence", "statement": "Premise:\n\u2022 (a_n) is an arithmetic sequence [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 : \u2203 (a : \u2115 \u2192 \u211d) (a\u2081 d : \u211d), \n  (\u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d) \u2227 \n  a 3 = 10 \u2227 \n  a 7 = 22 \u2227\n  (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the arithmetic sequence condition from the natural language. The additional specific numerical constraints (a 3 = 10, a 7 = 22, sum = 175) are extra conditions not mentioned in the natural language, but according to the guidelines, extra logically consistent details are acceptable for a 'Perfectly match' rating."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "with a_3=10 and a_7=22.", "statement": "Premise:\n\u2022 (a_n) is an arithmetic sequence [tc_1]\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (a : \u2115 \u2192 \u211d)\n  (h_arith : \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22) :\n  (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures the arithmetic sequence condition with an explicit mathematical definition", "Direct match between natural language and Lean for a_3 = 10", "Direct match between natural language and Lean for a_7 = 22", "The natural language explicitly states no conclusions are derived yet, but the Lean formalization includes a specific conclusion about the sum of first 10 terms equaling 175"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the arithmetic sequence condition with an explicit mathematical definition', 'Direct match between natural language and Lean for a_3 = 10', 'Direct match between natural language and Lean for a_7 = 22', 'The natural language explicitly states no conclusions are derived yet, but the Lean formalization includes a specific conclusion about the sum of first 10 terms equaling 175']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Let S_n be the sum of the first n terms of (a_n).", "statement": "Definition:\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n(h_3 : a 3 = 10)\n(h_7 : a 7 = 22) :\n  (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by sorry", "lean_pass": false, "error_msg": [{"line": 10, "column": 17, "endLine": 10, "endColumn": 18, "data": "unexpected token ':'; expected command"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "The formula for the n-th term is a_n = a_1 + (n-1)d.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\nTherefore, we conclude:\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].", "dependencies": ["tc_1", "tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (a : \u2115 \u2192 \u211d)\n  (h3 : a 3 = 10)\n  (h7 : a 7 = 22) :\n  \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (a : \u2115 \u2192 \u211d)\n  (h3 : a 3 = 10)\n  (h7 : a 7 = 22) :\n  \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d := by\n  use 4, 3\n  intro n hn\n  have h : a n = (4 : \u211d) + (n - 1 : \u211d) * 3 := by sorry\n  linarith", "lean_pass": true, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization missing the crucial assumption that (a_n) is an arithmetic sequence. Without this assumption, the theorem statement is mathematically incorrect - not every sequence satisfying two point conditions is arithmetic.", "The specific values a_3 = 10 and a_7 = 22 are correctly captured as hypotheses h3 and h7.", "The definition of S_n as the sum of first n terms is mentioned in the natural language but completely absent from the Lean formalization.", "The conclusion about the existence of a_1 and d with the arithmetic sequence formula is correctly represented, with the reasonable addition of the constraint n \u2265 1.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization missing the crucial assumption that (a_n) is an arithmetic sequence. Without this assumption, the theorem statement is mathematically incorrect - not every sequence satisfying two point conditions is arithmetic.', 'The specific values a_3 = 10 and a_7 = 22 are correctly captured as hypotheses h3 and h7.', 'The definition of S_n as the sum of first n terms is mentioned in the natural language but completely absent from the Lean formalization.', 'The conclusion about the existence of a_1 and d with the arithmetic sequence formula is correctly represented, with the reasonable addition of the constraint n \u2265 1.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We are given a_3 = 10 and a_7 = 22. We can write these as 10=a_1+2d and 22=a_1+6d.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\nTherefore, we conclude:\n\u2022 Using the given values for n=3 and n=7, we have the system of equations: 10 = a_1 + 2d and 22 = a_1 + 6d [l2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22) :\n  10 = a\u2081 + 2 * d \u2227 22 = a\u2081 + 6 * d := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22) :\n  10 = a\u2081 + 2 * d \u2227 22 = a\u2081 + 6 * d := by\n  have h1 : 10 = a\u2081 + 2 * d := by\n    have h3 : a 3 = a\u2081 + (3 - 1 : \u2115) * d := by\n      have h3' : a 3 = a\u2081 + (3 - 1 : \u2115) * d := by\n        have h3'' : (3 : \u2115) \u2265 1 := by norm_num\n        have h3''' := h_arith 3 (by norm_num)\n        norm_num at h3''' \u22a2\n        <;>\n        (try ring_nf at h3''' \u22a2) <;>\n        (try norm_num at h3''' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all [h3''']) <;>\n        (try ring_nf at h3''' \u22a2) <;>\n        (try norm_num at h3''' \u22a2) <;>\n        (try linarith)\n        <;>\n        simp_all [h3''']\n        <;>\n        ring_nf at *\n        <;>\n        linarith\n      exact h3'\n    have h4 : a 3 = 10 := h_3\n    have h5 : a\u2081 + (3 - 1 : \u2115) * d = a\u2081 + 2 * d := by\n      norm_num\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    have h6 : a\u2081 + 2 * d = 10 := by\n      linarith\n    linarith\n  \n  have h2 : 22 = a\u2081 + 6 * d := by\n    have h7 : a 7 = a\u2081 + (7 - 1 : \u2115) * d := by\n      have h7' : a 7 = a\u2081 + (7 - 1 : \u2115) * d := by\n        have h7'' : (7 : \u2115) \u2265 1 := by norm_num\n        have h7''' := h_arith 7 (by norm_num)\n        norm_num at h7''' \u22a2\n        <;>\n        (try ring_nf at h7''' \u22a2) <;>\n        (try norm_num at h7''' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all [h7''']) <;>\n        (try ring_nf at h7''' \u22a2) <;>\n        (try norm_num at h7''' \u22a2) <;>\n        (try linarith)\n        <;>\n        simp_all [h7''']\n        <;>\n        ring_nf at *\n        <;>\n        linarith\n      exact h7'\n    have h8 : a 7 = 22 := h_7\n    have h9 : a\u2081 + (7 - 1 : \u2115) * d = a\u2081 + 6 * d := by\n      norm_num\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    have h10 : a\u2081 + 6 * d = 22 := by\n      linarith\n    linarith\n  \n  exact \u27e8h1, h2\u27e9", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The arithmetic sequence definition and formula are correctly captured. The additional constraint n \u2265 1 is a reasonable mathematical refinement.", "The given conditions a_3 = 10 and a_7 = 22 are exactly represented in the Lean hypotheses.", "The conclusion correctly derives the system of equations 10 = a\u2081 + 2d and 22 = a\u2081 + 6d, with proper Lean syntax using conjunction."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Subtracting the first equation from the second gives 12=4d,", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 We have the system of equations: 10 = a_1 + 2d and 22 = a_1 + 6d [l2].\nTherefore, we conclude:\n\u2022 12 = 4d [l3].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_l2 : 10 = a\u2081 + 2 * d \u2227 22 = a\u2081 + 6 * d) :\n  12 = 4 * d := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_l2 : 10 = a\u2081 + 2 * d \u2227 22 = a\u2081 + 6 * d) :\n  12 = 4 * d := by\n  have h1 : a\u2081 + 2 * d = 10 := by\n    have h\u2081 : 10 = a\u2081 + 2 * d := h_l2.1\n    linarith\n  \n  have h2 : a\u2081 + 6 * d = 22 := by\n    have h\u2082 : 22 = a\u2081 + 6 * d := h_l2.2\n    linarith\n  \n  have h3 : 4 * d = 12 := by\n    have h\u2083 : a\u2081 + 6 * d = 22 := h2\n    have h\u2084 : a\u2081 + 2 * d = 10 := h1\n    -- Subtract the two equations to eliminate a\u2081\n    have h\u2085 : (a\u2081 + 6 * d) - (a\u2081 + 2 * d) = 22 - 10 := by\n      linarith\n    -- Simplify the left and right sides\n    have h\u2086 : 4 * d = 12 := by\n      ring_nf at h\u2085 \u22a2\n      linarith\n    exact h\u2086\n  \n  have h4 : 12 = 4 * d := by\n    linarith\n  \n  exact h4", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.83, "semantic_feedback": ["The arithmetic sequence definition is correctly captured with the general term formula in h_arith, along with proper variable declarations for the sequence, first term, and common difference.", "The specific values a_3 = 10 and a_7 = 22 are directly and correctly represented as hypotheses h_3 and h_7.", "The definition of S_n as the sum of first n terms is mentioned in the natural language but not included in the Lean formalization. However, this doesn't affect the logical validity of the specific theorem being proved.", "The general term formula a_n = a_1 + (n-1)d is correctly captured in the h_arith hypothesis with appropriate domain restriction n \u2265 1.", "The system of equations is correctly formalized in h_l2 using conjunction, with proper multiplication notation (* instead of implicit multiplication).", "The conclusion 12 = 4d is correctly stated as the theorem goal, with explicit multiplication notation 4 * d."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "so d=3.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 We have the system of equations: 10 = a_1 + 2d and 22 = a_1 + 6d [l2].\n\u2022 12 = 4d [l3].\nTherefore, we conclude:\n\u2022 d = 3 [l4].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem arithmetic_sequence_sum : \n  \u2200 (a : \u2115 \u2192 \u211d) (a\u2081 d : \u211d),\n  (\u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d) \u2192\n  a 3 = 10 \u2192\n  a 7 = 22 \u2192\n  (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem arithmetic_sequence_sum : \n  \u2200 (a : \u2115 \u2192 \u211d) (a\u2081 d : \u211d),\n  (\u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d) \u2192\n  a 3 = 10 \u2192\n  a 7 = 22 \u2192\n  (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by\n  intro a a\u2081 d h_arith h_a3 h_a7\n  have h_d : d = 3 := by\n    have h1 : a 3 = a\u2081 + 2 * d := by\n      have h2 := h_arith 3 (by norm_num)\n      norm_num at h2 \u22a2\n      <;> linarith\n    have h3 : a 7 = a\u2081 + 6 * d := by\n      have h4 := h_arith 7 (by norm_num)\n      norm_num at h4 \u22a2\n      <;> linarith\n    have h5 : a\u2081 + 6 * d = 22 := by linarith\n    have h6 : a\u2081 + 2 * d = 10 := by linarith\n    have h7 : 4 * d = 12 := by linarith\n    linarith\n  \n  have h_sum : (\u2211 i in Finset.range 10, a (i + 1)) = 175 := by\n    have h1 : a 3 = a\u2081 + 2 * d := by\n      have h2 := h_arith 3 (by norm_num)\n      norm_num at h2 \u22a2\n      <;> linarith\n    have h3 : a\u2081 + 2 * d = 10 := by linarith\n    have h4 : (\u2211 i in Finset.range 10, a (i + 1)) = 10 * a\u2081 + 45 * d := by\n      have h5 : (\u2211 i in Finset.range 10, a (i + 1)) = \u2211 i in Finset.range 10, (a\u2081 + (i : \u211d) * d) := by\n        apply Finset.sum_congr rfl\n        intro i _\n        have h6 := h_arith (i + 1) (by\n          have h7 : i < 10 := Finset.mem_range.mp \u2039_\u203a\n          omega\n          )\n        have h7 : (i : \u2115) + 1 \u2265 1 := by\n          have h8 : i < 10 := Finset.mem_range.mp \u2039_\u203a\n          omega\n        have h8 : (i : \u2115) + 1 \u2265 1 := by\n          have h9 : i < 10 := Finset.mem_range.mp \u2039_\u203a\n          omega\n        have h9 : a (i + 1) = a\u2081 + ((i + 1 : \u2115) - 1 : \u211d) * d := by\n          have h10 := h_arith (i + 1) (by\n            have h11 : i < 10 := Finset.mem_range.mp \u2039_\u203a\n            omega\n            )\n          norm_num at h10 \u22a2\n          <;>\n          (try omega) <;>\n          (try simp_all [Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_mul, Nat.cast_sub]) <;>\n          (try ring_nf at * <;> linarith) <;>\n          (try norm_num at * <;> linarith)\n          <;>\n          (try\n            {\n              cases i <;> simp_all [Finset.mem_range, Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_mul, Nat.cast_sub]\n              <;> ring_nf at * <;> norm_num at * <;> linarith\n            })\n        have h10 : ((i + 1 : \u2115) - 1 : \u211d) = (i : \u211d) := by\n          have h11 : (i : \u2115) < 10 := Finset.mem_range.mp \u2039_\u203a\n          have h12 : (i + 1 : \u2115) - 1 = i := by\n            omega\n          norm_num [h12]\n          <;>\n          simp_all [Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_mul, Nat.cast_sub]\n          <;>\n          ring_nf at * <;>\n          norm_num at * <;>\n          linarith\n        rw [h9, h10]\n        <;>\n        ring_nf\n        <;>\n        simp_all [Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_mul, Nat.cast_sub]\n        <;>\n        linarith\n      rw [h5]\n      -- Calculate the sum of the arithmetic series\n      simp [Finset.sum_range_succ, Finset.sum_range_succ, Finset.sum_range_succ]\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      linarith\n    have h5 : 10 * a\u2081 + 45 * d = 175 := by\n      have h6 : a\u2081 + 2 * d = 10 := by linarith\n      have h7 : d = 3 := h_d\n      have h8 : a\u2081 = 4 := by\n        have h9 : a\u2081 + 2 * d = 10 := by linarith\n        rw [h7] at h9\n        linarith\n      rw [h8, h7]\n      <;> norm_num\n    linarith\n  \n  exact h_sum", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization introduces a completely different mathematical conclusion (S_10 = 175) that is not mentioned in the natural language. While it correctly captures the arithmetic sequence definition and the given conditions a_3 = 10 and a_7 = 22, the natural language focuses on deriving the common difference d = 3 through solving a system of equations, whereas the Lean code aims to prove a sum formula. This represents a fundamental shift in mathematical objective and constitutes a major inconsistency."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization introduces a completely different mathematical conclusion (S_10 = 175) that is not mentioned in the natural language. While it correctly captures the arithmetic sequence definition and the given conditions a_3 = 10 and a_7 = 22, the natural language focuses on deriving the common difference d = 3 through solving a system of equations, whereas the Lean code aims to prove a sum formula. This represents a fundamental shift in mathematical objective and constitutes a major inconsistency.']"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Substituting d=3 into the first equation gives 10=a_1+2(3),", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 We have the system of equations: 10 = a_1 + 2d and 22 = a_1 + 6d [l2].\n\u2022 12 = 4d [l3].\n\u2022 d = 3 [l4].\nTherefore, we conclude:\n\u2022 10 = a_1 + 2(3) [l5].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3) :\n  10 = a\u2081 + 6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3) :\n  10 = a\u2081 + 6 := by\n  have h_a3 : a 3 = a\u2081 + 2 * d := by\n    have h\u2081 : a 3 = a\u2081 + (3 - 1 : \u2115) * d := by\n      have h\u2082 : (3 : \u2115) \u2265 1 := by norm_num\n      have h\u2083 := h_arith 3 h\u2082\n      norm_num at h\u2083 \u22a2\n      <;> simpa using h\u2083\n    -- Simplify (3 - 1 : \u2115) to 2 and coerce to \u211d\n    norm_num at h\u2081 \u22a2\n    <;>\n    (try ring_nf at h\u2081 \u22a2) <;>\n    (try simp_all [h_d]) <;>\n    (try norm_num at h\u2081 \u22a2) <;>\n    (try linarith) <;>\n    (try ring_nf at h\u2081 \u22a2 <;> linarith)\n    <;>\n    (try\n      {\n        simp_all [h_d]\n        <;> norm_num\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        ring_nf at h\u2081 \u22a2\n        <;> linarith\n      })\n  \n  have h_eq : a\u2081 + 2 * d = 10 := by\n    have h\u2081 : a 3 = 10 := h_3\n    have h\u2082 : a 3 = a\u2081 + 2 * d := h_a3\n    linarith\n  \n  have h_a1 : a\u2081 + 6 = 10 := by\n    have h\u2081 : a\u2081 + 2 * d = 10 := h_eq\n    have h\u2082 : d = 3 := h_d\n    rw [h\u2082] at h\u2081\n    ring_nf at h\u2081 \u22a2\n    linarith\n  \n  have h_final : 10 = a\u2081 + 6 := by\n    have h\u2081 : a\u2081 + 6 = 10 := h_a1\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.88, "semantic_feedback": ["The arithmetic sequence concept is correctly captured with the function type and arithmetic formula", "Both conditions a_3 = 10 and a_7 = 22 are properly formalized as hypotheses", "The sum S_n mentioned in natural language is not included in the Lean formalization, but it's not needed for this specific theorem", "The arithmetic sequence formula a_n = a_1 + (n-1)d is correctly formalized", "The system of equations is implicitly captured through the given conditions and arithmetic formula", "The relationship 12 = 4d is derivable from the given conditions", "The condition d = 3 is explicitly stated as hypothesis h_d", "The conclusion 10 = a_1 + 2(3) = a_1 + 6 is correctly formalized as the goal"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "so a_1=4.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 We have the system of equations: 10 = a_1 + 2d and 22 = a_1 + 6d [l2].\n\u2022 12 = 4d [l3].\n\u2022 d = 3 [l4].\n\u2022 10 = a_1 + 2(3) [l5].\nTherefore, we conclude:\n\u2022 a_1 = 4 [l6].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3) :\n  a\u2081 = 4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3) :\n  a\u2081 = 4 := by\n  have h1 : a\u2081 + 2 * d = 10 := by\n    have h1\u2081 : a 3 = a\u2081 + (3 - 1 : \u211d) * d := by\n      have h1\u2082 := h_arith 3 (by norm_num)\n      norm_num at h1\u2082 \u22a2\n      <;> simp_all [h1\u2082]\n      <;> ring_nf at *\n      <;> linarith\n    have h1\u2082 : a 3 = 10 := h_3\n    have h1\u2083 : a\u2081 + (3 - 1 : \u211d) * d = 10 := by linarith\n    ring_nf at h1\u2083 \u22a2\n    <;> linarith\n  \n  have h2 : a\u2081 = 4 := by\n    have h2\u2081 : d = 3 := h_d\n    have h2\u2082 : a\u2081 + 2 * d = 10 := h1\n    rw [h2\u2081] at h2\u2082\n    norm_num at h2\u2082 \u22a2\n    <;> linarith\n  \n  exact h2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the essential mathematical components from the natural language. While it doesn't show the intermediate algebraic steps (like deriving d = 3 from the system of equations), it includes d = 3 as a hypothesis, which is mathematically equivalent. The arithmetic sequence definition, given conditions (a_3 = 10, a_7 = 22), general term formula, and the conclusion (a_1 = 4) are all properly represented. The formalization is logically sound and complete for proving the stated result."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Next, we find the expression for the n-th term, a_n. Using a_1=4 and d=3, we get a_n=4+(n-1)3=4+3n-3=3n+1.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 d = 3 [l4].\n\u2022 a_1 = 4 [l6].\nTherefore, we conclude:\n\u2022 The expression for the n-th term is a_n = 3n + 1 [l7].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3)\n  (h_a1 : a\u2081 = 4) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n + 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_d : d = 3)\n  (h_a1 : a\u2081 = 4) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n + 1 := by\n  have h_main : \u2200 (n : \u2115), n \u2265 1 \u2192 a n = (3 : \u211d) * n + 1 := by\n    intro n hn\n    have h\u2081 : a n = a\u2081 + (n - 1 : \u2115) * d := by\n      have h\u2082 := h_arith n hn\n      -- Simplify the expression to match the form we need\n      norm_cast at h\u2082 \u22a2\n      <;> simp_all [Nat.cast_add, Nat.cast_one, Nat.cast_zero, Nat.cast_mul, Nat.cast_sub]\n      <;> ring_nf at *\n      <;> linarith\n    rw [h\u2081]\n    have h\u2082 : (a\u2081 : \u211d) = 4 := by exact_mod_cast h_a1\n    have h\u2083 : (d : \u211d) = 3 := by exact_mod_cast h_d\n    rw [h\u2082, h\u2083]\n    have h\u2084 : ((n - 1 : \u2115) : \u211d) = (n : \u211d) - 1 := by\n      have h\u2085 : n \u2265 1 := hn\n      have h\u2086 : (n : \u2115) \u2265 1 := by exact_mod_cast h\u2085\n      have h\u2087 : (n - 1 : \u2115) = n - 1 := by\n        omega\n      have h\u2088 : ((n - 1 : \u2115) : \u211d) = (n : \u211d) - 1 := by\n        have h\u2089 : (n : \u2115) \u2265 1 := by exact_mod_cast hn\n        have h\u2081\u2080 : (n - 1 : \u2115) = n - 1 := by\n          omega\n        have h\u2081\u2081 : ((n - 1 : \u2115) : \u211d) = (n - 1 : \u211d) := by\n          norm_cast\n        have h\u2081\u2082 : (n : \u211d) - 1 = (n - 1 : \u211d) := by\n          ring_nf\n          <;> field_simp\n          <;> ring_nf\n        linarith\n      exact h\u2088\n    -- Cast the natural number to real and use the established equality\n    have h\u2085 : ((n - 1 : \u2115) : \u211d) * (3 : \u211d) = ((n : \u211d) - 1) * (3 : \u211d) := by\n      rw [h\u2084]\n      <;> ring_nf\n    -- Simplify the expression to get the final form\n    have h\u2086 : (4 : \u211d) + ((n - 1 : \u2115) : \u211d) * (3 : \u211d) = (3 : \u211d) * (n : \u211d) + 1 := by\n      have h\u2087 : ((n - 1 : \u2115) : \u211d) * (3 : \u211d) = ((n : \u211d) - 1) * (3 : \u211d) := by\n        rw [h\u2084]\n        <;> ring_nf\n      calc\n        (4 : \u211d) + ((n - 1 : \u2115) : \u211d) * (3 : \u211d) = (4 : \u211d) + ((n : \u211d) - 1) * (3 : \u211d) := by rw [h\u2087]\n        _ = (4 : \u211d) + (3 * (n : \u211d) - 3) := by ring_nf\n        _ = (3 : \u211d) * (n : \u211d) + 1 := by ring_nf\n    -- Combine everything to get the final result\n    norm_num at h\u2086 \u22a2\n    <;>\n    (try norm_cast at h\u2086 \u22a2) <;>\n    (try simp_all [h\u2084]) <;>\n    (try ring_nf at h\u2086 \u22a2) <;>\n    (try linarith) <;>\n    (try norm_num at h\u2086 \u22a2) <;>\n    (try simp_all [h\u2084]) <;>\n    (try ring_nf at h\u2086 \u22a2) <;>\n    (try linarith)\n    <;>\n    (try\n      {\n        simp_all [h\u2084]\n        <;>\n        ring_nf at *\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n  \n  intro n hn\n  have h\u2081 : a n = (3 : \u211d) * n + 1 := h_main n hn\n  norm_cast at h\u2081 \u22a2\n  <;>\n  (try simp_all) <;>\n  (try ring_nf at * ) <;>\n  (try norm_num at * ) <;>\n  (try linarith)\n  <;>\n  (try\n    {\n      simp_all [h_main]\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith\n    })", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. The arithmetic sequence definition, given conditions (a_3 = 10, a_7 = 22), derived parameters (d = 3, a_1 = 4), and the conclusion (a_n = 3n + 1) are all properly represented. The additional constraint 'n \u2265 1' is mathematically appropriate and doesn't contradict the natural language. The unused S_n definition is appropriately omitted since it's not relevant to the conclusion being proven."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "The formula for the sum of an arithmetic series is S_n = \\frac{n}{2}(a_1+a_n).", "statement": "Definition:\n\u2022 The formula for the sum of the first n terms of an arithmetic sequence (a_k) is S_n = \\frac{n}{2}(a_1+a_n) [def_2].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_2 \n  (a : \u2115 \u2192 \u211d) \n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 (\u2211 i in Finset.Icc 1 n, a i) = n * (a 1 + a n) / 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that (a_k) is an arithmetic sequence through the explicit definition h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d, which is the standard mathematical definition of an arithmetic sequence", "The condition 'sum of the first n terms' is perfectly captured by the Lean expression \u2211 i in Finset.Icc 1 n, a i, which represents exactly the sum from term 1 to term n", "The conclusion S_n = n/2(a_1+a_n) is mathematically identical to the Lean expression n * (a 1 + a n) / 2, just using different notation for multiplication and division order"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l8": {"id": "l8", "natural_language": "For n=10, we need to find a_{10}. We use the expression for a_n to find a_{10}=3(10)+1=31.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 The expression for the n-th term is a_n = 3n + 1 [l7].\nTherefore, we conclude:\n\u2022 a_10 = 31 [l8].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "l5", "l6", "l7", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (a : \u2115 \u2192 \u211d)\n  (h_arith : \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_l7 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n + 1) :\n  a 10 = 31 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (a : \u2115 \u2192 \u211d)\n  (h_arith : \u2203 (a\u2081 d : \u211d), \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_l7 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 3 * n + 1) :\n  a 10 = 31 := by\n  have h1 : a 10 = 31 := by\n    have h2 : a 10 = (3 : \u211d) * 10 + 1 := by\n      have h3 : (10 : \u2115) \u2265 1 := by norm_num\n      have h4 : a 10 = (3 : \u211d) * (10 : \u211d) + 1 := by\n        have h5 := h_l7 10 (by norm_num)\n        norm_num at h5 \u22a2\n        <;> simpa using h5\n      norm_num at h4 \u22a2\n      <;> simpa using h4\n    norm_num at h2 \u22a2\n    <;> linarith\n  \n  exact h1", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The arithmetic sequence definition is correctly formalized using the standard mathematical definition with first term and common difference.", "The specific values a_3 = 10 and a_7 = 22 are perfectly captured in the hypotheses.", "The definition of S_n as the sum of first n terms is completely missing from the Lean formalization, despite being explicitly mentioned in the natural language premise.", "The formula a_n = 3n + 1 is correctly formalized, with the reasonable addition of the domain constraint n \u2265 1.", "The conclusion a_10 = 31 is perfectly matched in the theorem statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The arithmetic sequence definition is correctly formalized using the standard mathematical definition with first term and common difference.', 'The specific values a_3 = 10 and a_7 = 22 are perfectly captured in the hypotheses.', 'The definition of S_n as the sum of first n terms is completely missing from the Lean formalization, despite being explicitly mentioned in the natural language premise.', 'The formula a_n = 3n + 1 is correctly formalized, with the reasonable addition of the domain constraint n \u2265 1.', 'The conclusion a_10 = 31 is perfectly matched in the theorem statement.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, we use the sum formula for n=10 with a_1=4 and a_{10}=31. We have S_{10}=\\frac{10}{2}(4+31)=5(35)=175.", "statement": "We assume:\n\u2022 (a_n) is an arithmetic sequence [tc_1].\n\u2022 a_3 = 10 and a_7 = 22 [tc_2].\n\u2022 For the arithmetic sequence (a_n) [tc_1], S_n is the sum of its first n terms [def_1].\n\u2022 There exists a first term a_1 and a common difference d such that for any n, the n-th term is given by a_n = a_1 + (n-1)d [l1].\n\u2022 a_1 = 4 [l6].\n\u2022 The formula for the sum of the first n terms of an arithmetic sequence (a_k) is S_n = \\frac{n}{2}(a_1+a_n) [def_2].\n\u2022 a_10 = 31 [l8].\nTherefore, we conclude:\n\u2022 The sum of the first 10 terms is S_10 = 175 [ts_1].", "dependencies": ["tc_1", "tc_2", "def_1", "l1", "l2", "l3", "l4", "l5", "l6", "l7", "def_2", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_sum_formula : \u2200 n : \u2115, n \u2265 1 \u2192 (\u2211 i in Finset.Icc 1 n, a i) = n * (a 1 + a n) / 2) :\n  (\u2211 i in Finset.Icc 1 10, a i) = 175 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a : \u2115 \u2192 \u211d)\n  (a\u2081 d : \u211d)\n  (h_arith : \u2200 n : \u2115, n \u2265 1 \u2192 a n = a\u2081 + (n - 1) * d)\n  (h_3 : a 3 = 10)\n  (h_7 : a 7 = 22)\n  (h_sum_formula : \u2200 n : \u2115, n \u2265 1 \u2192 (\u2211 i in Finset.Icc 1 n, a i) = n * (a 1 + a n) / 2) :\n  (\u2211 i in Finset.Icc 1 10, a i) = 175 := by\n  have h_d : d = 3 := by\n    have h3 : a 3 = a\u2081 + 2 * d := by\n      have h3' : a 3 = a\u2081 + (3 - 1 : \u211d) * d := by\n        have h3'' := h_arith 3 (by norm_num)\n        norm_num at h3'' \u22a2\n        <;>\n        (try ring_nf at h3'' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all) <;>\n        (try norm_num at * <;> linarith)\n        <;>\n        (try ring_nf at h3'' \u22a2 <;> linarith)\n        <;>\n        (try simp_all [h3''])\n        <;>\n        (try norm_num at * <;> linarith)\n      norm_num at h3' \u22a2\n      <;> linarith\n    have h7 : a 7 = a\u2081 + 6 * d := by\n      have h7' : a 7 = a\u2081 + (7 - 1 : \u211d) * d := by\n        have h7'' := h_arith 7 (by norm_num)\n        norm_num at h7'' \u22a2\n        <;>\n        (try ring_nf at h7'' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all) <;>\n        (try norm_num at * <;> linarith)\n        <;>\n        (try ring_nf at h7'' \u22a2 <;> linarith)\n        <;>\n        (try simp_all [h7''])\n        <;>\n        (try norm_num at * <;> linarith)\n      norm_num at h7' \u22a2\n      <;> linarith\n    have h4 : (a\u2081 + 6 * d : \u211d) - (a\u2081 + 2 * d : \u211d) = 22 - 10 := by\n      linarith [h3, h7, h_3, h_7]\n    have h5 : (4 : \u211d) * d = 12 := by linarith\n    have h6 : d = 3 := by linarith\n    exact h6\n  \n  have h_a1 : a\u2081 = 4 := by\n    have h3 : a 3 = a\u2081 + 2 * d := by\n      have h3' : a 3 = a\u2081 + (3 - 1 : \u211d) * d := by\n        have h3'' := h_arith 3 (by norm_num)\n        norm_num at h3'' \u22a2\n        <;>\n        (try ring_nf at h3'' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all) <;>\n        (try norm_num at * <;> linarith)\n        <;>\n        (try ring_nf at h3'' \u22a2 <;> linarith)\n        <;>\n        (try simp_all [h3''])\n        <;>\n        (try norm_num at * <;> linarith)\n      norm_num at h3' \u22a2\n      <;> linarith\n    have h7 : a 7 = a\u2081 + 6 * d := by\n      have h7' : a 7 = a\u2081 + (7 - 1 : \u211d) * d := by\n        have h7'' := h_arith 7 (by norm_num)\n        norm_num at h7'' \u22a2\n        <;>\n        (try ring_nf at h7'' \u22a2) <;>\n        (try linarith) <;>\n        (try simp_all) <;>\n        (try norm_num at * <;> linarith)\n        <;>\n        (try ring_nf at h7'' \u22a2 <;> linarith)\n        <;>\n        (try simp_all [h7''])\n        <;>\n        (try norm_num at * <;> linarith)\n      norm_num at h7' \u22a2\n      <;> linarith\n    have h4 : a\u2081 + 2 * d = 10 := by\n      linarith [h3, h_3]\n    have h5 : d = 3 := h_d\n    have h6 : a\u2081 = 4 := by\n      rw [h5] at h4\n      linarith\n    exact h6\n  \n  have h_a1_val : a 1 = 4 := by\n    have h\u2081 : a 1 = a\u2081 + (1 - 1 : \u211d) * d := by\n      have h\u2082 := h_arith 1 (by norm_num)\n      norm_num at h\u2082 \u22a2\n      <;>\n      (try ring_nf at h\u2082 \u22a2) <;>\n      (try linarith) <;>\n      (try simp_all) <;>\n      (try norm_num at * <;> linarith)\n      <;>\n      (try ring_nf at h\u2082 \u22a2 <;> linarith)\n      <;>\n      (try simp_all [h\u2082])\n      <;>\n      (try norm_num at * <;> linarith)\n    have h\u2082 : a\u2081 = 4 := h_a1\n    have h\u2083 : d = 3 := h_d\n    rw [h\u2081]\n    norm_num [h\u2082, h\u2083]\n    <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  have h_a10_val : a 10 = 31 := by\n    have h\u2081 : a 10 = a\u2081 + (10 - 1 : \u211d) * d := by\n      have h\u2082 := h_arith 10 (by norm_num)\n      norm_num at h\u2082 \u22a2\n      <;>\n      (try ring_nf at h\u2082 \u22a2) <;>\n      (try linarith) <;>\n      (try simp_all) <;>\n      (try norm_num at * <;> linarith)\n      <;>\n      (try ring_nf at h\u2082 \u22a2 <;> linarith)\n      <;>\n      (try simp_all [h\u2082])\n      <;>\n      (try norm_num at * <;> linarith)\n    have h\u2082 : a\u2081 = 4 := h_a1\n    have h\u2083 : d = 3 := h_d\n    rw [h\u2081]\n    norm_num [h\u2082, h\u2083]\n    <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  have h_sum : (\u2211 i in Finset.Icc 1 10, a i) = 175 := by\n    have h\u2081 : (\u2211 i in Finset.Icc 1 10, a i) = (10 : \u211d) * (a 1 + a 10) / 2 := by\n      have h\u2082 := h_sum_formula 10 (by norm_num)\n      norm_num at h\u2082 \u22a2\n      <;>\n      (try ring_nf at h\u2082 \u22a2) <;>\n      (try linarith) <;>\n      (try simp_all) <;>\n      (try norm_num at * <;> linarith)\n      <;>\n      (try ring_nf at h\u2082 \u22a2 <;> linarith)\n      <;>\n      (try simp_all [h\u2082])\n      <;>\n      (try norm_num at * <;> linarith)\n      <;>\n      (try linarith)\n    rw [h\u2081]\n    have h\u2082 : a 1 = 4 := h_a1_val\n    have h\u2083 : a 10 = 31 := h_a10_val\n    rw [h\u2082, h\u2083]\n    norm_num\n    <;>\n    (try ring_nf) <;>\n    (try linarith)\n  \n  exact h_sum", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization captures the core mathematical structure correctly, including the arithmetic sequence definition, the key given conditions (a_3 = 10, a_7 = 22), and the sum formula. The conclusion S_10 = 175 is properly represented. However, the natural language explicitly states a_1 = 4 and a_10 = 31 as intermediate results, which are not included as hypotheses in the Lean formalization. While these values can be derived from the given conditions, their absence represents a minor structural difference from the natural language presentation, which lists them as explicit assumptions/conclusions in the reasoning chain.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization captures the core mathematical structure correctly, including the arithmetic sequence definition, the key given conditions (a_3 = 10, a_7 = 22), and the sum formula. The conclusion S_10 = 175 is properly represented. However, the natural language explicitly states a_1 = 4 and a_10 = 31 as intermediate results, which are not included as hypotheses in the Lean formalization. While these values can be derived from the given conditions, their absence represents a minor structural difference from the natural language presentation, which lists them as explicit assumptions/conclusions in the reasoning chain.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence of positive real numbers. If $\lim_{n 	o \infty} rac{a_{n+1}}{a_n} = L$ where $0 < L < 1$, then $\lim_{n 	o \infty} a_n = 0$.
+
+Proof: Since $\lim_{n 	o \infty} rac{a_{n+1}}{a_n} = L$ with $L < 1$, we can choose $r$ such that $L < r < 1$. By the definition of limit, there exists $N \in \mathbb{N}$ such that for all $n \geq N$, we have $rac{a_{n+1}}{a_n} < r$. This means that for $n \geq N$, we get $a_{n+1} < r \cdot a_n$. Applying this inequality repeatedly, we find that $a_{N+1} < r \cdot a_N$, $a_{N+2} < r \cdot a_{N+1} < r^2 \cdot a_N$, and in general, $a_{N+k} < r^k \cdot a_N$ for all $k \geq 1$. Since $a_N$ is a fixed positive number and $0 < r < 1$, we know that $r^k 	o 0$ as $k 	o \infty$. Therefore, given any $\epsilon > 0$, we can choose $K$ large enough so that $r^k \cdot a_N < \epsilon$ for all $k \geq K$. This shows that $a_{N+k} < \epsilon$ for all $k \geq K$, which means $\lim_{n 	o \infty} a_n = 0$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be a sequence of positive real numbers.", "statement": "Premise:\n\u2022 (a_n) is a sequence of positive real numbers, i.e., for all n, a_n > 0 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, 0 < a n)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures a sequence as a function from natural numbers to real numbers, which is the standard mathematical representation in type theory", "The Lean condition '0 < a n' is mathematically equivalent to 'a_n > 0' from the natural language, just with the inequality flipped"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $\\lim_{n \to \\infty} \frac{a_{n+1}}{a_n} = L$ where $0 < L < 1$", "statement": "Premise:\n\u2022 (a_n) is a sequence of positive real numbers [tc_1]\n\u2022 lim_{n\u2192\u221e} (a_{n+1}/a_n) = L for some L such that 0 < L < 1 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, 0 < a n)\n(L : \u211d)\n(tc_2 : Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L) \u2227 0 < L \u2227 L < 1)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that (a_n) is a sequence of positive real numbers through 'variable (a : \u2115 \u2192 \u211d)' and '(tc_1 : \u2200 n, 0 < a n)'. The sequence is represented as a function from naturals to reals, and positivity is explicitly stated for all terms.", "The Lean formalization perfectly captures the limit condition using 'Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L)' which is the formal way to express lim_{n\u2192\u221e} (a_{n+1}/a_n) = L, along with the constraints '0 < L \u2227 L < 1' that match exactly with the natural language condition."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Since $\\lim_{n \to \\infty} \frac{a_{n+1}}{a_n} = L$ with $L < 1$, we can choose $r$ such that $L < r < 1$.", "statement": "We assume:\n\u2022 lim_{n\u2192\u221e} (a_{n+1}/a_n) = L for some L such that 0 < L < 1 [tc_2].\nDefinition:\n\u2022 Let r be a real number such that L < r < 1. Such an r exists because L < 1 [def_1].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, 0 < a n)\n(L : \u211d)\n(tc_2 : Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L) \u2227 0 < L \u2227 L < 1)\n(r : \u211d)\n(def_1 : L < r \u2227 r < 1)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean tendsto formulation correctly captures the limit concept from the natural language", "The conjunction in Lean exactly matches the compound inequality in natural language", "tc_2 in Lean correctly combines the limit condition with the bounds on L", "The condition L < 1 is implicitly available from tc_2, matching the natural language reference", "The type declaration (r : \u211d) correctly specifies r as a real number", "def_1 correctly captures the existence and bounds of r as stated in natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "By the definition of limit, there exists $N \\in \\mathbb{N}$ such that for all $n \\geq N$, we have $\frac{a_{n+1}}{a_n} < r$.", "statement": "We assume:\n\u2022 lim_{n\u2192\u221e} (a_{n+1}/a_n) = L for some L such that 0 < L < 1 [tc_2]\n\u2022 r is a real number such that L < r < 1 [def_1].\nTherefore, we conclude:\n\u2022 There exists an integer N such that for all n \u2265 N, a_{n+1}/a_n < r [l1].", "dependencies": ["tc_2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d) (L : \u211d) (r : \u211d)\n  (tc_2 : Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L) \u2227 0 < L \u2227 L < 1)\n  (def_1 : L < r \u2227 r < 1) :\n  \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) / a n < r := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d) (L : \u211d) (r : \u211d)\n  (tc_2 : Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L) \u2227 0 < L \u2227 L < 1)\n  (def_1 : L < r \u2227 r < 1) :\n  \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) / a n < r := by\n  obtain \u27e8h_tendsto, hL_pos, hL_lt1\u27e9 := tc_2\n  obtain \u27e8hLr, hr1\u27e9 := def_1\n  have h\u03b5 : 0 < r - L := sub_pos.mpr hLr\n  have h : \u2200\u1da0 n in atTop, |a (n + 1) / a n - L| < r - L :=\n    Metric.tendsto_atTop_nhds.mp h_tendsto (r - L) h\u03b5\n  obtain \u27e8N, hN\u27e9 := eventually_atTop.mp h\n  use N\n  intro n hn\n  specialize hN n hn\n  rw [abs_sub_lt_iff] at hN\n  linarith [hN.2]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 4, "endLine": 14, "endColumn": 32, "data": "unknown identifier 'Metric.tendsto_atTop_nhds.mp'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The limit condition is correctly formalized using Filter.Tendsto with appropriate domain and codomain, and the bounds on L are properly captured.", "The constraint L < r < 1 is correctly represented, with r's type properly declared as \u211d in the lemma signature.", "The conclusion correctly uses existential and universal quantification with the right inequality. Using \u2115 instead of \u2124 for N is mathematically appropriate.", "The overall logical structure properly represents the implication from the two assumptions to the conclusion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l1\n  (a : \u2115 \u2192 \u211d) (L : \u211d) (r : \u211d)\n  (tc_2 : Filter.Tendsto (fun n \u21a6 a (n + 1) / a n) Filter.atTop (nhds L) \u2227 0 < L \u2227 L < 1)\n  (def_1 : L < r \u2227 r < 1) :\n  \u2200 N : \u2115, \u2203 n \u2265 N, \u00ac (a (n + 1) / a n < r) := by\n  intro N\n  have h := tc_2.left\n  rw [Metric.tendsto_atTop] at h\n  have h' := h (r - L) (by linarith [def_1.1])\n  obtain \u27e8M, hM\u27e9 := h'\n  use max M N\n  constructor\n  \u00b7 exact le_max_right M N\n  \u00b7 intro h''\n    have h''' := hM (max M N) (le_max_left M N)\n    simp [dist_eq_norm, norm_div] at h'''\n    have : a (max M N + 1) / a (max M N) - L < r - L := by linarith\n    have : a (max M N + 1) / a (max M N) < r := by linarith\n    contradiction"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "This means that for $n \\geq N$, we get $a_{n+1} < r \\cdot a_n$.", "statement": "We assume:\n\u2022 (a_n) is a sequence of positive real numbers [tc_1]\n\u2022 There exists an integer N such that for all n \u2265 N, a_{n+1}/a_n < r [l1].\nTherefore, we conclude:\n\u2022 For the N from [l1], for all n \u2265 N, a_{n+1} < r * a_n [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d) (r : \u211d)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l1 : \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) / a n < r) :\n  \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) < r * a n := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d) (r : \u211d)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l1 : \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) / a n < r) :\n  \u2203 N : \u2115, \u2200 n \u2265 N, a (n + 1) < r * a n := by\n  obtain \u27e8N, hN\u27e9 := l1\n  use N\n  intro n hn\n  specialize hN n hn\n  rw [div_lt_iff (tc_1 n)] at hN\n  exact hN", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition and positivity constraint are correctly formalized. Using \u2115 instead of integers is appropriate for sequence indices.", "The existence condition with ratio bound is accurately captured. The use of natural numbers instead of integers is semantically equivalent in this context.", "The conclusion correctly formalizes the mathematical relationship. The existential quantification is logically equivalent to referring to 'the N from [l1]'.", "The mathematical implication from ratio bound to product bound is correctly represented, with the positivity constraint ensuring validity."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Applying this inequality repeatedly, we find that $a_{N+1} < r \\cdot a_N$, $a_{N+2} < r \\cdot a_{N+1} < r^2 \\cdot a_N$, and in general, $a_{N+k} < r^k \\cdot a_N$ for all $k \\geq 1$.", "statement": "We assume:\n\u2022 For some integer N, for all n \u2265 N, a_{n+1} < r * a_n [l2].\nTherefore, we conclude:\n\u2022 For that same N, for all integers k \u2265 1, a_{N+k} < r^k * a_N [l3].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (l2 : \u2200 n \u2265 N, a (n + 1) < r * a n) :\n  \u2200 k : \u2115, k \u2265 1 \u2192 a (N + k) < r ^ k * a N := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (l2 : \u2200 n \u2265 N, a (n + 1) < r * a n) :\n  \u2200 k : \u2115, k \u2265 1 \u2192 a (N + k) < r ^ k * a N := by\n  intro k hk\n  induction' k with k ih\n  \u00b7 cases hk\n  \u00b7 cases k\n    \u00b7 simp [pow_one]\n      exact l2 N (by simp)\n    \u00b7 have hN : N + k.succ \u2265 N := by simp [Nat.le_add_right]\n      specialize l2 (N + k.succ) hN\n      have := ih (Nat.succ_pos k)\n      rw [Nat.succ_eq_add_one, add_assoc, pow_succ']\n      calc\n        a (N + (k.succ + 1)) < r * a (N + k.succ) := l2\n        _ < r * (r ^ k.succ * a N) := by gcongr\n        _ = r ^ k.succ.succ * a N := by ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 20, "endLine": 15, "endColumn": 26, "data": "unknown identifier 'k.succ'"}, {"line": 16, "column": 25, "endLine": 16, "endColumn": 31, "data": "unknown identifier 'k.succ'"}, {"line": 17, "column": 31, "endLine": 17, "endColumn": 32, "data": "unknown identifier 'k'"}, {"line": 18, "column": 10, "endLine": 18, "endColumn": 29, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  succ ?n\ncase succ.succ\na : \u2115 \u2192 \u211d\nr : \u211d\nN n\u271d : \u2115\nih : n\u271d + 1 \u2265 1 \u2192 a (N + (n\u271d + 1)) < r ^ (n\u271d + 1) * a N\nhk : n\u271d + 1 + 1 \u2265 1\nhN : N + sorry \u2265 N\nl2 : a (N + sorry + 1) < r * a (N + sorry)\nthis : a (N + (n\u271d + 1)) < r ^ (n\u271d + 1) * a N\n\u22a2 a (N + (n\u271d + 1 + 1)) < r ^ (n\u271d + 1 + 1) * a N"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization accurately captures all mathematical and logical content from the natural language. The use of natural numbers (\u2115) instead of integers (\u2124) for N and k is mathematically sound and more precise, since both variables are constrained to non-negative values in context. The premise l2 and conclusion l3 are correctly formalized with proper quantification, inequality relationships, and mathematical operations preserved exactly.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3 :\n  \u2203 (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115),\n    (\u2200 n \u2265 N, a (n + 1) < r * a n) \u2227\n    \u2203 k \u2265 1, \u00ac(a (N + k) < r ^ k * a N) := by\n  let a : \u2115 \u2192 \u211d := fun n \u21a6 if n = 0 then 1 else if n = 1 then 2 else 0\n  let r := 2\n  let N := 0\n  use a, r, N\n  constructor\n  \u00b7 intro n hn\n    cases n\n    \u00b7 simp [a, r]\n      norm_num\n    \u00b7 simp [a, r]\n      split\n      \u00b7 simp\n      \u00b7 split\n        \u00b7 simp\n        \u00b7 simp\n  \u00b7 use 1\n    constructor\n    \u00b7 simp\n    \u00b7 simp [a, r]\n      norm_num"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Since $a_N$ is a fixed positive number and $0 < r < 1$, we know that $r^k \to 0$ as $k \to \\infty$.", "statement": "We assume:\n\u2022 r is a real number such that L < r < 1 and L > 0 [def_1].\nTherefore, we conclude:\n\u2022 The sequence (r^k)_{k\u22651} converges to 0 as k \u2192 \u221e [l4].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (L r : \u211d)\n  (def_1 : L < r \u2227 r < 1) :\n  Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k) Filter.atTop (nhds 0) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (L r : \u211d)\n  (def_1 : L < r \u2227 r < 1 \u2227 L > 0) :\n  Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k) Filter.atTop (nhds 0) := by\n  have h\u2081 : 0 < r := by linarith [def_1.2.1, def_1.1]\n  have h\u2082 : |r| < 1 := by simp [abs_of_pos h\u2081]; exact def_1.2.1\n  exact tendsto_pow_atTop_nhds_0_of_abs_lt_1 h\u2082", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 8, "endLine": 11, "endColumn": 44, "data": "unknown identifier 'tendsto_pow_atTop_nhds_0_of_abs_lt_1'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations correctly capture that r is a real number, and appropriately include L which appears in the conditions.", "The Lean formalization is missing a crucial condition from the natural language. The premise states 'L > 0' as part of the assumptions, but this condition is completely absent from def_1 in the Lean code. This omission could affect the mathematical validity of the statement.", "The convergence statement is correctly formalized using Filter.Tendsto with the appropriate domain (natural numbers) and codomain (neighborhood of 0). The mathematical meaning is preserved.", "The overall logical structure properly represents the assumption-conclusion relationship from the natural language as a lemma with hypotheses and conclusion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Variable declarations correctly capture that r is a real number, and appropriately include L which appears in the conditions.', \"The Lean formalization is missing a crucial condition from the natural language. The premise states 'L > 0' as part of the assumptions, but this condition is completely absent from def_1 in the Lean code. This omission could affect the mathematical validity of the statement.\", 'The convergence statement is correctly formalized using Filter.Tendsto with the appropriate domain (natural numbers) and codomain (neighborhood of 0). The mathematical meaning is preserved.', 'The overall logical structure properly represents the assumption-conclusion relationship from the natural language as a lemma with hypotheses and conclusion.']"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore, given any $\\epsilon > 0$, we can choose $K$ large enough so that $r^k \\cdot a_N < \\epsilon$ for all $k \\geq K$.", "statement": "We assume:\n\u2022 (a_n) is a sequence of positive real numbers [tc_1]\n\u2022 There exists an integer N such that for all n \u2265 N, a_{n+1}/a_n < r [l1]\n\u2022 The sequence (r^k) for k \u2265 1 converges to 0 as k \u2192 \u221e [l4].\nTherefore, we conclude:\n\u2022 The sequence (r^k * a_N) for k \u2265 1 converges to 0 as k \u2192 \u221e. By definition, this means for any \u03b5 > 0, there exists an integer K such that for all k \u2265 K, r^k * a_N < \u03b5 [l5].", "dependencies": ["tc_1", "l1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l1 : \u2203 N_exists : \u2115, \u2200 n \u2265 N_exists, a (n + 1) / a n < r)\n  (l4 : Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k) Filter.atTop (nhds 0)) :\n  Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k * a N) Filter.atTop (nhds 0) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l1 : \u2203 N_exists : \u2115, \u2200 n \u2265 N_exists, a (n + 1) / a n < r)\n  (l4 : Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k) Filter.atTop (nhds 0)) :\n  Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k * a N) Filter.atTop (nhds 0) := by\n  simp only [mul_zero]\n  exact Tendsto.mul_const (a N) l4", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 2, "endLine": 11, "endColumn": 22, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition and positivity condition are correctly formalized with proper type declarations and logical structure.", "The ratio bound condition is accurately captured with appropriate existential and universal quantifications.", "The convergence condition is mathematically correct but doesn't explicitly restrict to k \u2265 1 as stated in natural language. This is a minor structural difference.", "The conclusion correctly expresses convergence using filters, but again doesn't explicitly handle the k \u2265 1 restriction mentioned in natural language.", "The parameter N is introduced independently rather than being tied to the existential statement in l1, creating a minor structural inconsistency but no logical contradiction.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The sequence definition and positivity condition are correctly formalized with proper type declarations and logical structure.', 'The ratio bound condition is accurately captured with appropriate existential and universal quantifications.', \"The convergence condition is mathematically correct but doesn't explicitly restrict to k \u2265 1 as stated in natural language. This is a minor structural difference.\", \"The conclusion correctly expresses convergence using filters, but again doesn't explicitly handle the k \u2265 1 restriction mentioned in natural language.\", 'The parameter N is introduced independently rather than being tied to the existential statement in l1, creating a minor structural inconsistency but no logical contradiction.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "This shows that $a_{N+k} < \\epsilon$ for all $k \\geq K$, which means $\\lim_{n \to \\infty} a_n = 0$.", "statement": "We assume:\n\u2022 (a_n) is a sequence of positive real numbers [tc_1]\n\u2022 For some integer N, for all integers k \u2265 1, a_{N+k} < r^k * a_N [l3]\n\u2022 For any \u03b5 > 0, there exists an integer K such that for all k \u2265 K, r^k * a_N < \u03b5 [l5].\nTherefore, we conclude:\n\u2022 lim_{n\u2192\u221e} a_n = 0 [ts_1].", "dependencies": ["tc_1", "l3", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l3 : \u2200 k : \u2115, k \u2265 1 \u2192 a (N + k) < r ^ k * a N)\n  (l5 : Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k * a N) Filter.atTop (nhds 0)) :\n  Filter.Tendsto a Filter.atTop (nhds 0) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l3 : \u2200 k : \u2115, k \u2265 1 \u2192 a (N + k) < r ^ k * a N)\n  (l5 : Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k * a N) Filter.atTop (nhds 0)) :\n  Filter.Tendsto a Filter.atTop (nhds 0) := by\n  have h_r_nonneg : 0 \u2264 r := by\n    by_contra h\n    have := l3 1 (by norm_num)\n    simp at this\n    have : r * a N \u2265 0 := by linarith [tc_1 N]\n    linarith [this]\n  apply tendsto_atTop_nhds.2\n  intro \u03b5 h\u03b5\n  obtain \u27e8K, hK\u27e9 := tendsto_atTop_nhds.1 l5 \u03b5 h\u03b5\n  use N + max K 1\n  intro n hn\n  cases' le_or_lt n N with h h\n  \u00b7 exact (tc_1 n).trans_le (le_of_lt h\u03b5)\n  \u00b7 obtain \u27e8k, rfl\u27e9 := exists_add_of_le' h\n    have hk : k \u2265 1 := by\n      rw [add_comm] at hn\n      exact Nat.le_of_add_le_add_left hn\n    specialize l3 k hk\n    specialize hK (k + N - N) (by rw [add_comm, add_comm N, Nat.add_sub_cancel]; exact le_max_left _ _)\n    rw [add_comm N, add_comm k N, Nat.add_sub_cancel] at hK\n    exact l3.trans_lt hK", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 29, "endLine": 15, "endColumn": 46, "data": "linarith failed to find a contradiction\ncase a\na : \u2115 \u2192 \u211d\nr : \u211d\nN : \u2115\ntc_1 : \u2200 (n : \u2115), 0 < a n\nl3 : \u2200 k \u2265 1, a (N + k) < r ^ k * a N\nl5 : Tendsto (fun k => r ^ k * a N) atTop (\ud835\udcdd 0)\nh : \u00ac0 \u2264 r\nthis : a (N + 1) < r * a N\na\u271d : 0 > r * a N\n\u22a2 False failed"}, {"line": 16, "column": 4, "endLine": 16, "endColumn": 19, "data": "linarith failed to find a contradiction\na : \u2115 \u2192 \u211d\nr : \u211d\nN : \u2115\ntc_1 : \u2200 (n : \u2115), 0 < a n\nl3 : \u2200 k \u2265 1, a (N + k) < r ^ k * a N\nl5 : Tendsto (fun k => r ^ k * a N) atTop (\ud835\udcdd 0)\nh : \u00ac0 \u2264 r\nthis\u271d : a (N + 1) < r * a N\nthis : r * a N \u2265 0\n\u22a2 False failed"}, {"line": 19, "column": 9, "endLine": 19, "endColumn": 16, "data": "rcases tactic failed: x\u271d : IsOpen \u03b5 \u2192 \u2203 N_1, \u2200 (n : \u2115), N_1 \u2264 n \u2192 r ^ n * a N \u2208 \u03b5 is not an inductive datatype"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition and positivity constraint are correctly formalized with appropriate types and quantification.", "The inequality constraint is properly captured, with natural numbers being mathematically equivalent to integers for k \u2265 1.", "The limit condition is correctly expressed using filter notation, which is mathematically equivalent to the epsilon-delta definition.", "The conclusion about the limit of the sequence is properly formalized using the same filter-based approach.", "The explicit declaration of r as a real number is a reasonable addition that enhances the formalization's completeness.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (a : \u2115 \u2192 \u211d) (r : \u211d) (N : \u2115)\n  (tc_1 : \u2200 n, 0 < a n)\n  (l3 : \u2200 k : \u2115, k \u2265 1 \u2192 a (N + k) < r ^ k * a N)\n  (l5 : Filter.Tendsto (fun k : \u2115 \u21a6 r ^ k * a N) Filter.atTop (nhds 0)) :\n  \u00ac Filter.Tendsto a Filter.atTop (nhds 0) := by\n  intro h\n  have h1 : \u2200 \u03b5 > 0, \u2203 K, \u2200 n \u2265 K, |a n - 0| < \u03b5 := by\n    rw [Metric.tendsto_atTop] at h\n    exact h\n  specialize h1 (a N) (tc_1 N)\n  obtain \u27e8K, hK\u27e9 := h1\n  let k := max (K - N + 1) 1\n  have hk1 : k \u2265 1 := le_max_right _ _\n  have hk2 : N + k \u2265 K := by\n    simp [k]\n    linarith [le_max_left _ _]\n  specialize hK (N + k) hk2\n  specialize l3 k hk1\n  rw [sub_zero, abs_eq_self.mpr (le_of_lt (tc_1 (N + k)))] at hK\n  have : r ^ k * a N < a N := by linarith\n  have h6 := l5\n  have h7 : \u2203 k, r ^ k * a N \u2265 a N := by\n    by_contra hc\n    push_neg at hc\n    have h8 : \u2200 k, r ^ k * a N < a N := by\n      intro k\n      cases le_or_lt (K - N + 1) k with\n      | inl h => \n        have hk' : N + k \u2265 K := by linarith\n        specialize hK (N + k) hk'\n        specialize l3 k (by linarith)\n        linarith\n      | inr h =>\n        have : k \u2264 K - N := by linarith\n        specialize hK (N + k) (by linarith)\n        specialize l3 k (by linarith)\n        linarith\n    have h9 : Filter.Tendsto (fun _ : \u2115 => a N) atTop (nhds (a N)) := tendsto_const_nhds\n    have h10 : Filter.Tendsto (fun k => r ^ k * a N) atTop (nhds (a N)) := by\n      apply tendsto_of_tendsto_of_tendsto_of_le_of_le' h6 h9\n      \u00b7 intro k; exact le_of_lt (tc_1 (N + k))\n      \u00b7 intro k; exact le_of_lt (h8 k)\n    have h11 : 0 = a N := tendsto_nhds_unique h6 h10\n    exact (ne_of_lt (tc_1 N)) h11.symm\n  obtain \u27e8k', hk'\u27e9 := h7\n  specialize l3 k' (by linarith)\n  linarith"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

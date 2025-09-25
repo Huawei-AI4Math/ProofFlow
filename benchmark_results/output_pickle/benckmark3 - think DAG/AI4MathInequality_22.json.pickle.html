@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for all positive real numbers $a, b, c$, the following inequality holds: $3(a^8 + b^8 + c^8) \geq (a^3 + b^3 + c^3)(a^5 + b^5 + c^5)$.
+
+Proof: For positive real numbers $a, b, c$, we aim to show $3(a^8+b^8+c^8) \ge (a^3+b^3+c^3)(a^5+b^5+c^5)$. Expanding the right-hand side gives $a^8 + b^8 + c^8 + a^3b^5 + a^3c^5 + b^3a^5 + b^3c^5 + c^3a^5 + c^3b^5$, so the inequality becomes $3a^8+3b^8+3c^8 - (a^8+b^8+c^8 + a^3b^5 + a^3c^5 + b^3a^5 + b^3c^5 + c^3a^5 + c^3b^5) \ge 0$, which simplifies to $2a^8 + 2b^8 + 2c^8 - a^3b^5 - a^3c^5 - b^3a^5 - b^3c^5 - c^3a^5 - c^3b^5 \ge 0$. This expression can be grouped as $(a^3-b^3)(a^5-b^5) + (a^3-c^3)(a^5-c^5) + (b^3-c^3)(b^5-c^5) \ge 0$. For any positive $x, y$, the differences $x^k - y^k$ and $x^m - y^m$ have the same sign, so each product $(x^k - y^k)(x^m - y^m)$ is non-negative. Applying this to the three pairs $(a,b), (a,c), (b,c)$ shows that all terms are non-negative, hence their sum is non-negative, proving the inequality.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "For positive real numbers a, b, c", "statement": "Premise:\n\u2022 a, b, c are positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c : \u211d)\n(tc_1 : 0 < a \u2227 0 < b \u2227 0 < c)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly declares a, b, c as real numbers and expresses their positivity through the conjunction 0 < a \u2227 0 < b \u2227 0 < c, which perfectly captures 'positive real numbers'", "Both the natural language and Lean correctly indicate this is a premise step with no conclusions to derive"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Expanding the right-hand side gives $a^8 + b^8 + c^8 + a^3b^5 + a^3c^5 + b^3a^5 + b^3c^5 + c^3a^5 + c^3b^5$", "statement": "We assume:\n\u2022 a, b, c are real numbers (from [tc_1]) [tc_1]\nTherefore, we conclude:\n\u2022 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) = a\u2078 + b\u2078 + c\u2078 + a\u00b3b\u2075 + a\u00b3c\u2075 + b\u00b3a\u2075 + b\u00b3c\u2075 + c\u00b3a\u2075 + c\u00b3b\u2075 [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n  have h_ab : a^8 + b^8 \u2265 a^3 * b^5 + a^5 * b^3 := by\n    nlinarith [sq_nonneg (a^4 - b^4), sq_nonneg (a^3 - b^3), sq_nonneg (a^2 - b^2),\n      sq_nonneg (a - b), mul_nonneg ha.le hb.le, mul_nonneg (sq_nonneg (a - b)) (sq_nonneg (a + b)),\n      mul_nonneg (sq_nonneg (a^2 - b^2)) (sq_nonneg (a^2 + b^2)),\n      mul_nonneg (sq_nonneg (a^3 - b^3)) (sq_nonneg (a^3 + b^3))]\n  \n  have h_bc : b^8 + c^8 \u2265 b^3 * c^5 + b^5 * c^3 := by\n    nlinarith [sq_nonneg (b^4 - c^4), sq_nonneg (b^3 - c^3), sq_nonneg (b^2 - c^2),\n      sq_nonneg (b - c), mul_nonneg hb.le hc.le, mul_nonneg (sq_nonneg (b - c)) (sq_nonneg (b + c)),\n      mul_nonneg (sq_nonneg (b^2 - c^2)) (sq_nonneg (b^2 + c^2)),\n      mul_nonneg (sq_nonneg (b^3 - c^3)) (sq_nonneg (b^3 + c^3))]\n  \n  have h_ca : c^8 + a^8 \u2265 c^3 * a^5 + c^5 * a^3 := by\n    nlinarith [sq_nonneg (c^4 - a^4), sq_nonneg (c^3 - a^3), sq_nonneg (c^2 - a^2),\n      sq_nonneg (c - a), mul_nonneg hc.le ha.le, mul_nonneg (sq_nonneg (c - a)) (sq_nonneg (c + a)),\n      mul_nonneg (sq_nonneg (c^2 - a^2)) (sq_nonneg (c^2 + a^2)),\n      mul_nonneg (sq_nonneg (c^3 - a^3)) (sq_nonneg (c^3 + a^3))]\n  \n  have h_sum : 2 * (a^8 + b^8 + c^8) \u2265 a^3 * b^5 + a^5 * b^3 + b^3 * c^5 + b^5 * c^3 + c^3 * a^5 + c^5 * a^3 := by\n    have h\u2081 : a^8 + b^8 \u2265 a^3 * b^5 + a^5 * b^3 := h_ab\n    have h\u2082 : b^8 + c^8 \u2265 b^3 * c^5 + b^5 * c^3 := h_bc\n    have h\u2083 : c^8 + a^8 \u2265 c^3 * a^5 + c^5 * a^3 := h_ca\n    -- Summing the three inequalities to get the final result\n    linarith\n  \n  have h_expand : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + (a^3 * b^5 + a^5 * b^3 + b^3 * c^5 + b^5 * c^3 + c^3 * a^5 + c^5 * a^3) := by\n    ring_nf\n    <;>\n    nlinarith [pow_pos ha 3, pow_pos ha 5, pow_pos hb 3, pow_pos hb 5, pow_pos hc 3, pow_pos hc 5]\n  \n  have h_main : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n    have h\u2081 : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + (a^3 * b^5 + a^5 * b^3 + b^3 * c^5 + b^5 * c^3 + c^3 * a^5 + c^5 * a^3) := h_expand\n    have h\u2082 : 2 * (a^8 + b^8 + c^8) \u2265 a^3 * b^5 + a^5 * b^3 + b^3 * c^5 + b^5 * c^3 + c^3 * a^5 + c^5 * a^3 := h_sum\n    nlinarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language states an equality between (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) and an incomplete expansion, while the Lean formalization presents a completely different mathematical statement - an inequality 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5). These represent fundamentally different mathematical claims: one is an (incorrect) algebraic identity, the other is an inequality theorem. Additionally, the Lean version adds positivity constraints not mentioned in the natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language states an equality between (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) and an incomplete expansion, while the Lean formalization presents a completely different mathematical statement - an inequality 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5). These represent fundamentally different mathematical claims: one is an (incorrect) algebraic identity, the other is an inequality theorem. Additionally, the Lean version adds positivity constraints not mentioned in the natural language.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "so the inequality becomes $3a^8+3b^8+3c^8 - (a^8+b^8+c^8 + a^3b^5 + a^3c^5 + b^3a^5 + b^3c^5 + c^3a^5 + c^3b^5) \\ge 0$, which simplifies to $2a^8 + 2b^8 + 2c^8 - a^3b^5 - a^3c^5 - b^3a^5 - b^3c^5 - c^3a^5 - c^3b^5 \\ge 0$.", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1]\n\u2022 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) = a\u2078 + b\u2078 + c\u2078 + a\u00b3b\u2075 + a\u00b3c\u2075 + b\u00b3a\u2075 + b\u00b3c\u2075 + c\u00b3a\u2075 + c\u00b3b\u2075 [l1]\nTherefore, we conclude:\n\u2022 The inequality 3(a\u2078 + b\u2078 + c\u2078) \u2265 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) is equivalent to showing that 2a\u2078 + 2b\u2078 + 2c\u2078 - a\u00b3b\u2075 - a\u00b3c\u2075 - b\u00b3a\u2075 - b\u00b3c\u2075 - c\u00b3a\u2075 - c\u00b3b\u2075 \u2265 0 [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h1 : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) \u2194 \n  2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h1 : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) \u2194 \n  2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := by\n  have h_main : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) \u2194 2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := by\n    constructor\n    \u00b7 -- Prove the forward direction: 3*(a\u2078 + b\u2078 + c\u2078) \u2265 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) \u2192 2a\u2078 + ... \u2265 0\n      intro h\n      have h2 : 3 * (a^8 + b^8 + c^8) \u2265 a^8 + b^8 + c^8 + a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5 := by\n        linarith [h1]\n      have h3 : 2 * (a^8 + b^8 + c^8) \u2265 a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5 := by\n        linarith\n      have h4 : 2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := by\n        linarith\n      exact h4\n    \u00b7 -- Prove the reverse direction: 2a\u2078 + ... \u2265 0 \u2192 3*(a\u2078 + b\u2078 + c\u2078) \u2265 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075)\n      intro h\n      have h2 : 2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := h\n      have h3 : 2 * (a^8 + b^8 + c^8) \u2265 a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5 := by\n        linarith\n      have h4 : 3 * (a^8 + b^8 + c^8) \u2265 a^8 + b^8 + c^8 + a^3*b^5 + a^3*c^5 + b^3*a^5 + b^3*c^5 + c^3*a^5 + c^3*b^5 := by\n        linarith\n      have h5 : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n        linarith [h1]\n      exact h5\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and positivity constraints are correctly captured. The Lean formalization properly declares a, b, c as real numbers with explicit positivity conditions ha, hb, hc, which accurately represents 'positive real numbers'.", "The equation in assumption h1 perfectly matches the natural language statement l1. All terms are present and correctly positioned, with appropriate Lean notation (^ for exponentiation, * for multiplication).", "The conclusion l2 is correctly formalized as a biconditional statement. The mathematical equivalence between the inequality and the rearranged form is logically sound and properly expressed using Lean's \u2194 operator."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "This expression can be grouped as $(a^3-b^3)(a^5-b^5) + (a^3-c^3)(a^5-c^5) + (b^3-c^3)(b^5-c^5) \\ge 0$.", "statement": "We assume:\n\u2022 a, b, c are real numbers (from [tc_1]) [tc_1]\nTherefore, we conclude:\n\u2022 2a\u2078 + 2b\u2078 + 2c\u2078 - a\u00b3b\u2075 - a\u00b3c\u2075 - b\u00b3a\u2075 - b\u00b3c\u2075 - c\u00b3a\u2075 - c\u00b3b\u2075 = (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) [l3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a b c : \u211d) \n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  2 * a^8 + 2 * b^8 + 2 * c^8 - a^3 * b^5 - a^3 * c^5 - b^3 * a^5 - b^3 * c^5 - c^3 * a^5 - c^3 * b^5 = \n  (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a b c : \u211d) \n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  2 * a^8 + 2 * b^8 + 2 * c^8 - a^3 * b^5 - a^3 * c^5 - b^3 * a^5 - b^3 * c^5 - c^3 * a^5 - c^3 * b^5 = \n  (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5) := by\n  have h_main : 2 * a^8 + 2 * b^8 + 2 * c^8 - a^3 * b^5 - a^3 * c^5 - b^3 * a^5 - b^3 * c^5 - c^3 * a^5 - c^3 * b^5 = (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5) := by\n    ring_nf\n    <;>\n    (try norm_num) <;>\n    (try linarith) <;>\n    (try nlinarith)\n    <;>\n    (try ring_nf at * <;> linarith)\n    <;>\n    (try ring_nf at * <;> nlinarith)\n  \n  rw [h_main]\n  <;>\n  (try norm_num) <;>\n  (try linarith) <;>\n  (try nlinarith)", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. The variable declarations match exactly, and the mathematical identity is faithfully translated using appropriate Lean notation (^ for exponentiation, * for multiplication). The additional positivity constraints (0 < a \u2227 0 < b \u2227 0 < c) in the Lean version are extra conditions not mentioned in the natural language, but this is acceptable as they don't contradict the original statement and may be useful for the proof context. All essential logical and mathematical meaning from the natural language is preserved in the Lean formalization."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "For any positive x, y, the differences $x^k - y^k$ and $x^m - y^m$ have the same sign, so each product $(x^k - y^k)(x^m - y^m)$ is non-negative.", "statement": "We assume:\n\u2022 x, y are positive real numbers\n\u2022 k, m are positive integers\nTherefore, we conclude:\n\u2022 (x^k - y^k)(x^m - y^m) \u2265 0 [l4].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (x y : \u211d) (k m : \u2115) (hx : x > 0) (hy : y > 0) (hk : k > 0) (hm : m > 0) :\n  (x^k - y^k) * (x^m - y^m) \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (x y : \u211d) (k m : \u2115) (hx : x > 0) (hy : y > 0) (hk : k > 0) (hm : m > 0) :\n  (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n  have h_main : (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n    by_cases h : x \u2265 y\n    \u00b7 -- Case: x \u2265 y\n      have h\u2081 : (x : \u211d) ^ k \u2265 (y : \u211d) ^ k := by\n        -- Prove that x^k \u2265 y^k using monotonicity of powers\n        exact pow_le_pow_left (by linarith) h k\n      have h\u2082 : (x : \u211d) ^ m \u2265 (y : \u211d) ^ m := by\n        -- Prove that x^m \u2265 y^m using monotonicity of powers\n        exact pow_le_pow_left (by linarith) h m\n      have h\u2083 : (x : \u211d) ^ k - (y : \u211d) ^ k \u2265 0 := by linarith\n      have h\u2084 : (x : \u211d) ^ m - (y : \u211d) ^ m \u2265 0 := by linarith\n      -- Product of two non-negative numbers is non-negative\n      have h\u2085 : ((x : \u211d) ^ k - (y : \u211d) ^ k) * ((x : \u211d) ^ m - (y : \u211d) ^ m) \u2265 0 := by\n        nlinarith\n      exact h\u2085\n    \u00b7 -- Case: x < y\n      have h\u2081 : (x : \u211d) \u2264 (y : \u211d) := by\n        -- Since x is not \u2265 y, x \u2264 y\n        by_contra h\u2081\n        have h\u2082 : (x : \u211d) > (y : \u211d) := by linarith\n        have h\u2083 : (x : \u211d) \u2265 (y : \u211d) := by linarith\n        contradiction\n      have h\u2082 : (x : \u211d) ^ k \u2264 (y : \u211d) ^ k := by\n        -- Prove that x^k \u2264 y^k using monotonicity of powers\n        exact pow_le_pow_left (by linarith) h\u2081 k\n      have h\u2083 : (x : \u211d) ^ m \u2264 (y : \u211d) ^ m := by\n        -- Prove that x^m \u2264 y^m using monotonicity of powers\n        exact pow_le_pow_left (by linarith) h\u2081 m\n      have h\u2084 : (x : \u211d) ^ k - (y : \u211d) ^ k \u2264 0 := by linarith\n      have h\u2085 : (x : \u211d) ^ m - (y : \u211d) ^ m \u2264 0 := by linarith\n      -- Product of two non-positive numbers is non-negative\n      have h\u2086 : ((x : \u211d) ^ k - (y : \u211d) ^ k) * ((x : \u211d) ^ m - (y : \u211d) ^ m) \u2265 0 := by\n        nlinarith\n      exact h\u2086\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly captured in Lean", "Using natural numbers (\u2115) for positive integers is mathematically equivalent and more precise than using integers (\u2124)", "The mathematical expression (x^k - y^k)(x^m - y^m) \u2265 0 is perfectly translated using explicit multiplication operator", "The logical structure from assumptions to conclusion is properly represented as a theorem statement"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Applying this to the three pairs $(a,b), (a,c), (b,c)$ shows that all terms are non-negative", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1]\n\u2022 For any positive real numbers x, y and positive integers k, m, we have (x^k - y^k)(x^m - y^m) \u2265 0 [l4]\nTherefore, we conclude:\n\u2022 (a\u00b3-b\u00b3)(a\u2075-b\u2075) \u2265 0\n\u2022 (a\u00b3-c\u00b3)(a\u2075-c\u2075) \u2265 0\n\u2022 (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 [l5].", "dependencies": ["tc_1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (x y : \u211d) (k m : \u2115) (hx : 0 < x) (hy : 0 < y) (hk : 0 < k) (hm : 0 < m) :\n  (x^k - y^k) * (x^m - y^m) \u2265 0 := by sorry\n\ntheorem l5\n  (a b c : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c)\n  (l4 : \u2200 x y : \u211d, \u2200 k m : \u2115, 0 < x \u2192 0 < y \u2192 0 < k \u2192 0 < m \u2192 (x^k - y^k) * (x^m - y^m) \u2265 0) :\n  (a^3 - b^3) * (a^5 - b^5) \u2265 0 \u2227 \n  (a^3 - c^3) * (a^5 - c^5) \u2265 0 \u2227 \n  (b^3 - c^3) * (b^5 - c^5) \u2265 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (x y : \u211d) (k m : \u2115) (hx : 0 < x) (hy : 0 < y) (hk : 0 < k) (hm : 0 < m) :\n  (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n  have h_main : (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n    by_cases hxy : x = y\n    \u00b7 -- Case: x = y\n      have h\u2081 : x ^ k = y ^ k := by\n        rw [hxy]\n      have h\u2082 : x ^ m = y ^ m := by\n        rw [hxy]\n      have h\u2083 : (x ^ k - y ^ k) * (x ^ m - y ^ m) = 0 := by\n        rw [h\u2081, h\u2082]\n        ring\n      linarith\n    \u00b7 -- Case: x \u2260 y\n      have h\u2081 : x > y \u2228 x < y := by\n        cases' lt_or_gt_of_ne hxy with h h\n        \u00b7 exact Or.inr h\n        \u00b7 exact Or.inl h\n      cases' h\u2081 with h\u2081 h\u2081\n      \u00b7 -- Subcase: x > y\n        have h\u2082 : x ^ k > y ^ k := by\n          -- Use the fact that for x > y > 0, x^n is increasing in n\n          have h\u2083 : x > y := h\u2081\n          have h\u2084 : 1 \u2264 (k : \u2115) := by\n            omega\n          -- Use the property of powers to show x^k > y^k\n          exact calc\n            x ^ k > y ^ k := by\n              -- Use the fact that the function t \u21a6 t^k is strictly increasing for t > 0 and k \u2265 1\n              exact pow_lt_pow_of_lt_left h\u2083 (by linarith) (by\n                -- Prove that k \u2265 1\n                omega)\n            _ = y ^ k := by rfl\n        have h\u2083 : x ^ m > y ^ m := by\n          -- Similarly for m\n          have h\u2084 : x > y := h\u2081\n          have h\u2085 : 1 \u2264 (m : \u2115) := by\n            omega\n          exact calc\n            x ^ m > y ^ m := by\n              exact pow_lt_pow_of_lt_left h\u2084 (by linarith) (by\n                omega)\n            _ = y ^ m := by rfl\n        have h\u2084 : x ^ k - y ^ k > 0 := by linarith\n        have h\u2085 : x ^ m - y ^ m > 0 := by linarith\n        have h\u2086 : (x ^ k - y ^ k) * (x ^ m - y ^ m) > 0 := by positivity\n        linarith\n      \u00b7 -- Subcase: x < y\n        have h\u2082 : x ^ k < y ^ k := by\n          -- Use the fact that for x < y, x^n is increasing in n\n          have h\u2083 : x < y := h\u2081\n          have h\u2084 : 1 \u2264 (k : \u2115) := by\n            omega\n          -- Use the property of powers to show x^k < y^k\n          exact calc\n            x ^ k < y ^ k := by\n              -- Use the fact that the function t \u21a6 t^k is strictly increasing for t > 0 and k \u2265 1\n              exact pow_lt_pow_of_lt_left h\u2083 (by linarith) (by\n                -- Prove that k \u2265 1\n                omega)\n            _ = y ^ k := by rfl\n        have h\u2083 : x ^ m < y ^ m := by\n          -- Similarly for m\n          have h\u2084 : x < y := h\u2081\n          have h\u2085 : 1 \u2264 (m : \u2115) := by\n            omega\n          exact calc\n            x ^ m < y ^ m := by\n              exact pow_lt_pow_of_lt_left h\u2084 (by linarith) (by\n                omega)\n            _ = y ^ m := by rfl\n        have h\u2084 : x ^ k - y ^ k < 0 := by linarith\n        have h\u2085 : x ^ m - y ^ m < 0 := by linarith\n        have h\u2086 : (x ^ k - y ^ k) * (x ^ m - y ^ m) > 0 := by\n          nlinarith\n        linarith\n  exact h_main\n\ntheorem l5\n  (a b c : \u211d)\n  (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c)\n  (l4 : \u2200 x y : \u211d, \u2200 k m : \u2115, 0 < x \u2192 0 < y \u2192 0 < k \u2192 0 < m \u2192 (x^k - y^k) * (x^m - y^m) \u2265 0) :\n  (a^3 - b^3) * (a^5 - b^5) \u2265 0 \u2227 \n  (a^3 - c^3) * (a^5 - c^5) \u2265 0 \u2227 \n  (b^3 - c^3) * (b^5 - c^5) \u2265 0 := by\n  have h1 : (a^3 - b^3) * (a^5 - b^5) \u2265 0 := by\n    have h\u2081 : (a^3 - b^3) * (a^5 - b^5) \u2265 0 := l4 a b 3 5 (by linarith) (by linarith) (by norm_num) (by norm_num)\n    exact h\u2081\n  \n  have h2 : (a^3 - c^3) * (a^5 - c^5) \u2265 0 := by\n    have h\u2082 : (a^3 - c^3) * (a^5 - c^5) \u2265 0 := l4 a c 3 5 (by linarith) (by linarith) (by norm_num) (by norm_num)\n    exact h\u2082\n  \n  have h3 : (b^3 - c^3) * (b^5 - c^5) \u2265 0 := by\n    have h\u2083 : (b^3 - c^3) * (b^5 - c^5) \u2265 0 := l4 b c 3 5 (by linarith) (by linarith) (by norm_num) (by norm_num)\n    exact h\u2083\n  \n  have h_main : (a^3 - b^3) * (a^5 - b^5) \u2265 0 \u2227 (a^3 - c^3) * (a^5 - c^5) \u2265 0 \u2227 (b^3 - c^3) * (b^5 - c^5) \u2265 0 := by\n    exact \u27e8h1, h2, h3\u27e9\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 33, "column": 20, "endLine": 33, "endColumn": 41, "data": "unknown identifier 'pow_lt_pow_of_lt_left'"}, {"line": 44, "column": 20, "endLine": 44, "endColumn": 41, "data": "unknown identifier 'pow_lt_pow_of_lt_left'"}, {"line": 61, "column": 20, "endLine": 61, "endColumn": 41, "data": "unknown identifier 'pow_lt_pow_of_lt_left'"}, {"line": 72, "column": 20, "endLine": 72, "endColumn": 41, "data": "unknown identifier 'pow_lt_pow_of_lt_left'"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized with proper type annotations and logical conjunctions.", "The general lemma l4 accurately captures the universal quantification over positive reals and positive integers with the correct inequality statement.", "The main theorem l5 properly structures the three conclusions as a conjunction and includes all necessary hypotheses.", "All three specific inequality conclusions are correctly translated with proper exponentiation and multiplication notation.", "The logical dependency between l4 and l5 is properly maintained through the hypothesis structure in the Lean formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib.Algebra.Order.Ring.Basic\n\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (x y : \u211d) (k m : \u2115) (hx : 0 < x) (hy : 0 < y) (hk : 0 < k) (hm : 0 < m) :\n  (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n  have h_main : (x^k - y^k) * (x^m - y^m) \u2265 0 := by\n    by_cases h : x \u2265 y\n    \u00b7 -- Case: x \u2265 y\n      have h\u2081 : (x : \u211d) ^ k \u2265 (y : \u211d) ^ k := by\n        -- Use the fact that the function t \u21a6 t^k is increasing for t > 0 and k > 0\n        exact pow_le_pow_of_le_left (by positivity) h k\n      have h\u2082 : (x : \u211d) ^ m \u2265 (y : \u211d) ^ m := by\n        -- Similarly for m\n        exact pow_le_pow_of_le_left (by positivity) h m\n      have h\u2083 : (x : \u211d) ^ k - (y : \u211d) ^ k \u2265 0 := by linarith\n      have h\u2084 : (x : \u211d) ^ m - (y : \u211d) ^ m \u2265 0 := by linarith\n      -- The product of two non-negative numbers is non-negative\n      nlinarith\n    \u00b7 -- Case: x < y\n      have h\u2081 : x < y := by\n        -- Since x is not \u2265 y, it must be < y\n        contrapose! h\n        linarith\n      have h\u2082 : (x : \u211d) ^ k < (y : \u211d) ^ k := by\n        -- Use the fact that the function t \u21a6 t^k is increasing for t > 0 and k > 0\n        have h\u2083 : 1 \u2264 k := by\n          omega\n        exact pow_lt_pow_of_lt_left h\u2081 (by positivity) (by omega)\n      have h\u2083 : (x : \u211d) ^ m < (y : \u211d) ^ m := by\n        -- Similarly for m\n        have h\u2084 : 1 \u2264 m := by\n          omega\n        exact pow_lt_pow_of_lt_left h\u2081 (by positivity) (by omega)\n      have h\u2084 : (x : \u211d) ^ k - (y : \u211d) ^ k < 0 := by linarith\n      have h\u2085 : (x : \u211d) ^ m - (y : \u211d) ^ m < 0 := by linarith\n      -- The product of two negative numbers is positive\n      nlinarith\n  exact h_main"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "hence their sum is non-negative, proving the inequality.", "statement": "We assume:\n\u2022 (a\u00b3-b\u00b3)(a\u2075-b\u2075) \u2265 0, (a\u00b3-c\u00b3)(a\u2075-c\u2075) \u2265 0, and (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 [l5]\nTherefore, we conclude:\n\u2022 (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 [l6].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n  have h_aux : \u2200 (x y : \u211d), 0 < x \u2192 0 < y \u2192 x^8 + y^8 \u2265 x^3 * y^5 + x^5 * y^3 := by\n    intro x y hx hy\n    have h\u2081 : (x^5 - y^5) * (x^3 - y^3) \u2265 0 := by\n      by_cases h : x \u2265 y\n      \u00b7 -- Case: x \u2265 y\n        have h\u2082 : y ^ 5 \u2264 x ^ 5 := by\n          -- Use pow_le_pow_of_le_left to show y^5 \u2264 x^5\n          have h\u2083 : 0 \u2264 y := by linarith\n          have h\u2084 : y \u2264 x := by linarith\n          exact pow_le_pow_of_le_left (by linarith) h\u2084 5\n        have h\u2083 : y ^ 3 \u2264 x ^ 3 := by\n          -- Similarly, y^3 \u2264 x^3\n          have h\u2084 : 0 \u2264 y := by linarith\n          have h\u2085 : y \u2264 x := by linarith\n          exact pow_le_pow_of_le_left (by linarith) h\u2085 3\n        have h\u2084 : x ^ 5 - y ^ 5 \u2265 0 := by linarith\n        have h\u2085 : x ^ 3 - y ^ 3 \u2265 0 := by linarith\n        nlinarith\n      \u00b7 -- Case: x < y\n        have h\u2082 : x \u2264 y := by linarith\n        have h\u2083 : x ^ 5 \u2264 y ^ 5 := by\n          -- Use pow_le_pow_of_le_left to show x^5 \u2264 y^5\n          have h\u2084 : 0 \u2264 x := by linarith\n          have h\u2085 : x \u2264 y := by linarith\n          exact pow_le_pow_of_le_left (by linarith) h\u2085 5\n        have h\u2084 : x ^ 3 \u2264 y ^ 3 := by\n          -- Similarly, x^3 \u2264 y^3\n          have h\u2085 : 0 \u2264 x := by linarith\n          have h\u2086 : x \u2264 y := by linarith\n          exact pow_le_pow_of_le_left (by linarith) h\u2086 3\n        have h\u2085 : x ^ 5 - y ^ 5 \u2264 0 := by linarith\n        have h\u2086 : x ^ 3 - y ^ 3 \u2264 0 := by linarith\n        nlinarith\n    -- Now we have (x^5 - y^5)(x^3 - y^3) \u2265 0\n    have h\u2082 : x^8 + y^8 - (x^3 * y^5 + x^5 * y^3) = (x^5 - y^5) * (x^3 - y^3) := by\n      ring_nf\n      <;>\n      nlinarith [pow_pos hx 2, pow_pos hx 3, pow_pos hx 4, pow_pos hx 5, pow_pos hy 2, pow_pos hy 3,\n        pow_pos hy 4, pow_pos hy 5]\n    have h\u2083 : x^8 + y^8 - (x^3 * y^5 + x^5 * y^3) \u2265 0 := by\n      linarith\n    linarith\n  \n  have h_ab : a^8 + b^8 \u2265 a^3 * b^5 + a^5 * b^3 := by\n    have h\u2081 : a^8 + b^8 \u2265 a^3 * b^5 + a^5 * b^3 := h_aux a b ha hb\n    exact h\u2081\n  \n  have h_ac : a^8 + c^8 \u2265 a^3 * c^5 + a^5 * c^3 := by\n    have h\u2081 : a^8 + c^8 \u2265 a^3 * c^5 + a^5 * c^3 := h_aux a c ha hc\n    exact h\u2081\n  \n  have h_bc : b^8 + c^8 \u2265 b^3 * c^5 + b^5 * c^3 := by\n    have h\u2081 : b^8 + c^8 \u2265 b^3 * c^5 + b^5 * c^3 := h_aux b c hb hc\n    exact h\u2081\n  \n  have h_sum : 2 * (a^8 + b^8 + c^8) \u2265 (a^3 * b^5 + a^5 * b^3) + (a^3 * c^5 + a^5 * c^3) + (b^3 * c^5 + b^5 * c^3) := by\n    have h\u2081 : a^8 + b^8 \u2265 a^3 * b^5 + a^5 * b^3 := h_ab\n    have h\u2082 : a^8 + c^8 \u2265 a^3 * c^5 + a^5 * c^3 := h_ac\n    have h\u2083 : b^8 + c^8 \u2265 b^3 * c^5 + b^5 * c^3 := h_bc\n    have h\u2084 : 2 * (a^8 + b^8 + c^8) = (a^8 + b^8) + (a^8 + c^8) + (b^8 + c^8) := by ring\n    have h\u2085 : (a^3 * b^5 + a^5 * b^3) + (a^3 * c^5 + a^5 * c^3) + (b^3 * c^5 + b^5 * c^3) \u2264 (a^8 + b^8) + (a^8 + c^8) + (b^8 + c^8) := by\n      linarith\n    linarith\n  \n  have h_expand : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + (a^3 * b^5 + a^5 * b^3) + (a^3 * c^5 + a^5 * c^3) + (b^3 * c^5 + b^5 * c^3) := by\n    ring_nf\n    <;>\n    (try norm_num) <;>\n    (try linarith) <;>\n    (try nlinarith [ha, hb, hc]) <;>\n    (try ring_nf at * <;> linarith)\n    <;>\n    (try nlinarith [ha, hb, hc])\n  \n  have h_main : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n    have h\u2081 : (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) = a^8 + b^8 + c^8 + (a^3 * b^5 + a^5 * b^3) + (a^3 * c^5 + a^5 * c^3) + (b^3 * c^5 + b^5 * c^3) := h_expand\n    have h\u2082 : 2 * (a^8 + b^8 + c^8) \u2265 (a^3 * b^5 + a^5 * b^3) + (a^3 * c^5 + a^5 * c^3) + (b^3 * c^5 + b^5 * c^3) := h_sum\n    have h\u2083 : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n      nlinarith [sq_nonneg (a^4 - b^4), sq_nonneg (a^4 - c^4), sq_nonneg (b^4 - c^4),\n        sq_nonneg (a^2 - b^2), sq_nonneg (a^2 - c^2), sq_nonneg (b^2 - c^2),\n        sq_nonneg (a^3 - b^3), sq_nonneg (a^3 - c^3), sq_nonneg (b^3 - c^3)]\n    exact h\u2083\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 52, "endLine": 15, "endColumn": 54, "data": "application type mismatch\n  pow_le_pow_of_le_left ?m.12844 h\u2084\nargument\n  h\u2084\nhas type\n  y \u2264 x : Prop\nbut is expected to have type\n  \u2115 : Type"}, {"line": 15, "column": 42, "endLine": 15, "endColumn": 50, "data": "tactic failed, resulting expression contains metavariables\n  Linarith.lt_irrefl\n    (Eq.mp\n      (congrArg (fun _a => _a < 0)\n        (Mathlib.Tactic.Ring.of_eq\n          (Mathlib.Tactic.Ring.add_congr\n            (Mathlib.Tactic.Ring.neg_congr\n              (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n              (Mathlib.Tactic.Ring.neg_add\n                (Mathlib.Tactic.Ring.neg_one_mul\n                  (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                    (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                      (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                      (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                      (Eq.refl (Int.negOfNat 1)))))\n                Mathlib.Tactic.Ring.neg_zero))\n            (Mathlib.Tactic.Ring.sub_congr\n              (Mathlib.Tactic.Ring.add_congr (Mathlib.Tactic.Ring.atom_pf \u2191?m.12842)\n                (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n                (Mathlib.Tactic.Ring.add_pf_add_gt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_zero (\u2191?m.12842 ^ Nat.rawCast 1 * Nat.rawCast 1 + 0))))\n              (Mathlib.Tactic.Ring.atom_pf \u2191?m.12842)\n              (Mathlib.Tactic.Ring.sub_pf\n                (Mathlib.Tactic.Ring.neg_add\n                  (Mathlib.Tactic.Ring.neg_mul (\u2191?m.12842) (Nat.rawCast 1)\n                    (Mathlib.Tactic.Ring.neg_one_mul\n                      (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                        (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Eq.refl (Int.negOfNat 1))))))\n                  Mathlib.Tactic.Ring.neg_zero)\n                (Mathlib.Tactic.Ring.add_pf_add_lt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n                    (Mathlib.Tactic.Ring.add_overlap_pf_zero (\u2191?m.12842) (Nat.rawCast 1)\n                      (Mathlib.Meta.NormNum.IsInt.to_isNat\n                        (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1)) (Eq.refl (Int.ofNat 0)))))\n                    (Mathlib.Tactic.Ring.add_pf_zero_add 0)))))\n            (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n              (Mathlib.Meta.NormNum.IsInt.to_isNat\n                (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                  (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                  (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                  (Eq.refl (Int.ofNat 0))))\n              (Mathlib.Tactic.Ring.add_pf_zero_add 0)))\n          (Mathlib.Tactic.Ring.cast_zero (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 0)))))\n      (Linarith.add_lt_of_neg_of_le (neg_neg_of_pos Linarith.zero_lt_one)\n        (Linarith.sub_nonpos_of_le\n          (Int.add_one_le_iff.mpr (id (Eq.mp (Mathlib.Tactic.Zify._auxLemma.3 ?m.12842 ?m.12842) a\u271d))))))"}, {"line": 20, "column": 52, "endLine": 20, "endColumn": 54, "data": "application type mismatch\n  pow_le_pow_of_le_left ?m.16848 h\u2085\nargument\n  h\u2085\nhas type\n  y \u2264 x : Prop\nbut is expected to have type\n  \u2115 : Type"}, {"line": 20, "column": 42, "endLine": 20, "endColumn": 50, "data": "tactic failed, resulting expression contains metavariables\n  Linarith.lt_irrefl\n    (Eq.mp\n      (congrArg (fun _a => _a < 0)\n        (Mathlib.Tactic.Ring.of_eq\n          (Mathlib.Tactic.Ring.add_congr\n            (Mathlib.Tactic.Ring.neg_congr\n              (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n              (Mathlib.Tactic.Ring.neg_add\n                (Mathlib.Tactic.Ring.neg_one_mul\n                  (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                    (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                      (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                      (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                      (Eq.refl (Int.negOfNat 1)))))\n                Mathlib.Tactic.Ring.neg_zero))\n            (Mathlib.Tactic.Ring.sub_congr\n              (Mathlib.Tactic.Ring.add_congr (Mathlib.Tactic.Ring.atom_pf \u2191?m.16846)\n                (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n                (Mathlib.Tactic.Ring.add_pf_add_gt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_zero (\u2191?m.16846 ^ Nat.rawCast 1 * Nat.rawCast 1 + 0))))\n              (Mathlib.Tactic.Ring.atom_pf \u2191?m.16846)\n              (Mathlib.Tactic.Ring.sub_pf\n                (Mathlib.Tactic.Ring.neg_add\n                  (Mathlib.Tactic.Ring.neg_mul (\u2191?m.16846) (Nat.rawCast 1)\n                    (Mathlib.Tactic.Ring.neg_one_mul\n                      (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                        (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Eq.refl (Int.negOfNat 1))))))\n                  Mathlib.Tactic.Ring.neg_zero)\n                (Mathlib.Tactic.Ring.add_pf_add_lt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n                    (Mathlib.Tactic.Ring.add_overlap_pf_zero (\u2191?m.16846) (Nat.rawCast 1)\n                      (Mathlib.Meta.NormNum.IsInt.to_isNat\n                        (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1)) (Eq.refl (Int.ofNat 0)))))\n                    (Mathlib.Tactic.Ring.add_pf_zero_add 0)))))\n            (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n              (Mathlib.Meta.NormNum.IsInt.to_isNat\n                (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                  (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                  (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                  (Eq.refl (Int.ofNat 0))))\n              (Mathlib.Tactic.Ring.add_pf_zero_add 0)))\n          (Mathlib.Tactic.Ring.cast_zero (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 0)))))\n      (Linarith.add_lt_of_neg_of_le (neg_neg_of_pos Linarith.zero_lt_one)\n        (Linarith.sub_nonpos_of_le\n          (Int.add_one_le_iff.mpr (id (Eq.mp (Mathlib.Tactic.Zify._auxLemma.3 ?m.16846 ?m.16846) a\u271d))))))"}, {"line": 30, "column": 52, "endLine": 30, "endColumn": 54, "data": "application type mismatch\n  pow_le_pow_of_le_left ?m.27461 h\u2085\nargument\n  h\u2085\nhas type\n  x \u2264 y : Prop\nbut is expected to have type\n  \u2115 : Type"}, {"line": 30, "column": 42, "endLine": 30, "endColumn": 50, "data": "tactic failed, resulting expression contains metavariables\n  Linarith.lt_irrefl\n    (Eq.mp\n      (congrArg (fun _a => _a < 0)\n        (Mathlib.Tactic.Ring.of_eq\n          (Mathlib.Tactic.Ring.add_congr\n            (Mathlib.Tactic.Ring.neg_congr\n              (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n              (Mathlib.Tactic.Ring.neg_add\n                (Mathlib.Tactic.Ring.neg_one_mul\n                  (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                    (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                      (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                      (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                      (Eq.refl (Int.negOfNat 1)))))\n                Mathlib.Tactic.Ring.neg_zero))\n            (Mathlib.Tactic.Ring.sub_congr\n              (Mathlib.Tactic.Ring.add_congr (Mathlib.Tactic.Ring.atom_pf \u2191?m.27459)\n                (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n                (Mathlib.Tactic.Ring.add_pf_add_gt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_zero (\u2191?m.27459 ^ Nat.rawCast 1 * Nat.rawCast 1 + 0))))\n              (Mathlib.Tactic.Ring.atom_pf \u2191?m.27459)\n              (Mathlib.Tactic.Ring.sub_pf\n                (Mathlib.Tactic.Ring.neg_add\n                  (Mathlib.Tactic.Ring.neg_mul (\u2191?m.27459) (Nat.rawCast 1)\n                    (Mathlib.Tactic.Ring.neg_one_mul\n                      (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                        (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Eq.refl (Int.negOfNat 1))))))\n                  Mathlib.Tactic.Ring.neg_zero)\n                (Mathlib.Tactic.Ring.add_pf_add_lt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n                    (Mathlib.Tactic.Ring.add_overlap_pf_zero (\u2191?m.27459) (Nat.rawCast 1)\n                      (Mathlib.Meta.NormNum.IsInt.to_isNat\n                        (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1)) (Eq.refl (Int.ofNat 0)))))\n                    (Mathlib.Tactic.Ring.add_pf_zero_add 0)))))\n            (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n              (Mathlib.Meta.NormNum.IsInt.to_isNat\n                (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                  (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                  (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                  (Eq.refl (Int.ofNat 0))))\n              (Mathlib.Tactic.Ring.add_pf_zero_add 0)))\n          (Mathlib.Tactic.Ring.cast_zero (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 0)))))\n      (Linarith.add_lt_of_neg_of_le (neg_neg_of_pos Linarith.zero_lt_one)\n        (Linarith.sub_nonpos_of_le\n          (Int.add_one_le_iff.mpr (id (Eq.mp (Mathlib.Tactic.Zify._auxLemma.3 ?m.27459 ?m.27459) a\u271d))))))"}, {"line": 35, "column": 52, "endLine": 35, "endColumn": 54, "data": "application type mismatch\n  pow_le_pow_of_le_left ?m.31524 h\u2086\nargument\n  h\u2086\nhas type\n  x \u2264 y : Prop\nbut is expected to have type\n  \u2115 : Type"}, {"line": 35, "column": 42, "endLine": 35, "endColumn": 50, "data": "tactic failed, resulting expression contains metavariables\n  Linarith.lt_irrefl\n    (Eq.mp\n      (congrArg (fun _a => _a < 0)\n        (Mathlib.Tactic.Ring.of_eq\n          (Mathlib.Tactic.Ring.add_congr\n            (Mathlib.Tactic.Ring.neg_congr\n              (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n              (Mathlib.Tactic.Ring.neg_add\n                (Mathlib.Tactic.Ring.neg_one_mul\n                  (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                    (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                      (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                      (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                      (Eq.refl (Int.negOfNat 1)))))\n                Mathlib.Tactic.Ring.neg_zero))\n            (Mathlib.Tactic.Ring.sub_congr\n              (Mathlib.Tactic.Ring.add_congr (Mathlib.Tactic.Ring.atom_pf \u2191?m.31522)\n                (Mathlib.Tactic.Ring.cast_pos (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 1)))\n                (Mathlib.Tactic.Ring.add_pf_add_gt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_zero (\u2191?m.31522 ^ Nat.rawCast 1 * Nat.rawCast 1 + 0))))\n              (Mathlib.Tactic.Ring.atom_pf \u2191?m.31522)\n              (Mathlib.Tactic.Ring.sub_pf\n                (Mathlib.Tactic.Ring.neg_add\n                  (Mathlib.Tactic.Ring.neg_mul (\u2191?m.31522) (Nat.rawCast 1)\n                    (Mathlib.Tactic.Ring.neg_one_mul\n                      (Mathlib.Meta.NormNum.IsInt.to_raw_eq\n                        (Mathlib.Meta.NormNum.isInt_mul (Eq.refl HMul.hMul)\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Eq.refl (Int.negOfNat 1))))))\n                  Mathlib.Tactic.Ring.neg_zero)\n                (Mathlib.Tactic.Ring.add_pf_add_lt (Nat.rawCast 1)\n                  (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n                    (Mathlib.Tactic.Ring.add_overlap_pf_zero (\u2191?m.31522) (Nat.rawCast 1)\n                      (Mathlib.Meta.NormNum.IsInt.to_isNat\n                        (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                          (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                          (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1)) (Eq.refl (Int.ofNat 0)))))\n                    (Mathlib.Tactic.Ring.add_pf_zero_add 0)))))\n            (Mathlib.Tactic.Ring.add_pf_add_overlap_zero\n              (Mathlib.Meta.NormNum.IsInt.to_isNat\n                (Mathlib.Meta.NormNum.isInt_add (Eq.refl HAdd.hAdd)\n                  (Mathlib.Meta.NormNum.IsInt.of_raw \u2124 (Int.negOfNat 1))\n                  (Mathlib.Meta.NormNum.IsNat.to_isInt (Mathlib.Meta.NormNum.IsNat.of_raw \u2124 1))\n                  (Eq.refl (Int.ofNat 0))))\n              (Mathlib.Tactic.Ring.add_pf_zero_add 0)))\n          (Mathlib.Tactic.Ring.cast_zero (Mathlib.Meta.NormNum.isNat_ofNat \u2124 (Eq.refl 0)))))\n      (Linarith.add_lt_of_neg_of_le (neg_neg_of_pos Linarith.zero_lt_one)\n        (Linarith.sub_nonpos_of_le\n          (Int.add_one_le_iff.mpr (id (Eq.mp (Mathlib.Tactic.Zify._auxLemma.3 ?m.31522 ?m.31522) a\u271d))))))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization is mathematically unrelated to the natural language statement. The natural language presents a logical inference from three assumed non-negativity conditions to conclude that their sum is non-negative, while the Lean theorem states a completely different inequality about powers and sums. The assumed conditions (a\u00b3-b\u00b3)(a\u2075-b\u2075) \u2265 0, (a\u00b3-c\u00b3)(a\u2075-c\u2075) \u2265 0, (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 are entirely missing, and the conclusion (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 is replaced with an unrelated inequality 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5).", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization is mathematically unrelated to the natural language statement. The natural language presents a logical inference from three assumed non-negativity conditions to conclude that their sum is non-negative, while the Lean theorem states a completely different inequality about powers and sums. The assumed conditions (a\u00b3-b\u00b3)(a\u2075-b\u2075) \u2265 0, (a\u00b3-c\u00b3)(a\u2075-c\u2075) \u2265 0, (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 are entirely missing, and the conclusion (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 is replaced with an unrelated inequality 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5).']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "proving the inequality.", "statement": "We assume:\n\u2022 The inequality 3(a\u2078 + b\u2078 + c\u2078) \u2265 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) is equivalent to showing that 2a\u2078 + 2b\u2078 + 2c\u2078 - a\u00b3b\u2075 - a\u00b3c\u2075 - b\u00b3a\u2075 - b\u00b3c\u2075 - c\u00b3a\u2075 - c\u00b3b\u2075 \u2265 0 [l2]\n\u2022 2a\u2078 + 2b\u2078 + 2c\u2078 - a\u00b3b\u2075 - a\u00b3c\u2075 - b\u00b3a\u2075 - b\u00b3c\u2075 - c\u00b3a\u2075 - c\u00b3b\u2075 = (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) [l3]\n\u2022 (a\u00b3-b\u00b3)(a\u2075-b\u2075) + (a\u00b3-c\u00b3)(a\u2075-c\u2075) + (b\u00b3-c\u00b3)(b\u2075-c\u2075) \u2265 0 [l6]\nTherefore, we conclude:\n\u2022 3(a\u2078 + b\u2078 + c\u2078) \u2265 (a\u00b3 + b\u00b3 + c\u00b3)(a\u2075 + b\u2075 + c\u2075) [ts_1].", "dependencies": ["l2", "l3", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) \n  (l2 : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) \u2194 \n        2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0)\n  (l3 : 2 * a^8 + 2 * b^8 + 2 * c^8 - a^3 * b^5 - a^3 * c^5 - b^3 * a^5 - b^3 * c^5 - c^3 * a^5 - c^3 * b^5 = \n        (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5))\n  (l6 : (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5) \u2265 0) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) \n  (l2 : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) \u2194 \n        2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0)\n  (l3 : 2 * a^8 + 2 * b^8 + 2 * c^8 - a^3 * b^5 - a^3 * c^5 - b^3 * a^5 - b^3 * c^5 - c^3 * a^5 - c^3 * b^5 = \n        (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5))\n  (l6 : (a^3 - b^3) * (a^5 - b^5) + (a^3 - c^3) * (a^5 - c^5) + (b^3 - c^3) * (b^5 - c^5) \u2265 0) :\n  3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n  have h_main : 2*a^8 + 2*b^8 + 2*c^8 - a^3*b^5 - a^3*c^5 - b^3*a^5 - b^3*c^5 - c^3*a^5 - c^3*b^5 \u2265 0 := by\n    have h\u2081 : 2 * a ^ 8 + 2 * b ^ 8 + 2 * c ^ 8 - a ^ 3 * b ^ 5 - a ^ 3 * c ^ 5 - b ^ 3 * a ^ 5 - b ^ 3 * c ^ 5 - c ^ 3 * a ^ 5 - c ^ 3 * b ^ 5 = (a ^ 3 - b ^ 3) * (a ^ 5 - b ^ 5) + (a ^ 3 - c ^ 3) * (a ^ 5 - c ^ 5) + (b ^ 3 - c ^ 3) * (b ^ 5 - c ^ 5) := by\n      linarith [l3]\n    have h\u2082 : (a ^ 3 - b ^ 3) * (a ^ 5 - b ^ 5) + (a ^ 3 - c ^ 3) * (a ^ 5 - c ^ 5) + (b ^ 3 - c ^ 3) * (b ^ 5 - c ^ 5) \u2265 0 := by\n      linarith [l6]\n    linarith [h\u2081, h\u2082]\n  \n  have h_final : 3 * (a^8 + b^8 + c^8) \u2265 (a^3 + b^3 + c^3) * (a^5 + b^5 + c^5) := by\n    have h\u2081 : 3 * (a ^ 8 + b ^ 8 + c ^ 8) \u2265 (a ^ 3 + b ^ 3 + c ^ 3) * (a ^ 5 + b ^ 5 + c ^ 5) \u2194 2 * a ^ 8 + 2 * b ^ 8 + 2 * c ^ 8 - a ^ 3 * b ^ 5 - a ^ 3 * c ^ 5 - b ^ 3 * a ^ 5 - b ^ 3 * c ^ 5 - c ^ 3 * a ^ 5 - c ^ 3 * b ^ 5 \u2265 0 := by\n      exact l2\n    have h\u2082 : 2 * a ^ 8 + 2 * b ^ 8 + 2 * c ^ 8 - a ^ 3 * b ^ 5 - a ^ 3 * c ^ 5 - b ^ 3 * a ^ 5 - b ^ 3 * c ^ 5 - c ^ 3 * a ^ 5 - c ^ 3 * b ^ 5 \u2265 0 := by\n      exact h_main\n    have h\u2083 : 3 * (a ^ 8 + b ^ 8 + c ^ 8) \u2265 (a ^ 3 + b ^ 3 + c ^ 3) * (a ^ 5 + b ^ 5 + c ^ 5) := by\n      have h\u2084 : 3 * (a ^ 8 + b ^ 8 + c ^ 8) \u2265 (a ^ 3 + b ^ 3 + c ^ 3) * (a ^ 5 + b ^ 5 + c ^ 5) := by\n        -- Use the equivalence to deduce the desired inequality\n        have h\u2085 : 2 * a ^ 8 + 2 * b ^ 8 + 2 * c ^ 8 - a ^ 3 * b ^ 5 - a ^ 3 * c ^ 5 - b ^ 3 * a ^ 5 - b ^ 3 * c ^ 5 - c ^ 3 * a ^ 5 - c ^ 3 * b ^ 5 \u2265 0 := h\u2082\n        have h\u2086 : 3 * (a ^ 8 + b ^ 8 + c ^ 8) \u2265 (a ^ 3 + b ^ 3 + c ^ 3) * (a ^ 5 + b ^ 5 + c ^ 5) \u2194 2 * a ^ 8 + 2 * b ^ 8 + 2 * c ^ 8 - a ^ 3 * b ^ 5 - a ^ 3 * c ^ 5 - b ^ 3 * a ^ 5 - b ^ 3 * c ^ 5 - c ^ 3 * a ^ 5 - c ^ 3 * b ^ 5 \u2265 0 := h\u2081\n        -- Since the RHS is true, the LHS must also be true by the equivalence\n        have h\u2087 : 3 * (a ^ 8 + b ^ 8 + c ^ 8) \u2265 (a ^ 3 + b ^ 3 + c ^ 3) * (a ^ 5 + b ^ 5 + c ^ 5) := by\n          rw [h\u2086] at *\n          exact h\u2085\n        exact h\u2087\n      exact h\u2084\n    exact h\u2083\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The main theorem statement is correctly formalized with equivalent mathematical notation.", "The equivalence relationship (l2) is properly captured using the biconditional operator with identical mathematical expressions.", "The algebraic identity (l3) is perfectly translated with all terms matching exactly.", "The non-negativity statement (l6) is identical in both versions.", "The additional positivity constraints on variables are reasonable mathematical assumptions that enhance rigor without contradicting the natural language.", "The logical structure and dependencies between the statements are correctly preserved in the Lean formalization."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f(z) = \frac{e^{iz}}{(z-i)^2}$. Given that $f(z)$ has a pole of order 2 at $z_0 = i$ and the residue formula for a pole of order $m$ is $\operatorname{Res}(f, z_0) = \frac{1}{(m-1)!} \lim_{z 	o z_0} \frac{d^{m-1}}{dz^{m-1}}[(z-z_0)^m f(z)]$, then $\operatorname{Res}(f, i) = \frac{i}{e}$.
+
+Proof: To apply the formula, we first find the expression $(z-z_0)^m f(z)$, which in this case is $(z-i)^2 \frac{e^{iz}}{(z-i)^2} = e^{iz}$. Next, we must compute the $(m-1)$-th derivative, which is the first derivative for $m=2$. The derivative is $\frac{d}{dz}(e^{iz}) = ie^{iz}$. Substituting this into the residue formula with $m=2$ and $z_0=i$ yields $\operatorname{Res}(f, i) = \frac{1}{(2-1)!} \lim_{z 	o i} (ie^{iz})$. Finally, evaluating the expression gives the result: $\operatorname{Res}(f, i) = \frac{1}{1!} \cdot i e^{i^2} = i e^{-1} = \frac{i}{e}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f(z) = \\frac{e^{iz}}{(z-i)^2}$.", "statement": "Premise:\n\u2022 $f$ is a complex function defined as $f(z) = \\frac{e^{iz}}{(z-i)^2}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u2102 \u2192 \u2102)\n(tc_1 : \u2200 z : \u2102, z \u2260 Complex.I \u2192 f z = Complex.exp (Complex.I * z) / (z - Complex.I)^2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical meaning. The additional condition 'z \u2260 Complex.I' is a mathematically necessary constraint that makes the definition precise, as the original function is undefined at z = i due to division by zero. This is an example of extra logically consistent details that are acceptable."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Given that $f(z)$ has a pole of order 2 at $z_0 = i$", "statement": "Premise:\n\u2022 The function $f(z)$ as defined in [tc_1] has a pole of order $m=2$ at the point $z_0 = i$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 : \n  let f : \u2102 \u2192 \u2102 := fun z \u21a6 Complex.exp (Complex.I * z) / (z - Complex.I)^2\n  \u2203 (g : \u2102 \u2192 \u2102), (\u2200 z : \u2102, z \u2260 Complex.I \u2192 f z = g z / (z - Complex.I)^2) \u2227 \n  g Complex.I \u2260 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The natural language refers to a definition in [tc_1] while Lean provides an explicit definition. Without seeing [tc_1], this creates a structural difference, but the Lean definition is mathematically reasonable for demonstrating a pole of order 2.", "The Lean formalization correctly captures that f has a pole of order 2 at z = i by proving the existence of g such that f(z) = g(z)/(z-i)\u00b2 with g(i) \u2260 0, which is the standard mathematical definition of a pole of order 2."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The natural language refers to a definition in [tc_1] while Lean provides an explicit definition. Without seeing [tc_1], this creates a structural difference, but the Lean definition is mathematically reasonable for demonstrating a pole of order 2.', 'The Lean formalization correctly captures that f has a pole of order 2 at z = i by proving the existence of g such that f(z) = g(z)/(z-i)\u00b2 with g(i) \u2260 0, which is the standard mathematical definition of a pole of order 2.']"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "the residue formula for a pole of order $m$ is $\\operatorname{Res}(f, z_0) = \\frac{1}{(m-1)!} \\lim_{z \\to z_0} \\frac{d^{m-1}}{dz^{m-1}}[(z-z_0)^m f(z)]$", "statement": "Premise:\n\u2022 The residue of a function $f$ at a pole $z_0$ of order $m$ is given by the formula $\\operatorname{Res}(f, z_0) = \\frac{1}{(m-1)!} \\lim_{z \\to z_0} \\frac{d^{m-1}}{dz^{m-1}}[(z-z_0)^m f(z)]$ [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (f : \u2102 \u2192 \u2102) (z\u2080 : \u2102) (m : \u2115)\n(tc_3 : -- f has a pole of order m at z\u2080, and the residue formula applies\n  (\u2203 (L : \u2102), \u2200 \u03b5 > 0, \u2203 \u03b4 > 0, \u2200 z, \n    0 < Complex.abs (z - z\u2080) \u2227 Complex.abs (z - z\u2080) < \u03b4 \u2192 \n    Complex.abs ((z - z\u2080)^m * f z - L) < \u03b5) \u2227\n  (m - 1)! \u2260 0 \u2227\n  (\u2200 w, \u2203 (deriv_result : \u2102), \n    (\u2200 \u03b5 > 0, \u2203 \u03b4 > 0, \u2200 z, 0 < Complex.abs (z - w) \u2227 Complex.abs (z - w) < \u03b4 \u2192 \n      Complex.abs (deriv^[m-1] (fun t => (t - z\u2080)^m * f t) z - deriv_result) < \u03b5) \u2227\n    deriv_result = Complex.I * Complex.exp (-1))) := by sorry", "lean_pass": false, "error_msg": [{"line": 16, "column": 50, "endLine": 16, "endColumn": 52, "data": "unexpected token ':='; expected command"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "To apply the formula, we first find the expression $(z-z_0)^m f(z)$, which in this case is $(z-i)^2 \\frac{e^{iz}}{(z-i)^2} = e^{iz}$.", "statement": "We assume:\n\u2022 $f(z) = \\frac{e^{iz}}{(z-i)^2}$ [tc_1]\n\u2022 The pole has order $m=2$ and is at $z_0 = i$ [tc_2]\nTherefore, we conclude:\n\u2022 $(z-z_0)^m f(z) = (z-i)^2 \\frac{e^{iz}}{(z-i)^2} = e^{iz}$ [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u2102 \u2192 \u2102)\n  (hf : \u2200 z : \u2102, z \u2260 Complex.I \u2192 f z = Complex.exp (Complex.I * z) / (z - Complex.I)^2)\n  (z : \u2102) (hz : z \u2260 Complex.I) :\n  (z - Complex.I)^2 * f z = Complex.exp (Complex.I * z) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u2102 \u2192 \u2102)\n  (hf : \u2200 z : \u2102, z \u2260 Complex.I \u2192 f z = Complex.exp (Complex.I * z) / (z - Complex.I)^2)\n  (z : \u2102) (hz : z \u2260 Complex.I) :\n  (z - Complex.I)^2 * f z = Complex.exp (Complex.I * z) := by\n  have h_fz : f z = Complex.exp (Complex.I * z) / (z - Complex.I)^2 := by\n    apply hf\n    exact hz\n  \n  have h_main : (z - Complex.I)^2 * f z = (z - Complex.I)^2 * (Complex.exp (Complex.I * z) / (z - Complex.I)^2) := by\n    rw [h_fz]\n    <;>\n    simp [mul_comm]\n    <;>\n    ring_nf\n  \n  have h_denominator_ne_zero : (z - Complex.I)^2 \u2260 0 := by\n    have h\u2081 : z - Complex.I \u2260 0 := by\n      intro h\u2082\n      apply hz\n      rw [sub_eq_zero] at h\u2082\n      exact h\u2082\n    have h\u2082 : (z - Complex.I) ^ 2 \u2260 0 := by\n      intro h\u2083\n      have h\u2084 : z - Complex.I = 0 := by\n        simpa [sq, Complex.ext_iff, pow_two] using h\u2083\n      contradiction\n    exact h\u2082\n  \n  have h_simplified : (z - Complex.I)^2 * (Complex.exp (Complex.I * z) / (z - Complex.I)^2) = Complex.exp (Complex.I * z) := by\n    have h\u2081 : (z - Complex.I) ^ 2 \u2260 0 := h_denominator_ne_zero\n    field_simp [h\u2081]\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff, pow_two]\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff, pow_two]\n    <;> norm_num\n    <;> linarith\n  \n  have h_final : (z - Complex.I)^2 * f z = Complex.exp (Complex.I * z) := by\n    calc\n      (z - Complex.I) ^ 2 * f z = (z - Complex.I) ^ 2 * (Complex.exp (Complex.I * z) / (z - Complex.I) ^ 2) := by rw [h_main]\n      _ = Complex.exp (Complex.I * z) := by rw [h_simplified]\n  \n  rw [h_final]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.75, "semantic_feedback": ["The function definition is correctly captured. The Lean formalization properly translates f(z) = e^(iz)/(z-i)^2 with appropriate complex number notation and includes the necessary domain restriction z \u2260 i.", "The pole order m=2 and location z\u2080=i are implicit in the Lean formalization through the function definition, but not explicitly stated as separate parameters. The mathematical content is preserved but the explicit naming of these parameters is missing.", "The main algebraic identity is perfectly captured. The Lean statement (z - Complex.I)^2 * f z = Complex.exp (Complex.I * z) correctly represents the conclusion that (z-i)\u00b2 \u00b7 f(z) = e^(iz).", "The domain restriction z \u2260 i is appropriately handled. The Lean formalization makes this constraint explicit through the hypothesis hz : z \u2260 Complex.I, which is mathematically necessary and consistent with the natural language context."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Next, we must compute the $(m-1)$-th derivative, which is the first derivative for $m=2$. The derivative is $\\frac{d}{dz}(e^{iz}) = ie^{iz}$.", "statement": "We assume:\n\u2022 The expression to be differentiated is $e^{iz}$, which is equal to $(z-z_0)^m f(z)$ [l1]\n\u2022 The order of the pole is $m=2$ [tc_2]\nTherefore, we conclude:\n\u2022 The $(m-1)$-th derivative is $\\frac{d^{2-1}}{dz^{2-1}}(e^{iz}) = \\frac{d}{dz}(e^{iz}) = ie^{iz}$ [l2].", "dependencies": ["l1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (z : \u2102) :\n  deriv (fun w : \u2102 \u21a6 Complex.exp (Complex.I * w)) z = Complex.I * Complex.exp (Complex.I * z) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (z : \u2102) :\n  deriv (fun w : \u2102 \u21a6 Complex.exp (Complex.I * w)) z = Complex.I * Complex.exp (Complex.I * z) := by\n  have h1 : HasDerivAt (fun w : \u2102 => Complex.exp (Complex.I * w)) (Complex.exp (Complex.I * z) * Complex.I) z := by\n    have h2 : HasDerivAt (fun w : \u2102 => Complex.I * w) Complex.I z := by\n      -- Derivative of the inner function w \u21a6 i * w is i\n      have h3 : HasDerivAt (fun w : \u2102 => (w : \u2102)) 1 z := by\n        simpa using (hasDerivAt_id z)\n      -- Multiply by the constant i\n      have h4 : HasDerivAt (fun w : \u2102 => Complex.I * w) (Complex.I * 1) z := by\n        convert HasDerivAt.const_mul Complex.I h3 using 1 <;> ring\n      convert h4 using 1 <;> simp [Complex.ext_iff, Complex.I_mul_I]\n      <;> norm_num\n    -- Derivative of the outer function exp at i * z is exp(i * z)\n    have h5 : HasDerivAt (fun w : \u2102 => Complex.exp w) (Complex.exp (Complex.I * z)) (Complex.I * z) := by\n      apply Complex.hasDerivAt_exp\n    -- Apply the chain rule\n    have h6 : HasDerivAt (fun w : \u2102 => Complex.exp (Complex.I * w)) (Complex.exp (Complex.I * z) * Complex.I) z := by\n      have h7 : HasDerivAt (fun w : \u2102 => Complex.I * w) Complex.I z := h2\n      have h8 : HasDerivAt (fun w : \u2102 => Complex.exp w) (Complex.exp (Complex.I * z)) (Complex.I * z) := h5\n      have h9 : HasDerivAt (fun w : \u2102 => Complex.exp (Complex.I * w)) (Complex.exp (Complex.I * z) * Complex.I) z := by\n        -- Use the chain rule to combine the derivatives\n        convert h8.comp z h7 using 1 <;>\n          simp [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;>\n          ring_nf <;>\n          simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm] <;>\n          norm_num <;>\n          linarith\n      exact h9\n    exact h6\n  \n  have h2 : deriv (fun w : \u2102 => Complex.exp (Complex.I * w)) z = Complex.exp (Complex.I * z) * Complex.I := by\n    have h3 : deriv (fun w : \u2102 => Complex.exp (Complex.I * w)) z = Complex.exp (Complex.I * z) * Complex.I := by\n      apply HasDerivAt.deriv\n      exact h1\n    rw [h3]\n  \n  have h3 : deriv (fun w : \u2102 => Complex.exp (Complex.I * w)) z = Complex.I * Complex.exp (Complex.I * z) := by\n    rw [h2]\n    -- Use the commutativity of multiplication in \u2102 to rearrange the terms\n    have h4 : Complex.exp (Complex.I * z) * Complex.I = Complex.I * Complex.exp (Complex.I * z) := by\n      -- Since multiplication in \u2102 is commutative, we can rearrange the terms\n      ring_nf\n      <;> simp [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n      <;> norm_num\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n          <;> norm_num\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I, mul_comm]\n          <;> norm_num\n          <;> linarith\n        })\n    rw [h4]\n  \n  rw [h3]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The expression $e^{iz}$ is correctly represented as Complex.exp (Complex.I * w) in Lean.", "The derivative calculation $\\frac{d}{dz}(e^{iz}) = ie^{iz}$ is accurately captured by the Lean deriv statement.", "The Lean formalization completely omits the assumptions about poles, the expression $(z-z_0)^m f(z)$, and the pole order $m=2$, which are key components of the natural language context.", "While the Lean code correctly computes the first derivative, it lacks the contextual framing that this is specifically the $(m-1)$-th derivative where $m=2$, though the mathematical content is equivalent."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The expression $e^{iz}$ is correctly represented as Complex.exp (Complex.I * w) in Lean.', 'The derivative calculation $\\\\frac{d}{dz}(e^{iz}) = ie^{iz}$ is accurately captured by the Lean deriv statement.', 'The Lean formalization completely omits the assumptions about poles, the expression $(z-z_0)^m f(z)$, and the pole order $m=2$, which are key components of the natural language context.', 'While the Lean code correctly computes the first derivative, it lacks the contextual framing that this is specifically the $(m-1)$-th derivative where $m=2$, though the mathematical content is equivalent.']"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Substituting this into the residue formula with $m=2$ and $z_0=i$ yields $\\operatorname{Res}(f, i) = \\frac{1}{(2-1)!} \\lim_{z \\to i} (ie^{iz})$.", "statement": "We assume:\n\u2022 The residue formula is $\\operatorname{Res}(f, z_0) = \\frac{1}{(m-1)!} \\lim_{z \\to z_0} \\frac{d^{m-1}}{dz^{m-1}}[(z-z_0)^m f(z)]$ [tc_3]\n\u2022 The pole is at $z_0=i$ with order $m=2$ [tc_2]\n\u2022 The derivative term $\\frac{d^{m-1}}{dz^{m-1}}[(z-z_0)^m f(z)]$ is equal to $ie^{iz}$ [l2]\nTherefore, we conclude:\n\u2022 $\\operatorname{Res}(f, i) = \\frac{1}{(2-1)!} \\lim_{z \\to i} (ie^{iz})$ [l3].", "dependencies": ["tc_2", "tc_3", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102) \n  (z\u2080 : \u2102) \n  (m : \u2115)\n  (tc_2 : z\u2080 = Complex.I \u2227 m = 2)\n  (tc_3 : \u2200 (g : \u2102 \u2192 \u2102), \n    (\u2200 z : \u2102, z \u2260 z\u2080 \u2192 f z = g z / (z - z\u2080)^m) \u2227 \n    g z\u2080 \u2260 0 \u2192 \n    \u2203 (h : \u2102 \u2192 \u2102), (\u2200 z : \u2102, z \u2260 z\u2080 \u2192 (z - z\u2080)^m * f z = h z) \u2227 \n    h z\u2080 = Complex.exp (Complex.I * z\u2080))\n  (l2 : \u2200 z : \u2102, deriv (fun w : \u2102 \u21a6 Complex.exp (Complex.I * w)) z = Complex.I * Complex.exp (Complex.I * z)) :\n  (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = Complex.I / Complex.exp 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102) \n  (z\u2080 : \u2102) \n  (m : \u2115)\n  (tc_2 : z\u2080 = Complex.I \u2227 m = 2)\n  (tc_3 : \u2200 (g : \u2102 \u2192 \u2102), \n    (\u2200 z : \u2102, z \u2260 z\u2080 \u2192 f z = g z / (z - z\u2080)^m) \u2227 \n    g z\u2080 \u2260 0 \u2192 \n    \u2203 (h : \u2102 \u2192 \u2102), (\u2200 z : \u2102, z \u2260 z\u2080 \u2192 (z - z\u2080)^m * f z = h z) \u2227 \n    h z\u2080 = Complex.exp (Complex.I * z\u2080))\n  (l2 : \u2200 z : \u2102, deriv (fun w : \u2102 \u21a6 Complex.exp (Complex.I * w)) z = Complex.I * Complex.exp (Complex.I * z)) :\n  (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = Complex.I / Complex.exp 1 := by\n  have h_m : m = 2 := by\n    have h\u2082 : m = 2 := tc_2.2\n    exact h\u2082\n  \n  have h_z\u2080 : z\u2080 = Complex.I := by\n    have h\u2082 : z\u2080 = Complex.I := tc_2.1\n    exact h\u2082\n  \n  have h_fact : (m - 1).factorial = 1 := by\n    rw [h_m]\n    <;> norm_num\n    <;> rfl\n  \n  have h_coeff : (1 / (m - 1).factorial : \u2102) = 1 := by\n    rw [h_fact]\n    <;> norm_num\n    <;> simp [Complex.ext_iff]\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff]\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff]\n    <;> norm_num\n  \n  have h_exp_arg : Complex.I * z\u2080 = (-1 : \u2102) := by\n    rw [h_z\u2080]\n    simp [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n  \n  have h_exp : Complex.exp (Complex.I * z\u2080) = 1 / Complex.exp 1 := by\n    have h\u2081 : Complex.exp (Complex.I * z\u2080) = Complex.exp (-1 : \u2102) := by\n      rw [h_exp_arg]\n      <;> simp [Complex.ext_iff]\n      <;> norm_num\n    rw [h\u2081]\n    have h\u2082 : Complex.exp (-1 : \u2102) = 1 / Complex.exp 1 := by\n      -- Use the property of complex exponentials to show that exp(-1) = 1 / exp(1)\n      have h\u2083 : Complex.exp (-1 : \u2102) = (Complex.exp (1 : \u2102))\u207b\u00b9 := by\n        rw [\u2190 Complex.exp_neg]\n        <;> simp [Complex.ext_iff]\n        <;> norm_num\n      rw [h\u2083]\n      <;> field_simp [Complex.ext_iff, Complex.exp_ne_zero]\n      <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_neg]\n      <;> norm_num\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_neg]\n      <;> norm_num\n      <;> linarith [Real.exp_pos 1]\n    rw [h\u2082]\n    <;> simp [Complex.ext_iff]\n    <;> norm_num\n  \n  have h_main : (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = Complex.I / Complex.exp 1 := by\n    calc\n      (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = 1 * (Complex.I * Complex.exp (Complex.I * z\u2080)) := by\n        rw [h_coeff]\n      _ = Complex.I * Complex.exp (Complex.I * z\u2080) := by\n        ring\n      _ = Complex.I * (1 / Complex.exp 1) := by\n        rw [h_exp]\n      _ = Complex.I / Complex.exp 1 := by\n        field_simp [Complex.ext_iff, Complex.exp_ne_zero]\n        <;> ring_nf\n        <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_neg]\n        <;> norm_num\n        <;> linarith [Real.exp_pos 1]\n  \n  apply h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The residue formula with derivatives and limits is not explicitly represented in the Lean formalization. The tc_3 condition provides a structural definition but misses the key mathematical formula.", "The pole location and order are correctly captured in both versions.", "The derivative term statement is not properly formalized. The natural language claims a specific equality while Lean only provides a general derivative rule.", "The conclusion captures the mathematical content but represents the evaluated result rather than the limit expression as stated in natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The residue formula with derivatives and limits is not explicitly represented in the Lean formalization. The tc_3 condition provides a structural definition but misses the key mathematical formula.', 'The pole location and order are correctly captured in both versions.', 'The derivative term statement is not properly formalized. The natural language claims a specific equality while Lean only provides a general derivative rule.', 'The conclusion captures the mathematical content but represents the evaluated result rather than the limit expression as stated in natural language.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, evaluating the expression gives the result: $\\operatorname{Res}(f, i) = \\frac{1}{1!} \\cdot i e^{i^2} = i e^{-1} = \\frac{i}{e}$.", "statement": "We assume:\n\u2022 The residue is given by the expression $\\operatorname{Res}(f, i) = \\frac{1}{(2-1)!} \\lim_{z \\to i} (ie^{iz})$ [l3]\nTherefore, we conclude:\n\u2022 $\\operatorname{Res}(f, i) = \\frac{i}{e}$ [ts_1].", "dependencies": ["l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u2102 \u2192 \u2102)\n  (z\u2080 : \u2102)\n  (m : \u2115)\n  (hf : f = fun z \u21a6 Complex.exp (Complex.I * z) / (z - Complex.I)^2)\n  (hz\u2080 : z\u2080 = Complex.I)\n  (hm : m = 2)\n  (l3 : (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = Complex.I / Complex.exp 1) :\n  \u2203 (Res : \u2102), Res = (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) \u2227 \n  Res = Complex.I / Complex.exp 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u2102 \u2192 \u2102)\n  (z\u2080 : \u2102)\n  (m : \u2115)\n  (hf : f = fun z \u21a6 Complex.exp (Complex.I * z) / (z - Complex.I)^2)\n  (hz\u2080 : z\u2080 = Complex.I)\n  (hm : m = 2)\n  (l3 : (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) = Complex.I / Complex.exp 1) :\n  \u2203 (Res : \u2102), Res = (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) \u2227 \n  Res = Complex.I / Complex.exp 1 := by\n  have h_main : \u2203 (Res : \u2102), Res = (1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)) \u2227 Res = Complex.I / Complex.exp 1 := by\n    refine' \u27e8(1 / (m - 1).factorial : \u2102) * (Complex.I * Complex.exp (Complex.I * z\u2080)), by simp, _\u27e9\n    -- Use the given hypothesis `l3` to establish the second condition.\n    rw [l3]\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization has a major structural flaw. The natural language describes a residue calculation involving the evaluation of a limit: Res(f,i) = 1/(2-1)! * lim_{z\u2192i}(ie^{iz}). However, the Lean code completely bypasses this limit evaluation step and instead assumes the final result as hypothesis l3. The formalization should either: (1) include the limit evaluation as part of what needs to be proven, or (2) properly represent the residue formula with the limit expression. The current approach treats a derived result as an assumption, which misrepresents the logical flow of the mathematical argument."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization has a major structural flaw. The natural language describes a residue calculation involving the evaluation of a limit: Res(f,i) = 1/(2-1)! * lim_{z\u2192i}(ie^{iz}). However, the Lean code completely bypasses this limit evaluation step and instead assumes the final result as hypothesis l3. The formalization should either: (1) include the limit evaluation as part of what needs to be proven, or (2) properly represent the residue formula with the limit expression. The current approach treats a derived result as an assumption, which misrepresents the logical flow of the mathematical argument.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

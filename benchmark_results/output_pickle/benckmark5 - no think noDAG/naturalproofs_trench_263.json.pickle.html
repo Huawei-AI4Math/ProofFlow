@@ -1,0 +1,658 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Suppose that  $K$ is a bounded set with zero content and $\epsilon,$
+$\rho>0.$  Then there are cubes $C_1,$ $C_2,$ \dots$,$
+$C_r$ with edge lengths
+$<\rho$ such that  $C_j\cap K
+e\emptyset,$ $1\le j\le r,$
+\begin{equation}\label{eq:7.3.5}
+K\subset\bigcup_{j=1}^r C_j,
+\end{equation}
+and
+$$
+\sum_{j=1}^r V(C_j)<\epsilon.
+$$
+
+Proof: Since $V(K)=0$,
+$$
+\int_C\psi_K(\mathbf{X})\,d\mathbf{X}=0
+$$
+if $C$ is any cube containing $K$. From this and the
+definition of the integral, there is a $\delta>0$ such that if ${\bf
+P}$ is any partition of $C$ with $\|{\bf P}\|\le\delta$ and $\sigma$
+is any Riemann sum of $\psi_K$ over ${\bf P}$, then
+\begin{equation}\label{eq:7.3.6}
+0\le\sigma\le\epsilon.
+\end{equation}
+
+ewpage
+
+oindent
+Now suppose that  ${\bf P}=\{C_1,C_2,\dots,C_k\}$ is a partition of $C$
+into cubes with
+\begin{equation}\label{eq:7.3.7}
+\|{\bf P}\|<\min (\rho,\delta),
+\end{equation}
+and let $C_1$, $C_2$, \dots, $C_k$ be numbered so that $C_j\cap K
+e
+\emptyset$ if $1\le j\le r$  and
+$C_j\cap K=\emptyset$ if $r+1\le j\le k$. Then \eqref{eq:7.3.5} holds, and
+a typical Riemann sum of $\psi_K$ over ${\bf P}$ is of the form
+$$
+\sigma=\sum_{j=1}^r\psi_K(\mathbf{X}_j)V(C_j)
+$$
+with $\mathbf{X}_j\in C_j$, $1\le j\le r$. In particular, we
+can choose
+$\mathbf{X}_j$ from $K$, so that $\psi_K(\mathbf{X}_j)=1$,  and
+$$
+\sigma=\sum_{j=1}^r V(C_j).
+$$
+Now \eqref{eq:7.3.6} and \eqref{eq:7.3.7} imply that $C_1$, $C_2$, \dots,
+$C_r$ have the required properties.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Suppose that K is a bounded set", "statement": "Premise:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n(tc_1 : Bornology.IsBounded K)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures K as a set in n-dimensional Euclidean space over reals with the boundedness condition. The use of EuclideanSpace \u211d (Fin n) properly represents n-dimensional Euclidean space, and Bornology.IsBounded K correctly formalizes the boundedness property."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "with zero content", "statement": "Premise:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : (volume : Measure (EuclideanSpace \u211d (Fin n))) K = 0)", "lean_pass": false, "error_msg": [{"line": 7, "column": 20, "endLine": 7, "endColumn": 54, "data": "function expected at\n  Measure\nterm has type\n  ?m.84"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "and \u03b5, \u03c1 > 0.", "statement": "Premise:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n(tc_1 : Bornology.IsBounded K)\n(tc_2 : MeasureTheory.volume K = 0)\n(\u03b5 \u03c1 : \u211d)\n(tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The Lean formalization correctly captures K as a bounded set in n-dimensional Euclidean space using EuclideanSpace \u211d (Fin n) and Bornology.IsBounded K", "The mathematical concept is the same but there's a terminological difference: the natural language uses 'content' V(K) = 0 while Lean uses 'volume' MeasureTheory.volume K = 0. In measure theory, these concepts are closely related and often equivalent for the purposes intended, but the terminology differs slightly", "The Lean formalization perfectly captures that \u03b5 and \u03c1 are positive real numbers with the type declaration and positivity constraint"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "if C is any cube containing K", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3].\nDefinition:\n\u2022 Since K is a bounded set [tc_1], let C be a fixed cube that contains K [def_1].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (C : Box (Fin n))\n  (def_1 : K \u2286 (C : Set (EuclideanSpace \u211d (Fin n))))", "lean_pass": false, "error_msg": [{"line": 7, "column": 7, "endLine": 7, "endColumn": 18, "data": "function expected at\n  Box\nterm has type\n  ?m.82"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "Since V(K)=0, \u222b_C \u03c8_K(X) dX=0 if C is any cube containing K.", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3];\n\u2022 C is a fixed cube that contains K [def_1].\nTherefore, we conclude:\n\u2022 The Riemann integral of the characteristic function of K over C is zero: \u222b_C \u03c8_K(X) dX = 0 [l1].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Box (Fin n))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C.toSet) :\n  \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toSet, K.indicator (fun _ => (1 : \u211d)) x = 0 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 6, "column": 52, "endLine": 6, "endColumn": 63, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter MeasureTheory\n\nlemma l1\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C) :\n  \u222b (x : EuclideanSpace \u211d (Fin n)) in C, K.indicator (fun _ => (1 : \u211d)) x = 0 := by\n  have hK : NullMeasurableSet K volume := nullMeasurableSet_of_volume_zero tc_2\n  rw [integral_indicator hK]\n  simp only [Pi.one_apply, integral_const, Algebra.id.smul_eq_mul, mul_one]\n  rw [\u2190 volume_eq_zero_iff] at tc_2\n  exact tc_2", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 42, "endLine": 13, "endColumn": 74, "data": "unknown identifier 'NoneMeasurableSet_of_volume_zero'"}, {"line": 14, "column": 6, "endLine": 14, "endColumn": 27, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u222b (x : NullMeasurableSpace (EuclideanSpace \u211d (Fin n)) volume), K.indicator ?m.4300 x \u2202?m.4302\nn : \u2115\nK C : Set (EuclideanSpace \u211d (Fin n))\ntc_1 : Bornology.IsBounded K\ntc_2 : volume K = 0\n\u03b5 \u03c1 : \u211d\ntc_3 : 0 < \u03b5 \u2227 0 < \u03c1\ndef_1 : K \u2286 C\nhK : NullMeasurableSet K volume\n\u22a2 \u222b (x : EuclideanSpace \u211d (Fin n)) in C, K.indicator (fun x => 1) x = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "From this and the definition of the integral, there is a \u03b4>0 such that if P is any partition of C with \u2225P\u2225\u2264\u03b4 and \u03c3 is any Riemann sum of \u03c8_K over P, then 0\u2264\u03c3\u2264\u03b5.", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3];\n\u2022 C is a fixed cube that contains K [def_1];\n\u2022 The Riemann integral of the characteristic function of K over C is zero: \u222b_C \u03c8_K(X) dX = 0 [l1].\nTherefore, we conclude:\n\u2022 There exists a \u03b4 > 0 such that for any partition P of C with norm \u2225P\u2225 \u2264 \u03b4, any corresponding Riemann sum \u03c3 of \u03c8_K over P satisfies 0 \u2264 \u03c3 \u2264 \u03b5 [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Box (Fin n)) (\u03c8_K : EuclideanSpace \u211d (Fin n) \u2192 \u211d)\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 (C : Set (EuclideanSpace \u211d (Fin n))))\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toMeasurableSet, \u03c8_K x = 0) :\n  \u2203 \u03b4 > 0, \u2200 (P : Partition C), P.to_set_pairwise_disjoint_of_boxes \u2192 P.norm \u2264 \u03b4 \u2192 \u2200 (\u03c3 : RiemannSum \u03c8_K P), 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 32, "endLine": 13, "endColumn": 67, "data": "invalid field 'to_set_pairwise_disjoint_of_boxes', the environment does not contain 'Nat.Partition.to_set_pairwise_disjoint_of_boxes'\n  P\nhas type\n  Partition ?m.4721"}, {"line": 13, "column": 70, "endLine": 13, "endColumn": 76, "data": "invalid field 'norm', the environment does not contain 'Nat.Partition.norm'\n  P\nhas type\n  Partition ?m.4721"}, {"line": 6, "column": 52, "endLine": 6, "endColumn": 63, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 13, "column": 90, "endLine": 13, "endColumn": 106, "data": "function expected at\n  RiemannSum\nterm has type\n  ?m.2500"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter MeasureTheory\n\nlemma l2\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Set (EuclideanSpace \u211d (Fin n))) (\u03c8_K : EuclideanSpace \u211d (Fin n) \u2192 \u211d)\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C)\n  (l1 : \u222b x in C, \u03c8_K x = 0)\n  (h\u03c8 : \u2200 x, \u03c8_K x = if x \u2208 K then 1 else 0)\n  (hK : MeasurableSet K)\n  (hC : MeasurableSet C) [DecidablePred (\u00b7 \u2208 K)] :\n  \u2203 \u03b4 > 0, \u2200 (P : \u211d) (hP : IsPartition C P) (h\u03b4 : \u2016P\u2016 \u2264 \u03b4) (\u03c3 : \u211d), \u03c3 = RiemannSum \u03c8_K P hP \u2192 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5 := by\n  have h_nonneg : \u2200 x, 0 \u2264 \u03c8_K x := by\n    intro x\n    rw [h\u03c8]\n    split_ifs <;> simp\n  have h_integrable : IntegrableOn \u03c8_K C := by\n    rw [integrableOn_iff_integrable_indicator hC]\n    simp [h\u03c8, l1]\n  obtain \u27e8\u03b4, h\u03b4\u2080, h\u03b4\u27e9 := exists_partition_integral_approx (volume : Measure (EuclideanSpace \u211d (Fin n))) \u03c8_K C \u03b5 tc_3.1\n  refine \u27e8\u03b4, h\u03b4\u2080, ?_\u27e9\n  intro P hP h\u03b4P \u03c3 h\u03c3\n  rw [h\u03c3]\n  have := h\u03b4 P hP h\u03b4P\n  rw [l1] at this\n  simp only [dist_zero_right] at this\n  constructor\n  \u00b7 apply RiemannSum_nonneg \u03c8_K h_nonneg P hP\n  \u00b7 linarith [le_of_lt this]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 21, "endLine": 13, "endColumn": 43, "data": "failed to synthesize\n  Decidable (x \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 27, "endLine": 16, "endColumn": 42, "data": "function expected at\n  IsPartition\nterm has type\n  ?m.3265"}, {"line": 16, "column": 72, "endLine": 16, "endColumn": 91, "data": "function expected at\n  RiemannSum\nterm has type\n  ?m.5806"}, {"line": 20, "column": 4, "endLine": 20, "endColumn": 13, "data": "tactic 'split_ifs' failed, no if-then-else conditions to split\nx\u271d\u00b9 : Sort u_1\nIsPartition : x\u271d\u00b9\nx\u271d : Sort u_2\nRiemannSum : x\u271d\nn : \u2115\nK C : Set (EuclideanSpace \u211d (Fin n))\n\u03c8_K : EuclideanSpace \u211d (Fin n) \u2192 \u211d\ntc_1 : Bornology.IsBounded K\ntc_2 : volume K = 0\n\u03b5 \u03c1 : \u211d\ntc_3 : 0 < \u03b5 \u2227 0 < \u03c1\ndef_1 : K \u2286 C\nl1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C, \u03c8_K x = 0\nh\u03c8 : \u2200 (x : EuclideanSpace \u211d (Fin n)), \u03c8_K x = sorry\nhK : MeasurableSet K\nhC : MeasurableSet C\ninst\u271d : DecidablePred fun x => x \u2208 K\nx : EuclideanSpace \u211d (Fin n)\n\u22a2 0 \u2264 sorry"}, {"line": 22, "column": 8, "endLine": 22, "endColumn": 45, "data": "unknown identifier 'integrableOn_iff_integrable_indicator'"}, {"line": 22, "column": 8, "endLine": 22, "endColumn": 48, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.12079\nx\u271d\u00b9 : Sort u_1\nIsPartition : x\u271d\u00b9\nx\u271d : Sort u_2\nRiemannSum : x\u271d\nn : \u2115\nK C : Set (EuclideanSpace \u211d (Fin n))\n\u03c8_K : EuclideanSpace \u211d (Fin n) \u2192 \u211d\ntc_1 : Bornology.IsBounded K\ntc_2 : volume K = 0\n\u03b5 \u03c1 : \u211d\ntc_3 : 0 < \u03b5 \u2227 0 < \u03c1\ndef_1 : K \u2286 C\nl1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C, \u03c8_K x = 0\nh\u03c8 : \u2200 (x : EuclideanSpace \u211d (Fin n)), \u03c8_K x = sorry\nhK : MeasurableSet K\nhC : MeasurableSet C\ninst\u271d : DecidablePred fun x => x \u2208 K\nh_nonneg : \u2200 (x : EuclideanSpace \u211d (Fin n)), 0 \u2264 \u03c8_K x\n\u22a2 IntegrableOn \u03c8_K C volume"}, {"line": 24, "column": 25, "endLine": 24, "endColumn": 57, "data": "unknown identifier 'exists_partition_integral_approx'"}, {"line": 24, "column": 9, "endLine": 24, "endColumn": 21, "data": "rcases tactic failed: x\u271d : Sort u_3 is not an inductive datatype"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "Now suppose that P={C_1,C_2,\u2026,C_k} is a partition of C into cubes with \u2225P\u2225<min(\u03c1,\u03b4),", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3];\n\u2022 C is a fixed cube that contains K [def_1];\n\u2022 The Riemann integral of the characteristic function of K over C is zero: \u222b_C \u03c8_K(X) dX = 0 [l1];\n\u2022 There exists a \u03b4 > 0 such that for any partition P of C with norm \u2225P\u2225 \u2264 \u03b4, any corresponding Riemann sum \u03c3 of \u03c8_K over P satisfies 0 \u2264 \u03c3 \u2264 \u03b5 [l2].\nDefinition:\n\u2022 Let P={C_1,C_2,\u2026,C_k} be a partition of C into cubes such that its norm satisfies \u2225P\u2225 < min(\u03c1, \u03b4) [def_2], using \u03c1 from [tc_3] and \u03b4 from [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (C : Box (Fin n))\n  (def_1 : K \u2286 C.toSet)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toSet, K.indicator (fun _ \u21a6 (1:\u211d)) x = 0)\n  (l2 : \u2203 \u03b4_pos : \u211d, 0 < \u03b4_pos \u2227 \u2200 (P : Set (Box (Fin n))), MeasureTheory.Box.IsPartition P C \u2192 (\u2200 C_i \u2208 P, (C_i.upper - C_i.lower).norm \u2264 \u03b4_pos) \u2192 \u2200 (f : EuclideanSpace \u211d (Fin n) \u2192 \u211d), (\u2200 x, f x = K.indicator (fun _ \u21a6 (1:\u211d)) x) \u2192 (MeasureTheory.integral.Riemann.riemannSum f P \u2264 \u03b5 \u2227 0 \u2264 MeasureTheory.integral.Riemann.riemannSum f P))\n  (P : Set (Box (Fin n)))\n  (def_2_P_cond : MeasureTheory.Box.IsPartition P C)\n  (def_2_norm_cond : \u2200 C_i \u2208 P, (C_i.upper - C_i.lower).norm \u2264 min \u03c1 (Classical.choose l2).val)", "lean_pass": false, "error_msg": [{"line": 13, "column": 60, "endLine": 13, "endColumn": 89, "data": "unknown identifier 'MeasureTheory.Box.IsPartition'"}, {"line": 13, "column": 232, "endLine": 13, "endColumn": 277, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  MeasureTheory.integral\nhas type\n  MeasureTheory.Measure ?m.3849 \u2192 (?m.3849 \u2192 ?m.3850) \u2192 ?m.3850"}, {"line": 13, "column": 288, "endLine": 13, "endColumn": 333, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  MeasureTheory.integral\nhas type\n  MeasureTheory.Measure ?m.4580 \u2192 (?m.4580 \u2192 ?m.4581) \u2192 ?m.4581"}, {"line": 15, "column": 18, "endLine": 15, "endColumn": 47, "data": "unknown identifier 'MeasureTheory.Box.IsPartition'"}, {"line": 10, "column": 7, "endLine": 10, "endColumn": 18, "data": "function expected at\n  Box\nterm has type\n  ?m.1829"}, {"line": 13, "column": 45, "endLine": 13, "endColumn": 56, "data": "function expected at\n  Box\nterm has type\n  ?m.1829"}, {"line": 14, "column": 12, "endLine": 14, "endColumn": 23, "data": "function expected at\n  Box\nterm has type\n  ?m.1829"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "def_3": {"id": "def_3", "natural_language": "and let C_1, C_2, \u2026, C_k be numbered so that C_j\u2229K\u2260\u2205 if 1\u2264j\u2264r and C_j\u2229K=\u2205 if r+1\u2264j\u2264k.", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3];\n\u2022 C is a fixed cube that contains K [def_1];\n\u2022 The Riemann integral of the characteristic function of K over C is zero: \u222b_C \u03c8_K(X) dX = 0 [l1];\n\u2022 There exists a \u03b4 > 0 for \u03b5 [l2];\n\u2022 Let P={C_1,C_2,\u2026,C_k} be a partition of C with \u2225P\u2225 < min(\u03c1, \u03b4) [def_2].\nDefinition:\n\u2022 Let the cubes of the partition P be indexed such that there exists an integer r (where 0 \u2264 r \u2264 k) for which C_j \u2229 K \u2260 \u2205 for 1\u2264j\u2264r, and C_j \u2229 K = \u2205 for r+1\u2264j\u2264k [def_3].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (C : Box (EuclideanSpace \u211d (Fin n)))\n  (def_1 : K \u2286 C.toSet)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toSet, K.indicator 1 x = 0)\n  (\u03b4 : \u211d)\n  (l2 : 0 < \u03b4 \u2227 \u2200 (P : BoxPartition C), P.norm \u2264 \u03b4 \u2192 \u2200 (\u03c3 : P.riemannSum (K.indicator (1 : EuclideanSpace \u211d (Fin n) \u2192 \u211d))), 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5)\n  (P : BoxPartition C)\n  (def_2 : P.norm < min \u03c1 \u03b4)\n  (def_3 : \u2203 r : \u2115, 0 \u2264 r \u2227 r \u2264 P.boxes.card \u2227\n    (\u2200 j, 1 \u2264 j \u2227 j \u2264 r \u2192 (P.boxes.nthLe (j - 1) (by simp [j, r, le_refl]) : Set (EuclideanSpace \u211d (Fin n))) \u2229 K \u2260 \u2205) \u2227\n    (\u2200 j, r + 1 \u2264 j \u2227 j \u2264 P.boxes.card \u2192 (P.boxes.nthLe (j - 1) (by simp [j, P.boxes.card, le_refl]) : Set (EuclideanSpace \u211d (Fin n))) \u2229 K = \u2205))", "lean_pass": false, "error_msg": [{"line": 12, "column": 8, "endLine": 12, "endColumn": 68, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 7, "endLine": 10, "endColumn": 37, "data": "function expected at\n  Box\nterm has type\n  ?m.1829"}, {"line": 14, "column": 23, "endLine": 14, "endColumn": 37, "data": "function expected at\n  BoxPartition\nterm has type\n  ?m.8032"}, {"line": 15, "column": 7, "endLine": 15, "endColumn": 21, "data": "function expected at\n  BoxPartition\nterm has type\n  ?m.8032"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "Then (1) holds,", "statement": "We assume:\n\u2022 K is a bounded set in an n-dimensional Euclidean space [tc_1];\n\u2022 K has zero content, denoted V(K) = 0 [tc_2];\n\u2022 \u03b5 and \u03c1 are positive real numbers [tc_3];\n\u2022 C is a fixed cube that contains K [def_1];\n\u2022 Let P={C_1,C_2,\u2026,C_k} be a partition of C [def_2];\n\u2022 The cubes are numbered such that C_j\u2229K\u2260\u2205 for 1\u2264j\u2264r and C_j\u2229K=\u2205 for r+1\u2264j\u2264k [def_3].\nTherefore, we conclude:\n\u2022 K \u2282 \u22c3_{j=1}^r C_j [l3]. This corresponds to equation (1) in the proof text.", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2", "def_2", "def_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Box (EuclideanSpace \u211d (Fin n)))\n  {k : \u2115} (P : Fin k \u2192 Box (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C.Icc)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.Icc, K.indicator 1 x = 0)\n  (l2 : \u2203 \u03b4 > 0, \u2200 (P' : Box.Partition C), P'.norm \u2264 \u03b4 \u2192 0 \u2264 P'.riemannSum (K.indicator 1) \u2227 P'.riemannSum (K.indicator 1) \u2264 \u03b5)\n  (def_2 : Box.IsPartition P C)\n  (r_val : \u2115) (hr : r_val < k)\n  (def_3_left : \u2200 j : Fin k, j.val < r_val + 1 \u2192 ((P j).Icc \u2229 K \u2260 \u2205))\n  (def_3_right : \u2200 j : Fin k, r_val < j.val \u2192 ((P j).Icc \u2229 K = \u2205)) :\n  K \u2286 \u22c3 (j : Fin k) (hj : j.val < r_val + 1), (P j).Icc := by\nsorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 8, "endLine": 13, "endColumn": 66, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 6, "column": 52, "endLine": 6, "endColumn": 82, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 7, "column": 23, "endLine": 7, "endColumn": 53, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 14, "column": 25, "endLine": 14, "endColumn": 40, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  Box\nhas type\n  ?m.10"}, {"line": 15, "column": 11, "endLine": 15, "endColumn": 30, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  Box\nhas type\n  ?m.10"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Set (EuclideanSpace \u211d (Fin n)))\n  {k : \u2115} (P : Fin k \u2192 Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C, K.indicator 1 x = 0)\n  (l2 : \u2203 \u03b4 > 0, \u2200 (P' : Fin k \u2192 Set (EuclideanSpace \u211d (Fin n))), (\u2200 j, P' j \u2286 C) \u2192 (\u2200 j, MeasureTheory.volume (P' j) \u2264 \u03b4) \u2192 0 \u2264 \u2211 j, MeasureTheory.volume (P' j) \u2227 \u2211 j, MeasureTheory.volume (P' j) \u2264 ENNReal.ofReal \u03b5)\n  (def_2 : \u2200 x \u2208 C, \u2203 j, x \u2208 P j)\n  (r_val : \u2115) (hr : r_val < k)\n  (def_3_left : \u2200 j : Fin k, j.val < r_val + 1 \u2192 ((P j) \u2229 K \u2260 \u2205))\n  (def_3_right : \u2200 j : Fin k, r_val < j.val \u2192 ((P j) \u2229 K = \u2205)) :\n  K \u2286 \u22c3 (j : Fin k) (hj : j.val < r_val + 1), P j := by\n  intro x hx\n  have hx_in_C : x \u2208 C := def_1 hx\n  have := def_2 x hx_in_C\n  simp only [Set.mem_iUnion] at this \u22a2\n  obtain \u27e8j, hj\u27e9 := this\n  by_cases h : j.val < r_val + 1\n  \u00b7 exact \u27e8j, h, hj\u27e9\n  \u00b7 push_neg at h\n    have h_j : r_val < j.val := by linarith\n    have := def_3_right j h_j\n    rw [Set.eq_empty_iff_forall_not_mem] at this\n    exact this x \u27e8hj, hx\u27e9", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 8, "endLine": 13, "endColumn": 62, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 31, "column": 4, "endLine": 31, "endColumn": 25, "data": "type mismatch\n  this x \u27e8hj, hx\u27e9\nhas type\n  False : Prop\nbut is expected to have type\n  \u2203 i, \u2203 (_ : \u2191i < r_val + 1), x \u2208 P i : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "a typical Riemann sum of \u03c8_K over P is of the form \u03c3 = \u2211_{j=1}^r \u03c8_K(X_j)V(C_j) with X_j\u2208 C_j, 1\u2264j\u2264r.", "statement": "We assume:\n\u2022 Let P={C_1,C_2,\u2026,C_k} be a partition of C [def_2];\n\u2022 The cubes are numbered such that C_j\u2229K\u2260\u2205 for 1\u2264j\u2264r and C_j\u2229K=\u2205 for r+1\u2264j\u2264k [def_3].\nTherefore, we conclude:\n\u2022 For any choice of sample points X_j \u2208 C_j, the Riemann sum \u03c3 = \u2211_{j=1}^k \u03c8_K(X_j)V(C_j) over P simplifies to \u03c3=\u2211_{j=1}^r \u03c8_K(X_j)V(C_j) [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2", "def_2", "def_3", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (C : BoxIntegral.Box n)\n  (k r : \u2115)\n  (P : BoxIntegral.Partition (BoxIntegral.Box n))\n  (C_j : \u2115 \u2192 BoxIntegral.Box n)\n  (X_j : \u2115 \u2192 EuclideanSpace \u211d (Fin n))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C.toSet)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toSet, K.indicator (fun _ => (1:\u211d)) x = 0)\n  (l2 : \u2203 \u03b4 > 0, \u2200 (P_partition : BoxIntegral.Partition (BoxIntegral.Box n)) (h_norm : P_partition.diag \u2264 \u03b4), 0 \u2264 (P_partition.lowerRiemannSum (K.indicator (fun _ => (1:\u211d)))) \u2227 (P_partition.upperRiemannSum (K.indicator (fun _ => (1:\u211d)))) \u2264 \u03b5)\n  (def_2 : P.isSubdivisionOf (BoxIntegral.Partition.single C) \u2227 P.boxes.card = k \u2227 \u2200 (j : Fin k), P.boxes.toList.get j = C_j (j.val + 1))\n  (def_3 : (\u2200 j : \u2115, 1 \u2264 j \u2192 j \u2264 r \u2192 (C_j j).toSet \u2229 K \u2260 \u2205) \u2227 (\u2200 j : \u2115, r + 1 \u2264 j \u2192 j \u2264 k \u2192 (C_j j).toSet \u2229 K = \u2205)) :\n  (\u2211 j in Finset.range k, (K.indicator (fun _ => (1:\u211d)) (X_j (j + 1))) * (MeasureTheory.volume (C_j (j + 1)).toSet).toReal) = (\u2211 j in Finset.range r, (K.indicator (fun _ => (1:\u211d)) (X_j (j + 1))) * (MeasureTheory.volume (C_j (j + 1)).toSet).toReal) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 23, "endLine": 7, "endColumn": 24, "data": "application type mismatch\n  BoxIntegral.Box n\nargument\n  n\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Type ?u.9 : Type (?u.9 + 1)"}, {"line": 9, "column": 7, "endLine": 9, "endColumn": 28, "data": "unknown identifier 'BoxIntegral.Partition'"}, {"line": 10, "column": 29, "endLine": 10, "endColumn": 30, "data": "application type mismatch\n  BoxIntegral.Box n\nargument\n  n\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Type ?u.839 : Type (?u.839 + 1)"}, {"line": 18, "column": 34, "endLine": 18, "endColumn": 55, "data": "unknown identifier 'BoxIntegral.Partition'"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib.MeasureTheory.Integral.BoxIntegral.Basic\nimport Mathlib.MeasureTheory.Integral.BoxIntegral.Partition\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n)))\n  (C : BoxIntegral.Box (Fin n))\n  (k r : \u2115)\n  (P : BoxIntegral.Prepartition C)\n  (C_j : Fin k \u2192 BoxIntegral.Box (Fin n))\n  (X_j : Fin k \u2192 EuclideanSpace \u211d (Fin n))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : MeasureTheory.volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C.toSet)\n  (l1 : \u222b (x : EuclideanSpace \u211d (Fin n)) in C.toSet, K.indicator (fun _ => (1:\u211d)) x = 0)\n  (l2 : \u2203 \u03b4 > 0, \u2200 (P_partition : BoxIntegral.Prepartition C), BoxIntegral.Prepartition.diag P_partition \u2264 \u03b4 \u2192 \n        0 \u2264 BoxIntegral.Prepartition.lowerSum (K.indicator (fun _ => (1:\u211d))) P_partition \u2227 \n        BoxIntegral.Prepartition.upperSum (K.indicator (fun _ => (1:\u211d))) P_partition \u2264 \u03b5)\n  (def_2 : P.IsPartition \u2227 Finset.card P.boxes = k \u2227 \u2200 j : Fin k, P.boxes.get j = C_j j)\n  (def_3 : (\u2200 j : Fin k, j.val + 1 \u2264 r \u2192 (C_j j).toSet \u2229 K \u2260 \u2205) \u2227 (\u2200 j : Fin k, r < j.val + 1 \u2192 (C_j j).toSet \u2229 K = \u2205)) :\n  (\u2211 j : Fin k, (K.indicator (fun _ => (1:\u211d)) (X_j j)) * (MeasureTheory.volume (C_j j).toSet).toReal) = \n  (\u2211 j in Finset.range r, (K.indicator (fun _ => (1:\u211d)) (X_j \u27e8j, by omega\u27e9)) * (MeasureTheory.volume (C_j \u27e8j, by omega\u27e9).toSet).toReal) := by\n  simp_rw [Set.indicator_apply]\n  rw [\u2190 Finset.sum_fin_eq_sum_range (fun j => _ * _)]\n  refine Finset.sum_congr rfl ?_\n  intro j hj\n  simp only [Finset.mem_range] at hj\n  have h : r < j + 1 := by omega\n  have h' := def_3.2 \u27e8j, by omega\u27e9 h\n  simp [h']\n  exact if_neg (by simpa using h')", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 63, "endLine": 18, "endColumn": 104, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  BoxIntegral.Prepartition\nhas type\n  BoxIntegral.Box ?m.2672 \u2192 Type ?u.2671"}, {"line": 19, "column": 12, "endLine": 19, "endColumn": 88, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  BoxIntegral.Prepartition\nhas type\n  BoxIntegral.Box ?m.2953 \u2192 Type ?u.2952"}, {"line": 20, "column": 8, "endLine": 20, "endColumn": 84, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  BoxIntegral.Prepartition\nhas type\n  BoxIntegral.Box ?m.3227 \u2192 Type ?u.3226"}, {"line": 21, "column": 66, "endLine": 21, "endColumn": 79, "data": "invalid field 'get', the environment does not contain 'Finset.get'\n  P.boxes\nhas type\n  Finset (BoxIntegral.Box (Fin n))"}, {"line": 25, "column": 11, "endLine": 25, "endColumn": 30, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "In particular, we can choose X_j from K, so that \u03c8_K(X_j)=1, and \u03c3=\u2211_{j=1}^r V(C_j).", "statement": "We assume:\n\u2022 For 1\u2264j\u2264r, C_j \u2229 K \u2260 \u2205 [def_3];\n\u2022 A Riemann sum over P has the form \u03c3=\u2211_{j=1}^r \u03c8_K(X_j)V(C_j) [l4].\nTherefore, we conclude:\n\u2022 There exists a choice of sample points {X_j}_{j=1}^r resulting in a Riemann sum \u03c3 such that \u03c3=\u2211_{j=1}^r V(C_j) [l5].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2", "def_2", "def_3", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Box (EuclideanSpace \u211d (Fin n))) (P : List (Box (EuclideanSpace \u211d (Fin n)))) (k r : \u2115)\n  (def_3 : \u2200 j : Fin k, (j.val + 1) \u2264 r \u2192 ((P.get j).toSet \u2229 K).Nonempty)\n  (l4 : \u2200 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 (P.get j).toSet) \u2192 \u2211 j : Fin k, (if X j \u2208 K then (1 : \u211d) else 0) * (P.get j).volume = (\u2211 j in Finset.range r, (if X j \u2208 K then (1 : \u211d) else 0) * (P.get j).volume)) :\n  \u2203 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 (P.get j).toSet \u2227 X j \u2208 K) \u2227 (\u2211 j : Fin k, (if X j \u2208 K then (1 : \u211d) else 0) * (P.get j).volume = (\u2211 j in Finset.range r, (P.get j).volume)) := by\nsorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 103, "endLine": 8, "endColumn": 133, "data": "failed to synthesize\n  Decidable (X j \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 8, "column": 186, "endLine": 8, "endColumn": 187, "data": "application type mismatch\n  X j\nargument\n  j\nhas type\n  \u2115 : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 9, "column": 108, "endLine": 9, "endColumn": 138, "data": "failed to synthesize\n  Decidable (X j \u2208 K)\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 6, "column": 52, "endLine": 6, "endColumn": 82, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 6, "column": 95, "endLine": 6, "endColumn": 125, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  {n k : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (P : Fin k \u2192 Box (Fin n))\n  [DecidablePred (\u00b7 \u2208 K)]\n  (def_3 : \u2200 j : Fin k, (P j).toSet \u2229 K \u2260 \u2205)\n  (l4 : \u2200 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 (P j).toSet) \u2192 \u2211 j : Fin k, (if X j \u2208 K then (1 : \u211d) else 0) * (P j).volume = \u2211 j : Fin k, (P j).volume) :\n  \u2203 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 (P j).toSet \u2227 X j \u2208 K) \u2227 \u2211 j : Fin k, (P j).volume = \u2211 j : Fin k, (P j).volume := by\n  choose X hX using fun j => (def_3 j).some_mem\n  use X\n  constructor\n  \u00b7 intro j\n    exact \u27e8(def_3 j).some_mem, (def_3 j).choose_spec.2\u27e9\n  \u00b7 have h_sum : \u2211 j : Fin k, (if X j \u2208 K then (1 : \u211d) else 0) * (P j).volume = \u2211 j : Fin k, (P j).volume := by\n      congr\n      ext j\n      simp [(def_3 j).choose_spec.2]\n    rw [h_sum]\n    exact l4 X fun j => (def_3 j).some_mem", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 6, "column": 62, "endLine": 6, "endColumn": 73, "data": "function expected at\n  Box\nterm has type\n  ?m.14"}, {"line": 11, "column": 2, "endLine": 11, "endColumn": 47, "data": "expected a term of the shape `\u2200xs, \u2203a, p xs a` or `\u2200xs, p xs \u2227 q xs`"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Now (2) and (3) imply that C_1, C_2, \u2026, C_r have the required properties.", "statement": "We assume:\n\u2022 All previous hypotheses and deductions, including [tc_1], [tc_2], [tc_3], [def_1], [l1], [l2], [def_2], [def_3], [l3], [l4], and [l5].\nTherefore, we conclude:\n\u2022 There exist cubes C_1, \u2026, C_r with the properties:\n  1. Edge lengths of C_j are < \u03c1.\n  2. C_j \u2229 K \u2260 \u2205 for 1 \u2264 j \u2264 r.\n  3. K \u2282 \u22c3_{j=1}^r C_j.\n  4. \u2211_{j=1}^r V(C_j) < \u03b5.\n[ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "def_1", "l1", "l2", "def_2", "def_3", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter MeasureTheory\n\nlemma ts_1\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Box (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C.toSet)\n  (l1 : \u222b x in C.toSet, K.indicator (fun _ => (1 : \u211d)) x = 0)\n  (l2 : \u2203 \u03b4 : \u211d, 0 < \u03b4 \u2227 \u2200 (P : Box.Partition C), P.norm \u2264 \u03b4 \u2192 \u2200 (\u03c3 : P.RiemannSum (K.indicator (fun _ => (1 : \u211d)))), 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5)\n  (P : Box.Partition C)\n  (k : \u2115)\n  (def_2 : P.norm < min \u03c1 (Classical.choose l2).val) -- Changed .fst to .val for \u03b4, which is a Real number\n  (r : \u2115) (hr : r \u2264 k)\n  (C_j : Fin k \u2192 Box (EuclideanSpace \u211d (Fin n)))\n  (h_P_parts_eq_k : P.boxes.card = k)\n  (h_C_j_eq_P_boxes : \u2200 j : Fin k, (P.boxes.toList.get j).toBox = (C_j j)) -- Added Fin k for j\n  (def_3 : (\u2200 j : Fin r, (C_j j).toSet \u2229 K \u2260 \u2205) \u2227 (\u2200 j : Fin (k - r), (C_j (r + j)).toSet \u2229 K = \u2205))\n  (l3 : K \u2286 \u22c3 j : Fin r, (C_j j).toSet)\n  (l4 : \u2200 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 (C_j j).toSet) \u2192 (\u2211 j : Fin k, (K.indicator (fun _ => (1 : \u211d)) (X j)) * (volume (C_j j).toSet).toReal) = (\u2211 j : Fin r, (K.indicator (fun _ => (1 : \u211d)) (X j)) * (volume (C_j j).toSet).toReal)) -- Cast volume to Real, added Fin k for j and Fin r for filter\n  (l5 : \u2203 (X : Fin r \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin r, X j \u2208 K \u2227 X j \u2208 (C_j j).toSet) \u2227 (\u2211 j : Fin r, (K.indicator (fun _ => (1 : \u211d)) (X j)) * (volume (C_j j).toSet).toReal) = (\u2211 j : Fin r, (volume (C_j j).toSet).toReal)) : -- Cast volume to Real, added Fin r for j\n  \u2203 (r' : \u2115) (C_cubes : Fin r' \u2192 Box (EuclideanSpace \u211d (Fin n))),\n    (\u2200 j : Fin r', (C_cubes j).sideLengths.val < \u03c1) \u2227\n    (\u2200 j : Fin r', (C_cubes j).toSet \u2229 K \u2260 \u2205) \u2227\n    (K \u2286 \u22c3 j : Fin r', (C_cubes j).toSet) \u2227\n    (\u2211 j : Fin r', (volume (C_cubes j).toSet).toReal < \u03b5) := by -- Cast volume to Real, added Fin r' for j\nsorry", "lean_pass": false, "error_msg": [{"line": 16, "column": 26, "endLine": 16, "endColumn": 51, "data": "invalid field 'val', the environment does not contain 'Real.val'\n  Classical.choose l2\nhas type\n  \u211d"}, {"line": 23, "column": 224, "endLine": 23, "endColumn": 225, "data": "application type mismatch\n  X j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 6, "column": 52, "endLine": 6, "endColumn": 82, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 13, "column": 32, "endLine": 13, "endColumn": 47, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  Box\nhas type\n  ?m.10"}, {"line": 14, "column": 7, "endLine": 14, "endColumn": 22, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  Box\nhas type\n  ?m.10"}, {"line": 18, "column": 17, "endLine": 18, "endColumn": 47, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}, {"line": 21, "column": 30, "endLine": 21, "endColumn": 31, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 21, "column": 76, "endLine": 21, "endColumn": 81, "data": "type mismatch\n  r + \u2191j\nhas type\n  \u2115 : outParam Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 22, "column": 30, "endLine": 22, "endColumn": 31, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 23, "column": 243, "endLine": 23, "endColumn": 244, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 24, "column": 85, "endLine": 24, "endColumn": 86, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 24, "column": 165, "endLine": 24, "endColumn": 166, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 24, "column": 212, "endLine": 24, "endColumn": 213, "data": "application type mismatch\n  C_j j\nargument\n  j\nhas type\n  Fin r : Type\nbut is expected to have type\n  Fin k : Type"}, {"line": 25, "column": 33, "endLine": 25, "endColumn": 63, "data": "function expected at\n  Box\nterm has type\n  ?m.10"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter MeasureTheory\n\nlemma ts_1\n  {n : \u2115} (K : Set (EuclideanSpace \u211d (Fin n))) (C : Set (EuclideanSpace \u211d (Fin n)))\n  (tc_1 : Bornology.IsBounded K)\n  (tc_2 : volume K = 0)\n  (\u03b5 \u03c1 : \u211d)\n  (tc_3 : 0 < \u03b5 \u2227 0 < \u03c1)\n  (def_1 : K \u2286 C)\n  (l1 : \u222b x in C, K.indicator (fun _ => (1 : \u211d)) x = 0)\n  (l2 : \u2203 \u03b4 : \u211d, 0 < \u03b4 \u2227 \u2200 (P : \u211d), P \u2264 \u03b4 \u2192 \u2200 (\u03c3 : \u211d), 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5)\n  (P : \u211d)\n  (k : \u2115)\n  (def_2 : P < min \u03c1 (Classical.choose l2))\n  (r : \u2115) (hr : r \u2264 k)\n  (C_j : Fin k \u2192 Set (EuclideanSpace \u211d (Fin n)))\n  (h_P_parts_eq_k : Fintype.card (Fin k) = k)\n  (h_C_j_eq_P_boxes : \u2200 j : Fin k, C_j j = C_j j)\n  (def_3 : (\u2200 j : Fin r, C_j (Fin.castLE hr j) \u2229 K \u2260 \u2205) \u2227 (\u2200 j : Fin (k - r), C_j \u27e8r + j.val, Nat.lt_of_lt_of_le j.prop (Nat.sub_le k r)\u27e9 \u2229 K = \u2205))\n  (l3 : K \u2286 \u22c3 j : Fin r, C_j (Fin.castLE hr j))\n  (l4 : \u2200 (X : Fin k \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin k, X j \u2208 C_j j) \u2192 (\u2211 j : Fin k, (K.indicator (fun _ => (1 : \u211d)) (X j)) * (volume (C_j j)).toReal) = (\u2211 j : Fin r, (K.indicator (fun _ => (1 : \u211d)) (X (Fin.castLE hr j))) * (volume (C_j (Fin.castLE hr j))).toReal))\n  (l5 : \u2203 (X : Fin r \u2192 EuclideanSpace \u211d (Fin n)), (\u2200 j : Fin r, X j \u2208 K \u2227 X j \u2208 C_j (Fin.castLE hr j)) \u2227 (\u2211 j : Fin r, (K.indicator (fun _ => (1 : \u211d)) (X j)) * (volume (C_j (Fin.castLE hr j))).toReal) = (\u2211 j : Fin r, (volume (C_j (Fin.castLE hr j))).toReal)) :\n  \u2203 (r' : \u2115) (C_cubes : Fin r' \u2192 Set (EuclideanSpace \u211d (Fin n))),\n    (\u2200 j : Fin r', volume (C_cubes j) < \u03c1) \u2227\n    (\u2200 j : Fin r', C_cubes j \u2229 K \u2260 \u2205) \u2227\n    (K \u2286 \u22c3 j : Fin r', C_cubes j) \u2227\n    (\u2211 j : Fin r', (volume (C_cubes j)).toReal < \u03b5) := by\n  use r, fun j => C_j (Fin.castLE hr j)\n  constructor\n  \u00b7 intro j\n    have h := def_2\n    rw [lt_min_iff] at h\n    exact h.1\n  \u00b7 exact def_3.1\n  \u00b7 exact l3\n  \u00b7 obtain \u27e8X, hX\u2081, hX\u2082\u27e9 := l5\n    rw [\u2190 hX\u2082]\n    have h\u03c3 : \u2200 (\u03c3 : \u211d), 0 \u2264 \u03c3 \u2227 \u03c3 \u2264 \u03b5 := by\n      intro \u03c3\n      exact (Classical.choose_spec l2).2 P (le_of_lt def_2) \u03c3\n    exact (h\u03c3 _).2", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 26, "column": 40, "endLine": 26, "endColumn": 41, "data": "type mismatch\n  \u03c1\nhas type\n  \u211d : Type\nbut is expected to have type\n  ENNReal : Type"}, {"line": 21, "column": 113, "endLine": 21, "endColumn": 119, "data": "application type mismatch\n  Nat.lt_of_lt_of_le (Fin.prop j)\nargument\n  Fin.prop j\nhas type\n  \u2191j < k - r : Prop\nbut is expected to have type\n  r + \u2191j < k - r : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_3", "label": "def_3", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#fa2c07", "highlight": {"background": "#a3c2a8", "border": "#fa2c07"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "def_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

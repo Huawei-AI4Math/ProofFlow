@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(\mathbb{R}, \mathcal{B}(\mathbb{R}), \lambda)$ be the Lebesgue measure space. Let $f: \mathbb{R} 	o \mathbb{R}$ be a function defined such that $f(x) = 2$ for $x \in [0, 1]$, $f(x) = 5$ for $x \in (1, 2]$, and $f(x) = 0$ otherwise. Then $\int_{\mathbb{R}} f d\lambda = 7$.
+
+Proof: The function $f$ can be expressed as a simple function $f = 2\chi_{[0,1]} + 5\chi_{(1,2]}$, where $\chi_A$ is the characteristic function of a set $A$. By the linearity property of the Lebesgue integral, we can write $\int_{\mathbb{R}} f d\lambda = 2\int_{\mathbb{R}} \chi_{[0,1]} d\lambda + 5\int_{\mathbb{R}} \chi_{(1,2]} d\lambda$. The integral of a characteristic function is the measure of the set, so we first evaluate $\int_{\mathbb{R}} \chi_{[0,1]} d\lambda = \lambda([0,1]) = 1$. Similarly, we evaluate the second integral as $\int_{\mathbb{R}} \chi_{(1,2]} d\lambda = \lambda((1,2]) = 1$. Substituting these values back, we get the final result: $\int_{\mathbb{R}} f d\lambda = 2(1) + 5(1) = 7$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ be the Lebesgue measure space.", "statement": "Premise:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n, 0 < a n)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language establishes a Lebesgue measure space $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$, but the Lean code defines a sequence of positive real numbers `(a : \u2115 \u2192 \u211d)` with `(tc_1 : \u2200 n, 0 < a n)`. These are completely different mathematical concepts - one is about measure theory and the other is about sequences. The Lean formalization does not capture any aspect of the Lebesgue measure space mentioned in the natural language."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language establishes a Lebesgue measure space $(\\\\mathbb{R}, \\\\mathcal{B}(\\\\mathbb{R}), \\\\lambda)$, but the Lean code defines a sequence of positive real numbers `(a : \u2115 \u2192 \u211d)` with `(tc_1 : \u2200 n, 0 < a n)`. These are completely different mathematical concepts - one is about measure theory and the other is about sequences. The Lean formalization does not capture any aspect of the Lebesgue measure space mentioned in the natural language.']"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Let $f: \\mathbb{R} \\to \\mathbb{R}$ be a function defined such that $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise.", "statement": "Premise:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 \n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0) :\n  \u222b x, f x = 7 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lebesgue measure space condition from natural language is completely missing in the Lean formalization - there's no mention of the measure space structure", "The function type declaration f : \u211d \u2192 \u211d perfectly matches the natural language specification", "Set.Icc 0 1 correctly represents the closed interval [0,1] and the condition f x = 2 matches exactly", "Set.Ioc 1 2 correctly represents the half-open interval (1,2] and the condition f x = 5 matches exactly, and the 'otherwise' condition is properly formalized as the complement", "The natural language states there are no conclusions in this premise step, but the Lean formalization introduces a conclusion that the integral equals 7, which contradicts the stated premise-only nature"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lebesgue measure space condition from natural language is completely missing in the Lean formalization - there's no mention of the measure space structure\", 'The function type declaration f : \u211d \u2192 \u211d perfectly matches the natural language specification', 'Set.Icc 0 1 correctly represents the closed interval [0,1] and the condition f x = 2 matches exactly', \"Set.Ioc 1 2 correctly represents the half-open interval (1,2] and the condition f x = 5 matches exactly, and the 'otherwise' condition is properly formalized as the complement\", 'The natural language states there are no conclusions in this premise step, but the Lean formalization introduces a conclusion that the integral equals 7, which contradicts the stated premise-only nature']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "The function $f$ can be expressed as a simple function $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$, where $\\chi_A$ is the characteristic function of a set $A$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2].\nTherefore, we conclude:\n\u2022 $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$, where $\\chi_A$ is the characteristic function of set A [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0) :\n  f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + \n      5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0) :\n  f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + \n      5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n  have h_main : \u2200 (x : \u211d), f x = (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0)) x := by\n    intro x\n    by_cases hx : x \u2208 Set.Icc 0 1\n    \u00b7 -- Case 1: x \u2208 [0, 1]\n      have h4 : f x = 2 := h1 x hx\n      have h5 : (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0)) x = 2 := by\n        -- Compute the RHS when x \u2208 [0, 1]\n        have h6 : (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) = 1 := by\n          simp [hx]\n        have h7 : (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0) = 0 := by\n          have h8 : x \u2209 Set.Ioc 1 2 := by\n            intro h9\n            -- If x \u2208 (1, 2], then x > 1, but x \u2208 [0, 1] implies x \u2264 1\n            have h10 : 1 < x := h9.1\n            have h11 : x \u2264 1 := hx.2\n            linarith\n          simp [h8]\n        -- Calculate the expression\n        simp [h6, h7, Pi.smul_apply, Pi.add_apply]\n        <;> norm_num\n        <;> ring_nf\n        <;> simp_all\n        <;> norm_num\n        <;> linarith\n      linarith\n    \u00b7 -- Case 2: x \u2209 [0, 1]\n      by_cases hx' : x \u2208 Set.Ioc 1 2\n      \u00b7 -- Subcase 2.1: x \u2208 (1, 2]\n        have h4 : f x = 5 := h2 x hx'\n        have h5 : (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0)) x = 5 := by\n          -- Compute the RHS when x \u2208 (1, 2]\n          have h6 : (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) = 0 := by\n            have h7 : x \u2209 Set.Icc 0 1 := hx\n            simp [h7]\n          have h7 : (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0) = 1 := by\n            simp [hx']\n          -- Calculate the expression\n          simp [h6, h7, Pi.smul_apply, Pi.add_apply]\n          <;> norm_num\n          <;> ring_nf\n          <;> simp_all\n          <;> norm_num\n          <;> linarith\n        linarith\n      \u00b7 -- Subcase 2.2: x \u2209 (1, 2]\n        have h4 : f x = 0 := h3 x \u27e8hx, hx'\u27e9\n        have h5 : (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0)) x = 0 := by\n          -- Compute the RHS when x \u2209 [0, 1] and x \u2209 (1, 2]\n          have h6 : (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) = 0 := by\n            have h7 : x \u2209 Set.Icc 0 1 := hx\n            simp [h7]\n          have h7 : (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0) = 0 := by\n            have h8 : x \u2209 Set.Ioc 1 2 := hx'\n            simp [h8]\n          -- Calculate the expression\n          simp [h6, h7, Pi.smul_apply, Pi.add_apply]\n          <;> norm_num\n          <;> ring_nf\n          <;> simp_all\n          <;> norm_num\n          <;> linarith\n        linarith\n  \n  have h_final : f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n    have h\u2081 : f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0) := by\n      funext x\n      have h\u2082 := h_main x\n      -- Simplify the expression using the fact that 1 : \u211d is the same as (1 : \u211d)\n      norm_num at h\u2082 \u22a2\n      <;>\n      (try simp_all) <;>\n      (try norm_num) <;>\n      (try ring_nf at * <;> simp_all) <;>\n      (try linarith) <;>\n      (try aesop)\n      <;>\n      (try\n        {\n          simp_all [Set.Icc, Set.Ioc]\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n    -- Now we need to show that the two sides are equal by proving that their values are the same for all x\n    have h\u2082 : (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else 0)) = (2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0)) := by\n      funext x\n      <;> simp [Set.Icc, Set.Ioc]\n      <;> norm_num\n      <;> aesop\n    rw [h\u2081]\n    rw [h\u2082]\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 33, "endLine": 11, "endColumn": 146, "data": "function expected at\n  (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nterm has type\n  ?m.15699"}, {"line": 16, "column": 16, "endLine": 16, "endColumn": 129, "data": "function expected at\n  (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nterm has type\n  ?m.32727"}, {"line": 29, "column": 8, "endLine": 29, "endColumn": 50, "data": "simp made no progress"}, {"line": 35, "column": 6, "endLine": 35, "endColumn": 14, "data": "linarith failed to find a contradiction\ncase pos.h1.h\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nx : \u211d\nhx : x \u2208 Set.Icc 0 1\nh4 : f x = 2\nh5 : sorry = 2\na\u271d : f x < sorry\n\u22a2 False failed"}, {"line": 40, "column": 18, "endLine": 40, "endColumn": 131, "data": "function expected at\n  (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nterm has type\n  ?m.56042"}, {"line": 48, "column": 10, "endLine": 48, "endColumn": 52, "data": "simp made no progress"}, {"line": 54, "column": 8, "endLine": 54, "endColumn": 16, "data": "linarith failed to find a contradiction\ncase pos.h1.h\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nx : \u211d\nhx : x \u2209 Set.Icc 0 1\nhx' : x \u2208 Set.Ioc 1 2\nh4 : f x = 5\nh5 : sorry = 5\na\u271d : f x < sorry\n\u22a2 False failed"}, {"line": 57, "column": 18, "endLine": 57, "endColumn": 131, "data": "function expected at\n  (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nterm has type\n  ?m.78512"}, {"line": 66, "column": 10, "endLine": 66, "endColumn": 52, "data": "simp made no progress"}, {"line": 72, "column": 8, "endLine": 72, "endColumn": 16, "data": "linarith failed to find a contradiction\ncase neg.h1.h\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nx : \u211d\nhx : x \u2209 Set.Icc 0 1\nhx' : x \u2209 Set.Ioc 1 2\nh4 : f x = 0\nh5 : sorry = 0\na\u271d : f x < sorry\n\u22a2 False failed"}, {"line": 75, "column": 131, "endLine": 94, "endColumn": 10, "data": "unsolved goals\nf : \u211d \u2192 \u211d\nx : \u211d\nh1 : \u2200 (x : \u211d), 0 \u2264 x \u2192 x \u2264 1 \u2192 sorry = 2\nh2 : \u2200 (x : \u211d), 1 < x \u2192 x \u2264 2 \u2192 sorry = 5\nh3 : \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 sorry = 0\nh_main : \u2200 (x : \u211d), f x = sorry\nleft : 0 \u2264 x\nright : x \u2264 1\nleft_1 : 1 < x\nright_1 : x \u2264 2\n\u22a2 sorry = 2 + 5\n\nf : \u211d \u2192 \u211d\nx : \u211d\nh1 : \u2200 (x : \u211d), 0 \u2264 x \u2192 x \u2264 1 \u2192 sorry = 2\nh2 : \u2200 (x : \u211d), 1 < x \u2192 x \u2264 2 \u2192 sorry = 5\nh3 : \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 sorry = 0\nh_main : \u2200 (x : \u211d), f x = sorry\nleft : 0 \u2264 x\nright : x \u2264 1\n\u22a2 sorry = 2\n\nf : \u211d \u2192 \u211d\nx : \u211d\nh1 : \u2200 (x : \u211d), 0 \u2264 x \u2192 x \u2264 1 \u2192 sorry = 2\nh2 : \u2200 (x : \u211d), 1 < x \u2192 x \u2264 2 \u2192 sorry = 5\nh3 : \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 sorry = 0\nh_main : \u2200 (x : \u211d), f x = sorry\nleft : 1 < x\nright : x \u2264 2\n\u22a2 sorry = 5\n\nf : \u211d \u2192 \u211d\nx : \u211d\nh1 : \u2200 (x : \u211d), 0 \u2264 x \u2192 x \u2264 1 \u2192 sorry = 2\nh2 : \u2200 (x : \u211d), 1 < x \u2192 x \u2264 2 \u2192 sorry = 5\nh3 : \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 sorry = 0\nh_main : \u2200 (x : \u211d), f x = sorry\nh : 0 \u2264 x \u2192 1 < x\nh_1 : 1 < x \u2192 2 < x\n\u22a2 sorry = 0"}, {"line": 102, "column": 8, "endLine": 102, "endColumn": 10, "data": "no goals to be solved"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all aspects of the natural language statement. The interval notations (Set.Icc for [0,1] and Set.Ioc for (1,2]) are precise matches. The characteristic function representation using conditional functions (fun x => if x \u2208 Set then 1 else 0) is the standard and mathematically equivalent way to express \u03c7_A in Lean. The function definition conditions in the hypotheses h1, h2, h3 accurately reflect the piecewise definition given in natural language. The conclusion correctly represents the characteristic function decomposition f = 2\u03c7_{[0,1]} + 5\u03c7_{(1,2]}.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "NL statement", "error_report": "Formalization appears correct (score=1.0 > 0.6), and the prover could prove the NEGATION of the NL lemma. The NL statement is likely incorrect."}, "solved_negation": {"lean_verify": true, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0) :\n  f = (fun x => (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0)) := by\n  have h_main : \u2200 (x : \u211d), f x = (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n    intro x\n    by_cases hx : x \u2208 Set.Icc 0 1\n    \u00b7 -- Case: x \u2208 [0, 1]\n      have h4 : f x = 2 := h1 x hx\n      have h5 : (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0) = 2 := by\n        -- Simplify the expression for x \u2208 [0, 1]\n        have h6 : x \u2208 Set.Icc 0 1 := hx\n        have h7 : \u00ac(x \u2208 Set.Ioc 1 2) := by\n          intro h\n          have h8 : 1 < x := h.1\n          have h9 : x \u2264 2 := h.2\n          have h10 : x \u2264 1 := h6.2\n          linarith\n        simp [h6, h7]\n        <;> norm_num\n      linarith\n    \u00b7 -- Case: x \u2209 [0, 1]\n      by_cases hx' : x \u2208 Set.Ioc 1 2\n      \u00b7 -- Subcase: x \u2208 (1, 2]\n        have h4 : f x = 5 := h2 x hx'\n        have h5 : (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0) = 5 := by\n          -- Simplify the expression for x \u2208 (1, 2]\n          have h6 : x \u2208 Set.Ioc 1 2 := hx'\n          have h7 : \u00ac(x \u2208 Set.Icc 0 1) := hx\n          simp [h6, h7]\n          <;> norm_num\n        linarith\n      \u00b7 -- Subcase: x \u2209 (1, 2]\n        have h4 : f x = 0 := h3 x \u27e8hx, hx'\u27e9\n        have h5 : (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0) = 0 := by\n          -- Simplify the expression for x \u2209 [0, 1] and x \u2209 (1, 2]\n          have h6 : \u00ac(x \u2208 Set.Icc 0 1) := hx\n          have h7 : \u00ac(x \u2208 Set.Ioc 1 2) := hx'\n          simp [h6, h7]\n          <;> norm_num\n        linarith\n  \n  have h_final : f = (fun x => (2 : \u211d) * (if x \u2208 Set.Icc 0 1 then 1 else 0) + (5 : \u211d) * (if x \u2208 Set.Ioc 1 2 then 1 else 0)) := by\n    funext x\n    rw [h_main x]\n    <;> simp [h_main]\n    <;> norm_num\n  \n  exact h_final"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By the linearity property of the Lebesgue integral, we can write $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2];\n\u2022 $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$ [l1].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0)\n  (l1 : f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + \n            5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0)) :\n  \u222b x, f x = 2 * \u222b x in Set.Icc 0 1, 1 + 5 * \u222b x in Set.Ioc 1 2, 1 := by sorry", "lean_pass": false, "error_msg": [{"line": 14, "column": 17, "endLine": 14, "endColumn": 66, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 14, "column": 45, "endLine": 14, "endColumn": 66, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0)\n  (l1 : f = 2 \u2022 (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + \n            5 \u2022 (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0)) :\n  \u222b x, f x = 2 * \u222b x in Set.Icc 0 1, 1 + 5 * \u222b x in Set.Ioc 1 2, 1 := by\n  have h4 : \u222b x : \u211d, f x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by\n    rw [l1]\n    <;>\n    simp_all [Function.funext_iff]\n    <;>\n    aesop\n  \n  have h5 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := by\n    have h\u2085 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x + \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by\n      have h\u2085\u2081 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x + \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by\n        -- Use the linearity of the integral to split the integral of the sum into the sum of integrals\n        have h\u2085\u2082 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x + \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by\n          -- Use the fact that the integral of the sum is the sum of the integrals\n          have h\u2085\u2083 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x + \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by\n            -- Use the linearity of the integral\n            apply integral_add\n            \u00b7 -- Prove that the first function is integrable\n              apply Continuous.integrableOn_Icc.compact\n              continuity\n            \u00b7 -- Prove that the second function is integrable\n              apply Continuous.integrableOn_Icc.compact\n              continuity\n          exact h\u2085\u2083\n        exact h\u2085\u2082\n      exact h\u2085\u2081\n    have h\u2086 : \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) := by\n      -- Use the property of scalar multiplication in integrals\n      simp [integral_smul]\n      <;>\n      ring_nf\n      <;>\n      simp_all [mul_assoc]\n      <;>\n      norm_num\n    have h\u2087 : \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := by\n      -- Use the property of scalar multiplication in integrals\n      simp [integral_smul]\n      <;>\n      ring_nf\n      <;>\n      simp_all [mul_assoc]\n      <;>\n      norm_num\n    calc\n      \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) x + \u222b x : \u211d, (5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by rw [h\u2085]\n      _ = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := by\n        rw [h\u2086, h\u2087]\n        <;>\n        ring_nf\n  \n  have h6 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n    have h\u2086 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n      -- Use the fact that the integral of the indicator function over the whole space is equal to the integral over the set\n      have h\u2087 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n        -- Use the lemma that relates the integral of the indicator function to the integral over the set\n        calc\n          \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x : \u211d, (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) x := by simp\n          _ = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n            -- Use the fact that the integral of the indicator function is equal to the integral of 1 over the set\n            have h\u2088 : \u222b x : \u211d, (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) x = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n              -- Use the lemma that relates the integral of the indicator function to the integral over the set\n              have h\u2089 : \u222b x : \u211d, (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) x = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by\n                -- Use the fact that the integral of the indicator function is equal to the integral of 1 over the set\n                simp [MeasureTheory.integral_ite, MeasureTheory.integral_congr_ae]\n                <;>\n                simp_all [MeasureTheory.ae_restrict_iff, Set.Icc, Real.volume_Icc]\n                <;>\n                norm_num\n                <;>\n                linarith\n              exact h\u2089\n            exact h\u2088\n          _ = \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) := by rfl\n      exact h\u2087\n    exact h\u2086\n  \n  have h7 : \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n    have h\u2087 : \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n      -- Use the fact that the integral of the indicator function over the whole space is equal to the integral over the set\n      have h\u2088 : \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n        -- Use the lemma that relates the integral of the indicator function to the integral over the set\n        calc\n          \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = \u222b x : \u211d, (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) x := by simp\n          _ = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n            -- Use the fact that the integral of the indicator function is equal to the integral of 1 over the set\n            have h\u2089 : \u222b x : \u211d, (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) x = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n              -- Use the lemma that relates the integral of the indicator function to the integral over the set\n              have h\u2081\u2080 : \u222b x : \u211d, (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) x = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n                -- Use the fact that the integral of the indicator function is equal to the integral of 1 over the set\n                simp [MeasureTheory.integral_ite, MeasureTheory.integral_congr_ae]\n                <;>\n                simp_all [MeasureTheory.ae_restrict_iff, Set.Ioc, Real.volume_Ioc]\n                <;>\n                norm_num\n                <;>\n                linarith\n              exact h\u2081\u2080\n            exact h\u2089\n          _ = \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by rfl\n      exact h\u2088\n    exact h\u2087\n  \n  have h8 : 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n    calc\n      2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := rfl\n      _ = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := by\n        rw [h6]\n        <;>\n        ring_nf\n      _ = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n        rw [h7]\n        <;>\n        ring_nf\n  \n  have h9 : \u222b x : \u211d, f x = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by\n    calc\n      \u222b x : \u211d, f x = \u222b x : \u211d, (2 \u2022 (fun x => if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 \u2022 (fun x => if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) x := by rw [h4]\n      _ = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) + 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0) := by rw [h5]\n      _ = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := by rw [h8]\n  \n  have h10 : \u222b x, f x = 2 * \u222b x in Set.Icc 0 1, 1 + 5 * \u222b x in Set.Ioc 1 2, 1 := by\n    have h\u2081\u2080 : \u222b x : \u211d, f x = 2 * \u222b x in Set.Icc (0 : \u211d) 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc (1 : \u211d) 2, (1 : \u211d) := h9\n    have h\u2081\u2081 : \u222b x : \u211d, f x = 2 * \u222b x in Set.Icc 0 1, (1 : \u211d) + 5 * \u222b x in Set.Ioc 1 2, (1 : \u211d) := by\n      simpa using h\u2081\u2080\n    have h\u2081\u2082 : \u222b x, f x = 2 * \u222b x in Set.Icc 0 1, 1 + 5 * \u222b x in Set.Ioc 1 2, 1 := by\n      simpa using h\u2081\u2081\n    exact h\u2081\u2082\n  \n  exact h10", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 17, "endLine": 11, "endColumn": 66, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 45, "endLine": 11, "endColumn": 66, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 27, "column": 18, "endLine": 27, "endColumn": 30, "data": "unknown identifier 'integral_add'"}, {"line": 28, "column": 12, "endLine": 30, "endColumn": 24, "data": "no goals to be solved"}, {"line": 39, "column": 12, "endLine": 39, "endColumn": 25, "data": "unknown identifier 'integral_smul'"}, {"line": 37, "column": 152, "endLine": 45, "endColumn": 14, "data": "unsolved goals\nf : \u211d \u2192 \u211d\nh3 :\n  \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 ((if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) = 0\nl1 : f = (2 * fun x => if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * fun x => if 1 < x \u2227 x \u2264 2 then 1 else 0\nh\u2085 :\n  (\u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) =\n    \u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + \u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 5 else 0\n\u22a2 (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) = (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) * 2"}, {"line": 48, "column": 12, "endLine": 48, "endColumn": 25, "data": "unknown identifier 'integral_smul'"}, {"line": 46, "column": 152, "endLine": 54, "endColumn": 14, "data": "unsolved goals\nf : \u211d \u2192 \u211d\nh3 :\n  \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 ((if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) = 0\nl1 : f = (2 * fun x => if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * fun x => if 1 < x \u2227 x \u2264 2 then 1 else 0\nh\u2085 :\n  (\u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) =\n    \u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + \u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 5 else 0\nh\u2086 : (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) = 2 * \u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0\n\u22a2 (\u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 5 else 0) = (\u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 1 else 0) * 5"}, {"line": 58, "column": 12, "endLine": 58, "endColumn": 14, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u222b (x : \u211d), (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) x\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh\u2085 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    \u222b (x : \u211d),\n      (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) x + \u222b (x : \u211d), (5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh\u2086 : \u222b (x : \u211d), (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) x = 2 * \u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0\nh\u2087 : \u222b (x : \u211d), (5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x = 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\n\u22a2 \u222b (x : \u211d),\n      (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) x + \u222b (x : \u211d), (5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0"}, {"line": 75, "column": 22, "endLine": 75, "endColumn": 48, "data": "unknown identifier 'MeasureTheory.integral_ite'"}, {"line": 81, "column": 16, "endLine": 81, "endColumn": 24, "data": "linarith failed to find a contradiction\ncase h1.h\nf : \u211d \u2192 \u211d\nh3 :\n  \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 ((if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) = 0\nl1 : f = (2 * fun x => if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * fun x => if 1 < x \u2227 x \u2264 2 then 1 else 0\nh5 :\n  (\u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) =\n    2 * \u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * \u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 1 else 0\na\u271d : (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) < 1\n\u22a2 False failed"}, {"line": 101, "column": 22, "endLine": 101, "endColumn": 48, "data": "unknown identifier 'MeasureTheory.integral_ite'"}, {"line": 107, "column": 16, "endLine": 107, "endColumn": 24, "data": "linarith failed to find a contradiction\ncase h1.h\nf : \u211d \u2192 \u211d\nh3 :\n  \u2200 (x : \u211d), (0 \u2264 x \u2192 1 < x) \u2192 (1 < x \u2192 2 < x) \u2192 ((if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) = 0\nl1 : f = (2 * fun x => if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * fun x => if 1 < x \u2227 x \u2264 2 then 1 else 0\nh5 :\n  (\u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 2 else 0) + if 1 < x \u2227 x \u2264 2 then 5 else 0) =\n    2 * \u222b (x : \u211d), (if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) + 5 * \u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then 1 else 0) = 1\na\u271d : (\u222b (x : \u211d), if 1 < x \u2227 x \u2264 2 then 1 else 0) < 1\n\u22a2 False failed"}, {"line": 118, "column": 12, "endLine": 118, "endColumn": 14, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\n\u22a2 (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0"}, {"line": 132, "column": 28, "endLine": 132, "endColumn": 77, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 132, "column": 56, "endLine": 132, "endColumn": 77, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 134, "column": 34, "endLine": 134, "endColumn": 95, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 134, "column": 68, "endLine": 134, "endColumn": 95, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 135, "column": 6, "endLine": 135, "endColumn": 21, "data": "type mismatch, term\n  h\u2081\u2080\nafter simplification has type\n  \u222b (x : \u211d), f x = 2 * (1 + 5 * (2 - 1)) : Prop\nbut is expected to have type\n  \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * (MeasureTheory.volume (Set.Ioc 1 2)).toReal : Prop"}, {"line": 136, "column": 30, "endLine": 136, "endColumn": 79, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 136, "column": 58, "endLine": 136, "endColumn": 79, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 137, "column": 18, "endLine": 137, "endColumn": 21, "data": "unknown identifier 'h\u2081\u2081'"}, {"line": 138, "column": 10, "endLine": 138, "endColumn": 13, "data": "unknown identifier 'h\u2081\u2082'"}, {"line": 132, "column": 81, "endLine": 138, "endColumn": 13, "data": "unsolved goals\ncase refine_1.refine_2\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 h\u2081\u2080 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\n\u22a2 \u2115 \u2192 MeasureTheory.MeasureSpace \u2115\n\ncase refine_1.refine_3\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 h\u2081\u2080 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh\u2081\u2082 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u2115) in Set.Ioc 1 2, 1\n\u22a2 MeasureTheory.MeasureSpace \u2115\n\ncase refine_2\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 h\u2081\u2080 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\n\u22a2 \u2115 \u2192 MeasureTheory.MeasureSpace \u2115\n\ncase refine_3\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 h\u2081\u2080 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh\u2081\u2081 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u2115) in Set.Ioc 1 2, 1\n\u22a2 \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u2115) in Set.Ioc 1 2, 1"}, {"line": 140, "column": 8, "endLine": 140, "endColumn": 11, "data": "unknown identifier 'h10'"}, {"line": 11, "column": 70, "endLine": 140, "endColumn": 11, "data": "unsolved goals\ncase refine_2\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\n\u22a2 \u2115 \u2192 MeasureTheory.MeasureSpace \u2115\n\ncase refine_3\nf : \u211d \u2192 \u211d\nh1 : \u2200 x \u2208 Set.Icc 0 1, f x = 2\nh2 : \u2200 x \u2208 Set.Ioc 1 2, f x = 5\nh3 : \u2200 (x : \u211d), x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0\nl1 : f = (2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0\nh4 :\n  \u222b (x : \u211d), f x =\n    \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x\nh5 :\n  \u222b (x : \u211d), ((2 \u2022 fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 \u2022 fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) x =\n    2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0\nh6 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\nh7 : (\u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) = \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh8 :\n  (2 * \u222b (x : \u211d), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u211d), if x \u2208 Set.Ioc 1 2 then 1 else 0) =\n    2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh9 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u211d) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u211d) in Set.Ioc 1 2, 1\nh10 : \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u2115) in Set.Ioc 1 2, 1\n\u22a2 \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115) in Set.Icc 0 1, 1 + 5 * \u222b (x : \u2115) in Set.Ioc 1 2, 1"}], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The integral of a characteristic function is the measure of the set, so we first evaluate $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = \\lambda([0,1]) = 1$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2];\n\u2022 $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$ [l1];\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = 1$ [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 : \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) = 1 := by sorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 13, "endLine": 7, "endColumn": 52, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 7, "column": 13, "endLine": 7, "endColumn": 52, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 : \u222b x : \u211d, (if x \u2208 Set.Icc 0 1 then 1 else 0) = 1 := by\n  have h\u2081 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = 1 := by\n    have h\u2082 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) := by\n      -- Use the fact that the integral of the indicator function over \u211d is the same as the integral over [0,1]\n      have h\u2083 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) := by\n        -- Use the fact that the function is zero outside [0,1]\n        calc\n          \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := by\n            -- Use the fact that the function is zero outside [0,1]\n            have h\u2084 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := by\n              -- Use the fact that the function is zero outside [0,1]\n              have h\u2085 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := by\n                -- Use the fact that the function is zero outside [0,1]\n                calc\n                  \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := rfl\n                  _ = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := by\n                    -- Use the fact that the function is zero outside [0,1]\n                    have h\u2086 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) := by\n                      -- Use the fact that the function is zero outside [0,1]\n                      rw [\u2190 MeasureTheory.setIntegral_congr_set (measurableSet_Icc)]\n                      <;> simp [Set.Icc_subset_Icc_left]\n                      <;>\n                      (try { norm_num }) <;>\n                      (try { linarith })\n                    -- Use the fact that the function is zero outside [0,1]\n                    rw [h\u2086]\n              -- Use the fact that the function is zero outside [0,1]\n              exact h\u2085\n            -- Use the fact that the function is zero outside [0,1]\n            exact h\u2084\n          _ = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) := by\n            -- Use the fact that the function is 1 inside [0,1]\n            have h\u2087 : \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) := by\n              -- Use the fact that the function is 1 inside [0,1]\n              apply MeasureTheory.setIntegral_congr_ae\n              filter_upwards [ae_restrict measurableSet_Icc] with x hx\n              simp_all [Set.mem_Icc]\n              <;>\n              (try { contradiction }) <;>\n              (try { simp_all }) <;>\n              (try { norm_num }) <;>\n              (try { linarith })\n            -- Use the fact that the function is 1 inside [0,1]\n            rw [h\u2087]\n      -- Use the fact that the function is zero outside [0,1]\n      exact h\u2083\n    -- Use the fact that the integral of 1 over [0,1] is 1\n    have h\u2083 : \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) = 1 := by\n      -- Use the fact that the integral of 1 over [0,1] is 1\n      have h\u2084 : \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) = (1 : \u211d) * volume (Set.Icc (0 : \u211d) (1 : \u211d)) := by\n        -- Use the fact that the integral of 1 over [0,1] is the volume of [0,1]\n        simp [MeasureTheory.integral_const]\n        <;>\n        (try { norm_num }) <;>\n        (try { linarith })\n      -- Use the fact that the volume of [0,1] is 1\n      have h\u2085 : volume (Set.Icc (0 : \u211d) (1 : \u211d)) = (1 : \u211d) := by\n        -- Use the fact that the volume of [0,1] is 1\n        simp [Real.volume_Icc]\n        <;>\n        (try { norm_num }) <;>\n        (try { linarith })\n      -- Combine the two results\n      calc\n        \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) = (1 : \u211d) * volume (Set.Icc (0 : \u211d) (1 : \u211d)) := by rw [h\u2084]\n        _ = (1 : \u211d) * (1 : \u211d) := by rw [h\u2085]\n        _ = 1 := by norm_num\n    -- Combine the two results\n    calc\n      \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) (1 : \u211d) then (1 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) (1 : \u211d), (1 : \u211d) := by rw [h\u2082]\n      _ = 1 := by rw [h\u2083]\n  -- Use the fact that the integral of the indicator function over \u211d is 1\n  simpa using h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 4, "column": 13, "endLine": 4, "endColumn": 56, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 23, "column": 64, "endLine": 23, "endColumn": 83, "data": "application type mismatch\n  MeasureTheory.setIntegral_congr_set measurableSet_Icc\nargument\n  measurableSet_Icc\nhas type\n  MeasurableSet (Set.Icc ?m.6177 ?m.6178) : Prop\nbut is expected to have type\n  ?m.6167 =\u1d50[?m.6169] ?m.6168 : Prop"}, {"line": 24, "column": 26, "endLine": 24, "endColumn": 56, "data": "simp made no progress"}, {"line": 39, "column": 30, "endLine": 39, "endColumn": 41, "data": "unknown identifier 'ae_restrict'"}, {"line": 53, "column": 68, "endLine": 53, "endColumn": 74, "data": "unknown identifier 'volume'"}, {"line": 53, "column": 104, "endLine": 58, "endColumn": 26, "data": "unsolved goals\nh\u2082 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d) in Set.Icc 0 1, 1\n\u22a2 1 = sorry"}, {"line": 60, "column": 16, "endLine": 60, "endColumn": 22, "data": "unknown identifier 'volume'"}, {"line": 62, "column": 8, "endLine": 62, "endColumn": 30, "data": "simp made no progress"}, {"line": 68, "column": 60, "endLine": 68, "endColumn": 66, "data": "unknown identifier 'volume'"}, {"line": 76, "column": 2, "endLine": 76, "endColumn": 16, "data": "type mismatch, term\n  h\u2081\nafter simplification has type\n  (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then (1 : \u211d) else 0) = 1 : Prop\nbut is expected to have type\n  (\u222b (x : \u211d), if 0 \u2264 x \u2227 x \u2264 1 then (1 : \u2115) else 0) = 1 : Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Similarly, we evaluate the second integral as $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = \\lambda((1,2]) = 1$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2];\n\u2022 $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$ [l1];\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2];\n\u2022 $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = 1$ [l3].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = 1$ [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0) :\n  \u222b x, f x = 7 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u211d \u2192 \u211d) \n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \n  (h3 : \u2200 x, (x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2) \u2192 f x = 0) :\n  \u222b x, f x = 7 := by\n  have h4 : \u222b x in (Set.Icc (0 : \u211d) 1), f x = 2 := by sorry\n  have h5 : \u222b x in (Set.Ioc (1 : \u211d) 2), f x = 5 := by sorry\n  have h6 : \u222b x : \u211d, f x = \u222b x in (Set.Icc (0 : \u211d) 1) \u222a (Set.Ioc (1 : \u211d) 2), f x := by sorry\n  have h7 : \u222b x in (Set.Icc (0 : \u211d) 1) \u222a (Set.Ioc (1 : \u211d) 2), f x = \u222b x in (Set.Icc (0 : \u211d) 1), f x + \u222b x in (Set.Ioc (1 : \u211d) 2), f x := by sorry\n  have h8 : \u222b x : \u211d, f x = 7 := by sorry\n  sorry", "lean_pass": true, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the piecewise function definition and arrives at the correct final integral value of 7. However, it omits several intermediate mathematical steps that are explicitly mentioned in the natural language, including the characteristic function representation (f = 2\u03c7_{[0,1]} + 5\u03c7_{(1,2]}), the integral decomposition formula, and the individual integral evaluations (\u222b_\u211d \u03c7_{[0,1]} d\u03bb = 1 and \u222b_\u211d \u03c7_{(1,2]} d\u03bb = 1). While the mathematical reasoning is sound and the conclusion is correct, the formalization takes a more direct approach that bypasses the step-by-step process described in the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures the piecewise function definition and arrives at the correct final integral value of 7. However, it omits several intermediate mathematical steps that are explicitly mentioned in the natural language, including the characteristic function representation (f = 2\u03c7_{[0,1]} + 5\u03c7_{(1,2]}), the integral decomposition formula, and the individual integral evaluations (\u222b_\u211d \u03c7_{[0,1]} d\u03bb = 1 and \u222b_\u211d \u03c7_{(1,2]} d\u03bb = 1). While the mathematical reasoning is sound and the conclusion is correct, the formalization takes a more direct approach that bypasses the step-by-step process described in the natural language.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Substituting these values back, we get the final result: $\\int_{\\mathbb{R}} f d\\lambda = 2(1) + 5(1) = 7$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1];\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function where $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_2];\n\u2022 $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$ [l1];\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2];\n\u2022 $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = 1$ [l3];\n\u2022 $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = 1$ [l4].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 7$ [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d)\n  (h1 : \u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2)\n  (h2 : \u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5)\n  (h3 : \u2200 x, x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0) :\n  \u222b x, f x = 7 := by sorry", "lean_pass": true, "error_msg": [], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem integral_f : \u222b (x : \u211d), f x = 7 := by\n  have h_main : \u222b (x : \u211d), f x = 7 := by sorry\n  sorry", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 4, "column": 21, "endLine": 4, "endColumn": 35, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 4, "column": 32, "endLine": 4, "endColumn": 35, "data": "function expected at\n  f\nterm has type\n  ?m.66"}, {"line": 5, "column": 27, "endLine": 5, "endColumn": 30, "data": "function expected at\n  f\nterm has type\n  x\u271d"}, {"line": 5, "column": 16, "endLine": 5, "endColumn": 30, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 4, "column": 43, "endLine": 6, "endColumn": 7, "data": "unsolved goals\ncase refine_2\nx\u271d : Sort u_1\nf : x\u271d\n\u22a2 NormedSpace \u211d \u2115\n\ncase refine_3\nx\u271d : Sort u_1\nf : x\u271d\nh_main : \u222b (x : \u211d), sorry = 7\n\u22a2 \u222b (x : \u211d), sorry = 7"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the piecewise function definition through hypotheses h1, h2, and h3, and states the correct integral conclusion. The implicit use of Lebesgue measure in the integral notation is standard in Mathlib. While the intermediate steps from the natural language (characteristic function decomposition) are not explicitly present, they would be part of the proof strategy, and the theorem statement itself perfectly captures the mathematical essence of the problem.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "NL statement", "error_report": "Formalization appears correct (score=1.0 > 0.6), and the prover could prove the NEGATION of the NL lemma. The NL statement is likely incorrect."}, "solved_negation": {"lean_verify": true, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem not_ts_1 : \u00ac (\u2200 (f : \u211d \u2192 \u211d), (\u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2) \u2192 (\u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \u2192 (\u2200 x, x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0) \u2192 \u222b x, f x = 7) := by\n  intro h\n  have h\u2081 : (\u2200 (f : \u211d \u2192 \u211d), (\u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2) \u2192 (\u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) \u2192 (\u2200 x, x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0) \u2192 \u222b x, f x = 7) := h\n  -- Define a specific function f that satisfies the given conditions\n  let f : \u211d \u2192 \u211d := fun x =>\n    if x \u2208 Set.Icc 0 1 then 2\n    else if x \u2208 Set.Ioc 1 2 then 5\n    else 0\n  -- Verify that f satisfies the conditions\n  have h\u2082 : (\u2200 x, x \u2208 Set.Icc 0 1 \u2192 f x = 2) := by\n    intro x hx\n    simp only [f]\n    simp [hx]\n    <;> norm_num\n  have h\u2083 : (\u2200 x, x \u2208 Set.Ioc 1 2 \u2192 f x = 5) := by\n    intro x hx\n    simp only [f]\n    have h\u2084 : x \u2209 Set.Icc 0 1 := by\n      intro h\u2085\n      have h\u2086 := hx\n      have h\u2087 := h\u2085\n      norm_num [Set.mem_Icc, Set.mem_Ioc] at h\u2086 h\u2087 \u22a2\n      <;> linarith\n    simp [h\u2084, hx]\n    <;> norm_num\n    <;>\n    (try { contradiction }) <;>\n    (try { linarith }) <;>\n    (try { norm_num at * <;> aesop })\n  have h\u2084 : (\u2200 x, x \u2209 Set.Icc 0 1 \u2227 x \u2209 Set.Ioc 1 2 \u2192 f x = 0) := by\n    intro x hx\n    simp only [f]\n    have h\u2085 : x \u2209 Set.Icc 0 1 := hx.1\n    have h\u2086 : x \u2209 Set.Ioc 1 2 := hx.2\n    by_cases h\u2087 : x \u2208 Set.Ioc 1 2\n    \u00b7 exfalso\n      exact h\u2086 h\u2087\n    \u00b7 by_cases h\u2088 : x \u2208 Set.Icc 0 1\n      \u00b7 exfalso\n        exact h\u2085 h\u2088\n      \u00b7 simp [h\u2088, h\u2087]\n        <;> norm_num\n  -- Compute the integral of f\n  have h\u2085 : \u222b x, f x = 7 := h\u2081 f h\u2082 h\u2083 h\u2084\n  -- Derive a contradiction by showing that the integral cannot be 7\n  have h\u2086 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = 7 := by\n    -- Calculate the integral using the properties of the function and the Lebesgue measure\n    have h\u2087 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = 7 := by\n      -- Use the fact that the integral of a piecewise constant function can be computed by summing the integrals over each piece\n      have h\u2088 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) + \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n        -- Prove that the integral over the entire space is the sum of the integrals over the two intervals\n        have h\u2089 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := rfl\n        rw [h\u2089]\n        -- Use the fact that the function is zero outside the two intervals to simplify the integral\n        have h\u2081\u2080 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) + \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n          -- Use the fact that the function is zero outside the two intervals to simplify the integral\n          have h\u2081\u2081 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := rfl\n          rw [h\u2081\u2081]\n          -- Use the fact that the function is zero outside the two intervals to simplify the integral\n          have h\u2081\u2082 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) + \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n            -- Use the fact that the function is zero outside the two intervals to simplify the integral\n            have h\u2081\u2083 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := rfl\n            rw [h\u2081\u2083]\n            -- Use the fact that the function is zero outside the two intervals to simplify the integral\n            have h\u2081\u2084 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) + \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n              -- Use the fact that the function is zero outside the two intervals to simplify the integral\n              calc\n                \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                  -- The integral over the entire space is the same as the integral over the union of the two intervals\n                  have h\u2081\u2085 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                    -- Use the fact that the function is zero outside the two intervals to simplify the integral\n                    have h\u2081\u2086 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.univ, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                      simp [MeasureTheory.integral_univ]\n                    rw [h\u2081\u2086]\n                    have h\u2081\u2087 : \u222b x in Set.univ, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                      -- Use the fact that the function is zero outside the two intervals to simplify the integral\n                      have h\u2081\u2088 : \u222b x in Set.univ, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                        -- Use the fact that the function is zero outside the two intervals to simplify the integral\n                        have h\u2081\u2089 : \u222b x in Set.univ, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                          -- Use the fact that the function is zero outside the two intervals to simplify the integral\n                          have h\u2082\u2080 : (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = 0 := by\n                            by_cases h\u2082\u2081 : x \u2208 Set.Icc (0 : \u211d) 1 <;> by_cases h\u2082\u2082 : x \u2208 Set.Ioc (1 : \u211d) 2 <;> simp_all [Set.mem_Icc, Set.mem_Ioc]\n                            <;> norm_num at * <;>\n                              (try { linarith }) <;>\n                              (try { nlinarith })\n                          simp_all [MeasureTheory.integral_congr_ae]\n                          <;>\n                          (try { aesop }) <;>\n                          (try { linarith })\n                        exact h\u2081\u2089\n                      exact h\u2081\u2088\n                    rw [h\u2081\u2087]\n                  exact h\u2081\u2085\n                _ = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by rfl\n                _ = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) + \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n                  -- Use the fact that the two intervals are disjoint to split the integral\n                  have h\u2082\u2080 : Disjoint (Set.Icc (0 : \u211d) 1) (Set.Ioc (1 : \u211d) 2) := by\n                    -- Prove that the two intervals are disjoint\n                    rw [Set.disjoint_left]\n                    intro x hx\u2081 hx\u2082\n                    norm_num [Set.mem_Icc, Set.mem_Ioc] at hx\u2081 hx\u2082\n                    <;> linarith\n                  -- Use the fact that the two intervals are disjoint to split the integral\n                  have h\u2082\u2081 : \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) + \u222b x in Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                    -- Use the fact that the two intervals are disjoint to split the integral\n                    have h\u2082\u2082 : \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := rfl\n                    rw [h\u2082\u2082]\n                    -- Use the fact that the two intervals are disjoint to split the integral\n                    have h\u2082\u2083 : \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) + \u222b x in Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                      -- Use the fact that the two intervals are disjoint to split the integral\n                      have h\u2082\u2084 : \u222b x in Set.Icc (0 : \u211d) 1 \u222a Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) + \u222b x in Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) := by\n                        -- Use the fact that the two intervals are disjoint to split the integral\n                        apply MeasureTheory.integral_union\n                        <;> simp_all [h\u2082\u2080]\n                        <;> try norm_num\n                        <;> try linarith\n                      exact h\u2082\u2084\n                    rw [h\u2082\u2083]\n                  rw [h\u2082\u2081]\n                  -- Simplify the integrals over each interval\n                  have h\u2082\u2082 : \u222b x in Set.Icc (0 : \u211d) 1, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) := by\n                    -- The function is 2 on the interval [0, 1]\n                    have h\u2082\u2083 : \u222b x in Set.Icc (0 : \u211d) 1, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) := by\n                      -- The function is 2 on the interval [0, 1]\n                      apply MeasureTheory.integral_congr_ae\n                      filter_upwards [self_mem_ae_restrict] with x hx using by\n                        simp_all [Set.mem_Icc, Set.mem_Ioc]\n                        <;>\n                        (try { norm_num at * <;> linarith }) <;>\n                        (try { aesop })\n                    rw [h\u2082\u2083]\n                  have h\u2082\u2083 : \u222b x in Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n                    -- The function is 5 on the interval (1, 2]\n                    have h\u2082\u2084 : \u222b x in Set.Ioc (1 : \u211d) 2, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) := by\n                      -- The function is 5 on the interval (1, 2]\n                      apply MeasureTheory.integral_congr_ae\n                      filter_upwards [self_mem_ae_restrict] with x hx using by\n                        simp_all [Set.mem_Icc, Set.mem_Ioc]\n                        <;>\n                        (try { norm_num at * <;> linarith }) <;>\n                        (try { aesop })\n                    rw [h\u2082\u2084]\n                  rw [h\u2082\u2082, h\u2082\u2083]\n                <;>\n                simp_all [MeasureTheory.integral_congr_ae]\n                <;>\n                (try { linarith })\n            exact h\u2081\u2084\n          rw [h\u2081\u2082]\n        rw [h\u2081\u2080]\n      rw [h\u2088]\n      -- Calculate the integral over each interval\n      have h\u2089 : \u222b x in Set.Icc (0 : \u211d) 1, (2 : \u211d) = 2 := by\n        -- The integral of 2 over [0, 1] is 2\n        simp [MeasureTheory.integral_const, Real.volume_Icc]\n        <;> norm_num\n      have h\u2081\u2080 : \u222b x in Set.Ioc (1 : \u211d) 2, (5 : \u211d) = 5 := by\n        -- The integral of 5 over (1, 2] is 5\n        simp [MeasureTheory.integral_const, Real.volume_Ioc]\n        <;> norm_num\n      -- Sum the integrals\n      rw [h\u2089, h\u2081\u2080]\n      <;> norm_num\n    exact h\u2087\n  -- Use the fact that the integral of f is 7 to derive a contradiction\n  have h\u2088 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (2 : \u211d) else if x \u2208 Set.Ioc (1 : \u211d) 2 then (5 : \u211d) else (0 : \u211d)) = 7 := h\u2086\n  have h\u2089 : \u222b x : \u211d, f x = 7 := h\u2085\n  simp only [f] at h\u2088 h\u2089\n  <;>\n  (try { contradiction }) <;>\n  (try { linarith }) <;>\n  (try { norm_num at * <;> aesop })"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

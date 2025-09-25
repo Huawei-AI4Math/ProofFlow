@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence defined by $a_1=2$, $a_2=5$ and the recurrence relation $a_{n} = 5a_{n-1} - 6a_{n-2}$ for $n \geq 3$. Prove that for all integers $n \geq 1$, $a_n = 2^{n-1}+3^{n-1}$.
+
+Proof: We will prove this by strong mathematical induction on $n$. First, for the base cases, we need to verify the formula holds for $n=1$ and $n=2$. For $n=1$, we are given $a_1=2$. The formula gives $a_1=2^{1-1}+3^{1-1}=2^0+3^0=1+1=2$. This holds. For $n=2$, we are given $a_2=5$. The formula gives $a_2=2^{2-1}+3^{2-1}=2^1+3^1=2+3=5$. This also holds. Now, for the inductive step, we assume the statement is true for all integers $j$ such that $1 \leq j \leq k$ for some integer $k \geq 2$. So, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \leq j \leq k$. We want to show the statement is true for $k+1$, i.e., $a_{k+1}=2^{k}+3^{k}$. From the recurrence relation, we have $a_{k+1}=5a_k-6a_{k-1}$. By the inductive hypothesis, we can substitute the formulas for $a_k$ and $a_{k-1}$. We have $a_k=2^{k-1}+3^{k-1}$ and $a_{k-1}=2^{k-2}+3^{k-2}$. So, $a_{k+1}=5(2^{k-1}+3^{k-1})-6(2^{k-2}+3^{k-2})$. We expand this: $5 \cdot 2^{k-1} + 5 \cdot 3^{k-1} - 6 \cdot 2^{k-2} - 6 \cdot 3^{k-2}$. We can rewrite the coefficients. $5 \cdot 2^{k-1} = (2+3) \cdot 2^{k-1} = 2 \cdot 2^{k-1} + 3 \cdot 2^{k-1} = 2^k + 3 \cdot 2^{k-1}$. No, that's not right. $5 \cdot 2^{k-1} = 5 \cdot 2^{k-2} \cdot 2 = 10 \cdot 2^{k-2}$. We have $a_{k+1}=10 \cdot 2^{k-2} + 15 \cdot 3^{k-2} - 6 \cdot 2^{k-2} - 6 \cdot 3^{k-2}$. Combining like terms gives $(10-6) \cdot 2^{k-2} + (15-6) \cdot 3^{k-2} = 4 \cdot 2^{k-2} + 9 \cdot 3^{k-2}$. We can simplify this further: $4 \cdot 2^{k-2} = 2^2 \cdot 2^{k-2} = 2^k$. And $9 \cdot 3^{k-2} = 3^2 \cdot 3^{k-2} = 3^k$. Thus, $a_{k+1}=2^k+3^k$. This matches the formula for $n=k+1$. By the principle of strong mathematical induction, the statement is true for all integers $n \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be a sequence defined by $a_1=2$, $a_2=5$ and the recurrence relation $a_{n} = 5a_{n-1} - 6a_{n-2}$ for $n \\geq 3$.", "statement": "Premise:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean declaration `(a : \u2115 \u2192 \u2124)` correctly captures that a is a sequence of integers indexed by natural numbers", "The Lean condition `a 1 = 2` exactly matches the mathematical statement $a_1 = 2$", "The Lean condition `a 2 = 5` exactly matches the mathematical statement $a_2 = 5$", "The Lean condition `(\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2))` correctly formalizes the recurrence relation $a_n = 5a_{n-1} - 6a_{n-2}$ for all integers $n \u2265 3$", "The natural language conclusion about the sequence being well-defined for all positive integers is not present in the Lean formalization, which only states the conditions but not this conclusion"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean declaration `(a : \u2115 \u2192 \u2124)` correctly captures that a is a sequence of integers indexed by natural numbers', 'The Lean condition `a 1 = 2` exactly matches the mathematical statement $a_1 = 2$', 'The Lean condition `a 2 = 5` exactly matches the mathematical statement $a_2 = 5$', 'The Lean condition `(\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2))` correctly formalizes the recurrence relation $a_n = 5a_{n-1} - 6a_{n-2}$ for all integers $n \u2265 3$', 'The natural language conclusion about the sequence being well-defined for all positive integers is not present in the Lean formalization, which only states the conditions but not this conclusion']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "First, for the base cases, we need to verify the formula holds for $n=1$. For $n=1$, we are given $a_1=2$. The formula gives $a_1=2^{1-1}+3^{1-1}=2^0+3^0=1+1=2$. This holds.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\nTherefore, we conclude:\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$, since $2^{1-1}+3^{1-1}=2$ which matches $a_1=2$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2))) :\n  a 1 = 2^(1-1) + 3^(1-1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2))) :\n  a 1 = 2^(1-1) + 3^(1-1) := by\n  simp [tc_1.1]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization accurately captures all components of the natural language statement. The sequence definition with initial conditions a\u2081=2, a\u2082=5 and the recurrence relation are correctly formalized in tc_1. The main claim that the formula a\u2099 = 2^(n-1) + 3^(n-1) holds for n=1 is precisely translated as 'a 1 = 2^(1-1) + 3^(1-1)'. The logical structure is preserved, using the sequence definition as a hypothesis to prove the specific case. The verification calculation mentioned in natural language (showing both sides equal 2) is implicitly contained in the Lean goal statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For $n=2$, we are given $a_2=5$. The formula gives $a_2=2^{2-1}+3^{2-1}=2^1+3^1=2+3=5$. This also holds.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1].\nTherefore, we conclude:\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=2$, since $2^{2-1}+3^{2-1}=5$ which matches $a_2=5$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1)) :\n  a 2 = 2^(2-1) + 3^(2-1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1)) :\n  a 2 = 2^(2-1) + 3^(2-1) := by\n  simp only [Nat.sub_self, pow_zero, Nat.sub_one, Nat.succ_sub_succ_eq_sub]\n  rw [tc_1.right.left]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components: the sequence definition with initial values and recurrence relation (tc_1), the base case assumption for n=1 (l1), and the goal statement for n=2. The mathematical relationships and logical structure are preserved. The natural language provides the explicit calculation (2^1 + 3^1 = 5) while Lean sets it up as a theorem to prove, but both express the same mathematical claim."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Now, for the inductive step, we assume the statement is true for all integers $j$ such that $1 \\leq j \\leq k$ for some integer $k \\geq 2$. So, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \\leq j \\leq k$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=2$ [l2].\nDefinition:\n\u2022 For a fixed integer $k \\geq 2$, we assume as the inductive hypothesis that $a_j = 2^{j-1}+3^{j-1}$ for all integers $j$ such that $1 \\leq j \\leq k$ [def_1].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The natural language specifies 'sequence of integers' and 'all integers n \u2265 3', while Lean uses natural numbers (\u2115). However, since we're dealing with positive indices starting from 1, this is functionally equivalent and captures the same mathematical meaning.", "The Lean formalization exactly captures the mathematical statement with explicit exponentiation notation.", "The Lean formalization exactly captures the mathematical statement with explicit exponentiation notation.", "The natural language refers to 'integer k \u2265 2' and 'all integers j', while Lean uses natural numbers (\u2115). The logical structure is preserved, but there's a type difference that doesn't affect the mathematical meaning since we're working with positive values."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The natural language specifies 'sequence of integers' and 'all integers n \u2265 3', while Lean uses natural numbers (\u2115). However, since we're dealing with positive indices starting from 1, this is functionally equivalent and captures the same mathematical meaning.\", 'The Lean formalization exactly captures the mathematical statement with explicit exponentiation notation.', 'The Lean formalization exactly captures the mathematical statement with explicit exponentiation notation.', \"The natural language refers to 'integer k \u2265 2' and 'all integers j', while Lean uses natural numbers (\u2115). The logical structure is preserved, but there's a type difference that doesn't affect the mathematical meaning since we're working with positive values.\"]"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "From the recurrence relation, we have $a_{k+1}=5a_k-6a_{k-1}$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume as the inductive hypothesis that $a_j = 2^{j-1}+3^{j-1}$ for all integers $j$ such that $1 \\leq j \\leq k$ [def_1].\nTherefore, we conclude:\n\u2022 $a_{k+1}=5a_k-6a_{k-1}$ [l3].", "dependencies": ["tc_1", "l1", "l2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1))) :\n  a (k + 1) = 5 * a k - 6 * a (k - 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1))) :\n  a (k + 1) = 5 * a k - 6 * a (k - 1) := by\n  have hk : k + 1 \u2265 3 := by\n    cases k with\n    | zero => simp at *; linarith\n    | succ k =>\n      cases k with\n      | zero => simp at *; linarith\n      | succ k => simp_arith\n  exact tc_1.2.2 (k + 1) hk", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 25, "endLine": 15, "endColumn": 33, "data": "linarith failed to find a contradiction\ncase zero\na : \u2115 \u2192 \u2124\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 (n : \u2115), 3 \u2264 n \u2192 a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2\nl2 : a 2 = 5\ndef_1 : True\n\u22a2 False failed"}, {"line": 18, "column": 27, "endLine": 18, "endColumn": 35, "data": "linarith failed to find a contradiction\ncase succ.zero\na : \u2115 \u2192 \u2124\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 (n : \u2115), 3 \u2264 n \u2192 a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2\nl2 : a 2 = 5\ndef_1 : True\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition, initial conditions, and recurrence relation are correctly captured. The type signature (\u2115 \u2192 \u2124) properly represents a sequence of integers indexed by natural numbers.", "The base case for n=1 is exactly translated, with the formula a\u2081 = 2^(1-1) + 3^(1-1) correctly represented.", "The base case for n=2 is exactly translated, with the formula a\u2082 = 2^(2-1) + 3^(2-1) correctly represented.", "The inductive hypothesis is semantically correct but has a minor structural difference. The natural language mentions 'integers j' while Lean uses 'j : \u2115'. However, in the context of sequence indices, this is a reasonable translation since sequence indices are typically natural numbers, and the logical meaning is preserved.", "The conclusion is perfectly captured, showing that a_{k+1} follows the recurrence relation. The multiplication is explicitly denoted with '*' which is standard in Lean.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.8 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (hk : k \u2265 2)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2192 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)) :\n  \u00ac (a (k + 1) = 5 * a k - 6 * a (k - 1)) := by\n  intro h\n  have hk3 : k + 1 \u2265 3 := by omega\n  have hrec := tc_1.right.right (k + 1) hk3\n  rw [hrec] at h\n  have hk1 : k \u2265 1 := by omega\n  have hk2 : k - 1 \u2265 1 := by omega\n  have h1 := def_1 k (by omega) (by omega)\n  have h2 := def_1 (k - 1) (by omega) (by omega)\n  rw [h1, h2] at h\n  simp at h\n  have hcalc : 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2)) = \n      2 ^ k + 3 ^ k := by\n    rw [\u2190 pow_succ' 2 (k - 1), \u2190 pow_succ' 3 (k - 1)]\n    ring_nf\n  rw [hcalc] at h\n  have h3 := def_1 (k + 1) (by omega) (by omega)\n  rw [h3] at hrec\n  contradiction"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By the inductive hypothesis, we can substitute the formulas for $a_k$ and $a_{k-1}$. We have $a_k=2^{k-1}+3^{k-1}$ and $a_{k-1}=2^{k-2}+3^{k-2}$. So, $a_{k+1}=5(2^{k-1}+3^{k-1})-6(2^{k-2}+3^{k-2})$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume as the inductive hypothesis that $a_j = 2^{j-1}+3^{j-1}$ for all integers $j$ such that $1 \\leq j \\leq k$ [def_1]$.\n\u2022 $a_{k+1}=5a_k-6a_{k-1}$ [l3].\nTherefore, we conclude:\n\u2022 $a_{k+1}=5(2^{k-1}+3^{k-1})-6(2^{k-2}+3^{k-2})$ [l4].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1)) :\n  a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1)) :\n  a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)) := by\n  have hk : k \u2265 2 := by\n    by_contra h\n    push_neg at h\n    cases k with\n    | zero => simp at h; exact (def_1 (by linarith) 1 (by omega) (by omega)).symm.trans l1\n    | succ k' =>\n      cases k' with\n      | zero => simp at h; exact (def_1 (by linarith) 2 (by omega) (by omega)).symm.trans l2\n      | succ k'' => simp at h\n  have hk1 : 1 \u2264 k \u2227 k \u2264 k := \u27e8Nat.one_le_of_lt hk, le_refl k\u27e9\n  have hk2 : 1 \u2264 (k - 1) \u2227 (k - 1) \u2264 k := \u27e8Nat.le_sub_one_of_lt hk, Nat.sub_le k 1\u27e9\n  rw [l3, def_1 hk k hk1, def_1 hk (k - 1) hk2]\n  simp [Nat.sub_sub]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 32, "endLine": 18, "endColumn": 75, "data": "function expected at\n  def_1 ?m.7084 1 ?m.7088\nterm has type\n  a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)"}, {"line": 18, "column": 42, "endLine": 18, "endColumn": 50, "data": "linarith failed to find a contradiction\ncase a\na : \u2115 \u2192 \u2124\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : 0 \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 0 \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl3 : a (0 + 1) = 5 * a 0 - 6 * a (0 - 1)\nh : True\na\u271d : 2 > 0\n\u22a2 False failed"}, {"line": 18, "column": 58, "endLine": 18, "endColumn": 63, "data": "omega could not prove the goal:\nNo usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants."}, {"line": 21, "column": 34, "endLine": 21, "endColumn": 77, "data": "function expected at\n  def_1 ?m.8775 2 ?m.8779\nterm has type\n  a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)"}, {"line": 21, "column": 44, "endLine": 21, "endColumn": 52, "data": "linarith failed to find a contradiction\ncase a\na : \u2115 \u2192 \u2124\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : 0 + 1 \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 0 + 1 \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl3 : a (0 + 1 + 1) = 5 * a (0 + 1) - 6 * a (0 + 1 - 1)\nh : True\na\u271d : 2 > 0 + 1\n\u22a2 False failed"}, {"line": 21, "column": 60, "endLine": 21, "endColumn": 65, "data": "omega could not prove the goal:\nNo usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants."}, {"line": 22, "column": 20, "endLine": 22, "endColumn": 29, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition tc_1 correctly captures all three components: initial values a\u2081=2, a\u2082=5, and the recurrence relation for n\u22653.", "Base cases l1 and l2 properly formalize the formula verification for n=1 and n=2 using exact exponent expressions.", "The inductive hypothesis def_1 correctly formalizes the assumption structure with the constraint k\u22652 and the range condition 1\u2264j\u2264k.", "The recurrence application l3 properly represents the specific application of the general recurrence to the (k+1) case.", "The conclusion perfectly matches the natural language target equation, correctly substituting the inductive hypothesis into the recurrence relation.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (h_k : k \u2265 2)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1)) :\n  \u00ac (a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2))) := by\n  intro h\n  have h1 : \u2200 n \u2264 k + 1, a n = 2^(n - 1) + 3^(n - 1) := by\n    intro n hn\n    cases n with\n    | zero => simp\n    | succ n =>\n      cases n with\n      | zero => exact l1\n      | succ n =>\n        cases n with\n        | zero => exact l2\n        | succ n =>\n          have hkn : n + 2 \u2264 k := by omega\n          have hj : 1 \u2264 n + 2 \u2227 n + 2 \u2264 k := \u27e8by omega, hkn\u27e9\n          specialize def_1 (n + 2) hj\n          rw [def_1]\n          rw [tc_1.2.2 (n + 3) (by omega)]\n          simp only [Nat.add_sub_cancel]\n          rw [h1 (n + 1) (by omega), h1 n (by omega)]\n          ring\n  specialize h1 (k + 1) (by omega)\n  rw [h1] at h\n  simp at h\n  ring_nf at h\n  have h2 : 2^k = 2^(k - 1) * 2 := by\n    rw [\u2190 pow_succ, Nat.sub_add_cancel h_k]\n  have h3 : 3^k = 3^(k - 1) * 3 := by\n    rw [\u2190 pow_succ, Nat.sub_add_cancel h_k]\n  rw [h2, h3] at h\n  ring_nf at h\n  simp at h"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "We have $a_{k+1}=10 \\cdot 2^{k-2} + 15 \\cdot 3^{k-2} - 6 \\cdot 2^{k-2} - 6 \\cdot 3^{k-2}$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1] and $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \\leq j \\leq k$ [def_1].\n\u2022 $a_{k+1}=5(2^{k-1}+3^{k-1})-6(2^{k-2}+3^{k-2})$ [l4].\nTherefore, we conclude:\n\u2022 $a_{k+1}=10 \\cdot 2^{k-2} + 15 \\cdot 3^{k-2} - 6 \\cdot 2^{k-2} - 6 \\cdot 3^{k-2}$ [l5].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2))) :\n  a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2))) :\n  a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2) := by\n  rw [l4]\n  have h1 : 2^(k - 1) = 2 * 2^(k - 2) := by\n    rw [\u2190 pow_succ', Nat.sub_add_cancel (by omega)]\n  have h2 : 3^(k - 1) = 3 * 3^(k - 2) := by\n    rw [\u2190 pow_succ', Nat.sub_add_cancel (by omega)]\n  rw [h1, h2]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 16, "column": 21, "endLine": 16, "endColumn": 50, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?m.9063 - ?m.9064 + ?m.9064\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\n\u22a2 2 ^ (k - 1) = 2 ^ (k - 2).succ"}, {"line": 16, "column": 44, "endLine": 16, "endColumn": 49, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  0 \u2264 d \u2264 1\n  c \u2265 0\n  b \u2265 0\n  b - c \u2265 1\nwhere\n b := \u2191?m.9064\n c := \u2191?m.9063\n d := \u2191k"}, {"line": 18, "column": 10, "endLine": 18, "endColumn": 19, "data": "ambiguous, possible interpretations \n  _root_.pow_succ' : \u2200 (a : ?m.10669) (n : \u2115), a ^ (n + 1) = a * a ^ n\n  \n  Nat.pow_succ' : ?m.10826 ^ succ ?m.10827 = ?m.10826 * ?m.10826 ^ ?m.10827"}, {"line": 18, "column": 8, "endLine": 18, "endColumn": 19, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.11437\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\nh1 : 2 ^ (k - 1) = 2 * 2 ^ (k - 2)\n\u22a2 3 ^ (k - 1) = 3 * 3 ^ (k - 2)"}, {"line": 19, "column": 6, "endLine": 19, "endColumn": 8, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2 ^ (k - 1)\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\nh1 : 2 ^ (k - 1) = 2 * 2 ^ (k - 2)\nh2 : 3 ^ (k - 1) = 3 * 3 ^ (k - 2)\n\u22a2 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2)) =\n    10 * 2 ^ (k - 2) + 15 * 3 ^ (k - 2) - 6 * 2 ^ (k - 2) - 6 * 3 ^ (k - 2)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition with initial conditions and recurrence relation is correctly formalized", "Base cases for n=1 and n=2 are accurately represented with the explicit formula", "The inductive hypothesis with the constraint k\u22652 and range 1\u2264j\u2264k is properly captured", "The application of the recurrence relation to get a_{k+1} is correctly formalized", "The algebraic expansion showing the distributive property is accurately represented", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l5\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2))) :\n  \u00ac (a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2)) := by\n  intro h\n  have h1 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)) := l4\n  rw [h] at h1\n  have h2 : 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)) = \n      4 * 2^(k - 2) + 9 * 3^(k - 2) := by\n    rw [sub_eq_add_neg, sub_eq_add_neg]\n    simp [pow_succ, sub_eq_add_neg]\n    ring\n  rw [h2] at h1\n  have h3 : 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2) = \n      4 * 2^(k - 2) + 9 * 3^(k - 2) := by ring\n  rw [h3] at h1\n  contradiction"}, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Combining like terms gives $(10-6) \\cdot 2^{k-2} + (15-6) \\cdot 3^{k-2} = 4 \\cdot 2^{k-2} + 9 \\cdot 3^{k-2}$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1] and $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \\leq j \\leq k$ [def_1].\n\u2022 $a_{k+1}=10 \\cdot 2^{k-2} + 15 \\cdot 3^{k-2} - 6 \\cdot 2^{k-2} - 6 \\cdot 3^{k-2}$ [l5].\nTherefore, we conclude:\n\u2022 $a_{k+1} = 4 \\cdot 2^{k-2} + 9 \\cdot 3^{k-2}$ [l6].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2)) :\n  a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2)) :\n  a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2) := by\n  rw [l5]\n  ring", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition tc_1 correctly captures the recurrence relation and initial conditions with proper mathematical notation in Lean.", "Base cases l1 and l2 are accurately formalized with the correct exponential expressions.", "The inductive hypothesis def_1 properly formalizes the assumption for all j in the range [1,k] with the constraint k\u22652.", "Premise l5 exactly matches the algebraic expression from the natural language using appropriate Lean arithmetic operators.", "The conclusion l6 correctly represents the final simplified form. The additional premises l3 and l4 in Lean are intermediate logical steps that enhance the proof structure without contradicting the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "We can simplify this further: $4 \\cdot 2^{k-2} = 2^2 \\cdot 2^{k-2} = 2^k$. And $9 \\cdot 3^{k-2} = 3^2 \\cdot 3^{k-2} = 3^k$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1] and $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \\leq j \\leq k$ [def_1].\n\u2022 $a_{k+1} = 4 \\cdot 2^{k-2} + 9 \\cdot 3^{k-2}$ [l6].\nTherefore, we conclude:\n\u2022 $4 \\cdot 2^{k-2} = 2^k$ and $9 \\cdot 3^{k-2} = 3^k$ [l7].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2)) :\n  4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2)) :\n  4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k := by\n  constructor\n  \u00b7 rw [\u2190 pow_add, Nat.sub_add_cancel (by omega)]\n    simp [pow_succ, mul_assoc]\n  \u00b7 rw [\u2190 pow_add, Nat.sub_add_cancel (by omega)]\n    simp [pow_succ, mul_assoc]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 8, "endLine": 18, "endColumn": 17, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a ^ ?m * ?a ^ ?n\ncase left\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl3 : a (k + 1) = 5 * a k - 6 * a (k - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\nl5 : a (k + 1) = 10 * 2 ^ (k - 2) + 15 * 3 ^ (k - 2) - 6 * 2 ^ (k - 2) - 6 * 3 ^ (k - 2)\nl6 : a (k + 1) = 4 * 2 ^ (k - 2) + 9 * 3 ^ (k - 2)\n\u22a2 4 * 2 ^ (k - 2) = 2 ^ k"}, {"line": 20, "column": 8, "endLine": 20, "endColumn": 17, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a ^ ?m * ?a ^ ?n\ncase right\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl3 : a (k + 1) = 5 * a k - 6 * a (k - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\nl5 : a (k + 1) = 10 * 2 ^ (k - 2) + 15 * 3 ^ (k - 2) - 6 * 2 ^ (k - 2) - 6 * 3 ^ (k - 2)\nl6 : a (k + 1) = 4 * 2 ^ (k - 2) + 9 * 3 ^ (k - 2)\n\u22a2 9 * 3 ^ (k - 2) = 3 ^ k"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all components from the natural language: the sequence definition with initial conditions and recurrence relation, the base cases for the proposed formula, the inductive hypothesis with proper constraints, the key equation for a_{k+1}, and the conclusion to be proven. The additional intermediate steps (l3, l4, l5) showing the algebraic derivation are logically consistent enhancements that don't contradict the natural language statement.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l7\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2)) :\n  \u00ac (4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k) := by\n  intro h\n  have h1 := h.1\n  have h2 := h.2\n  cases' k with k\n  \u00b7 simp at h1\n  \u00b7 cases' k with k\n    \u00b7 simp at h1 h2\n    \u00b7 have h1' : 4 * 2^k = 2^(k + 2) := by\n        rw [\u2190h1]\n        simp [Nat.sub_succ, Nat.sub_zero, pow_succ]\n      have h2' : 9 * 3^k = 3^(k + 2) := by\n        rw [\u2190h2]\n        simp [Nat.sub_succ, Nat.sub_zero, pow_succ]\n      simp [pow_succ, mul_assoc] at h1' h2'\n      linarith"}, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Thus, $a_{k+1}=2^k+3^k$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for $n=1$ [l1] and $n=2$ [l2].\n\u2022 For a fixed integer $k \\geq 2$, we assume $a_j = 2^{j-1}+3^{j-1}$ for $1 \\leq j \\leq k$ [def_1].\n\u2022 $a_{k+1} = 4 \\cdot 2^{k-2} + 9 \\cdot 3^{k-2}$ [l6].\n\u2022 $4 \\cdot 2^{k-2} = 2^k$ and $9 \\cdot 3^{k-2} = 3^k$ [l7].\nTherefore, we conclude:\n\u2022 $a_{k+1}=2^k+3^k$ [l8].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2))\n  (l7 : 4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k) :\n  a (k + 1) = 2^k + 3^k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2))\n  (l7 : 4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k) :\n  a (k + 1) = 2^k + 3^k := by\n  rw [l6]\n  have h1 := l7.left\n  have h2 := l7.right\n  rw [h1, h2]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 21, "column": 6, "endLine": 21, "endColumn": 8, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  4 * 2 ^ (k - 2)\na : \u2115 \u2192 \u2124\nk : \u2115\ntc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 \u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)\nl1 : a 1 = 2 ^ (1 - 1) + 3 ^ (1 - 1)\nl2 : a 2 = 2 ^ (2 - 1) + 3 ^ (2 - 1)\ndef_1 : k \u2265 2 \u2192 \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (j - 1) + 3 ^ (j - 1)\nl3 : a (k + 1) = 5 * a k - 6 * a (k - 1)\nl4 : a (k + 1) = 5 * (2 ^ (k - 1) + 3 ^ (k - 1)) - 6 * (2 ^ (k - 2) + 3 ^ (k - 2))\nl5 : a (k + 1) = 10 * 2 ^ (k - 2) + 15 * 3 ^ (k - 2) - 6 * 2 ^ (k - 2) - 6 * 3 ^ (k - 2)\nl6 : a (k + 1) = 4 * 2 ^ (k - 2) + 9 * 3 ^ (k - 2)\nl7 : 4 * 2 ^ (k - 2) = 2 ^ k \u2227 9 * 3 ^ (k - 2) = 3 ^ k\nh1 : 4 * 2 ^ (k - 2) = 2 ^ k\nh2 : 9 * 3 ^ (k - 2) = 3 ^ k\n\u22a2 4 * 2 ^ (k - 2) + 9 * 3 ^ (k - 2) = 2 ^ k + 3 ^ k"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition with initial conditions and recurrence relation is correctly captured", "Base cases for n=1 and n=2 are properly formalized with the explicit formula", "The inductive hypothesis for fixed k\u22652 is accurately represented with proper quantification", "The key algebraic result a_{k+1} = 4\u00b72^{k-2} + 9\u00b73^{k-2} is correctly stated", "The algebraic identities for simplifying powers are properly captured as a conjunction", "The final conclusion a_{k+1} = 2^k + 3^k matches the natural language exactly", "The additional intermediate steps (l3, l4, l5) provide helpful algebraic details that are logically consistent with the proof flow, enhancing rather than contradicting the natural language description", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l8\n  (a : \u2115 \u2192 \u2124)\n  (k : \u2115)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (def_1 : k \u2265 2 \u2192 (\u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j-1) + 3^(j-1)))\n  (l3 : a (k + 1) = 5 * a k - 6 * a (k - 1))\n  (l4 : a (k + 1) = 5 * (2^(k - 1) + 3^(k - 1)) - 6 * (2^(k - 2) + 3^(k - 2)))\n  (l5 : a (k + 1) = 10 * 2^(k - 2) + 15 * 3^(k - 2) - 6 * 2^(k - 2) - 6 * 3^(k - 2))\n  (l6 : a (k + 1) = 4 * 2^(k - 2) + 9 * 3^(k - 2))\n  (l7 : 4 * 2^(k - 2) = 2^k \u2227 9 * 3^(k - 2) = 3^k) :\n  \u00ac (a (k + 1) = 2^k + 3^k) := by\n  intro h\n  rw [\u2190 l6] at h\n  rcases l7 with \u27e8hl, hr\u27e9\n  rw [hl, hr] at h\n  simp at h"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By the principle of strong mathematical induction, the statement is true for all integers $n \\geq 1$.", "statement": "We assume:\n\u2022 Let $(a_n)$ be a sequence of integers with $a_1=2$, $a_2=5$ and $a_{n} = 5a_{n-1} - 6a_{n-2}$ for all integers $n \\geq 3$ [tc_1].\n\u2022 The formula $a_n = 2^{n-1}+3^{n-1}$ holds for the base cases $n=1$ [l1] and $n=2$ [l2].\n\u2022 For any integer $k \\geq 2$, assuming that $a_j = 2^{j-1}+3^{j-1}$ for all $j$ with $1 \\leq j \\leq k$ [def_1] implies that $a_{k+1}=2^k+3^k$ [l8].\nTherefore, we conclude:\n\u2022 For all integers $n \\geq 1$, $a_n = 2^{n-1}+3^{n-1}$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (l8 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j - 1) + 3^(j - 1)) \u2192 a (k + 1) = 2^k + 3^k) :\n  \u2200 n \u2265 1, a n = 2^(n-1) + 3^(n-1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u2124)\n  (tc_1 : a 1 = 2 \u2227 a 2 = 5 \u2227 (\u2200 n \u2265 3, a n = 5 * a (n - 1) - 6 * a (n - 2)))\n  (l1 : a 1 = 2^(1-1) + 3^(1-1))\n  (l2 : a 2 = 2^(2-1) + 3^(2-1))\n  (l8 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2^(j - 1) + 3^(j - 1)) \u2192 a (k + 1) = 2^k + 3^k) :\n  \u2200 n \u2265 1, a n = 2^(n-1) + 3^(n-1) := by\n  intro n hn\n  induction n using Nat.strong_induction_on with\n  | h n ih =>\n    cases n with\n    | zero => contradiction\n    | succ n =>\n      cases n with\n      | zero => exact l1\n      | succ n =>\n        cases n with\n        | zero => exact l2\n        | succ n =>\n          have hk : n + 2 \u2265 2 := by simp\n          have h_ind : \u2200 j, 1 \u2264 j \u2227 j \u2264 n + 2 \u2192 a j = 2^(j - 1) + 3^(j - 1) := by\n            intro j \u27e8hj1, hj2\u27e9\n            apply ih j\n            \u00b7 omega\n            \u00b7 exact hj1\n          exact l8 (n + 2) hk h_ind\ntermination_by _ n _ => n", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 4}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition correctly captures the integer sequence with initial conditions a\u2081=2, a\u2082=5 and the recurrence relation. Using \u2115 for indices is appropriate.", "The base case for n=1 is correctly formalized with the exact formula a\u2081 = 2^(1-1) + 3^(1-1).", "The base case for n=2 is correctly formalized with the exact formula a\u2082 = 2^(2-1) + 3^(2-1).", "The inductive step is properly formalized, capturing the logical structure: for k\u22652, if the formula holds for all j in [1,k], then it holds for k+1.", "The final conclusion correctly states the universal quantification over all n\u22651 with the exact formula."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

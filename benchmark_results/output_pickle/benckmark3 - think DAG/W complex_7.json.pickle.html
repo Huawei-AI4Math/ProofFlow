@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number. If $e^z = 1-i$ and $-\pi < \operatorname{Im}(z) \le \pi$, then $z = \frac{1}{2}\ln(2) - i\frac{\pi}{4}$.
+
+Proof: From the condition $e^z = 1-i$, we know that $z$ is a value of the complex logarithm of $1-i$. The real part of $z$ is $\operatorname{Re}(z) = \ln|1-i|$, which we calculate as $\ln(\sqrt{1^2+(-1)^2}) = \frac{1}{2}\ln(2)$. The imaginary part of $z$ is of the form $\operatorname{Im}(z) = \operatorname{Arg}(1-i) + 2k\pi$, and since $\operatorname{Arg}(1-i) = -\pi/4$, we have $\operatorname{Im}(z) = -\frac{\pi}{4} + 2k\pi$ for some integer $k$. Using the condition $-\pi < \operatorname{Im}(z) \le \pi$, we solve the inequality $-\pi < -\frac{\pi}{4} + 2k\pi \le \pi$ for an integer $k$, which yields $k=0$. With the real part and the value of $k$, we can determine $z = \frac{1}{2}\ln(2) + i(-\frac{\pi}{4} + 2(0)\pi) = \frac{1}{2}\ln(2) - i\frac{\pi}{4}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let z be a complex number.", "statement": "Premise:\n\u2022 z is a complex number [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'variable (z : \u2102)' perfectly captures that z is a complex number, where \u2102 represents the complex number type in Lean", "Both the natural language and Lean code contain no conclusions - the natural language explicitly states no conclusions are derived, and the Lean code contains only the variable declaration with no propositions"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If e^z = 1-i", "statement": "Premise:\n\u2022 z is a complex number [tc_1]\n\u2022 e^z = 1 - i [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) \n  (h1 : Complex.exp z = 1 - Complex.I)\n  (h2 : -Real.pi < z.im \u2227 z.im \u2264 Real.pi) :\n  z = (1/2) * Real.log 2 - Complex.I * (Real.pi/4) := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration `z : \u2102` perfectly captures that z is a complex number", "The Lean condition `Complex.exp z = 1 - Complex.I` perfectly captures e^z = 1 - i, where Complex.I represents the imaginary unit i", "The natural language states no conclusions are presented in this premise statement. The Lean formalization adds an extra condition h2 about the imaginary part bounds and provides a specific conclusion about z's value. Since the instructions state that extra conditions and details are fine as long as they don't contradict the natural language, and the natural language explicitly says no conclusions are presented (which is consistent with this being a premise), this is acceptable"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "and -\u03c0 < Im(z) \u2264 \u03c0", "statement": "Premise:\n\u2022 z is a complex number [tc_1]\n\u2022 -\u03c0 < Im(z) \u2264 \u03c0 [tc_3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)\n(tc_3 : -Real.pi < z.im \u2227 z.im \u2264 Real.pi)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'z : \u2102' directly and correctly declares z as a complex number, matching the natural language condition.", "The Lean constraint '-Real.pi < z.im \u2227 z.im \u2264 Real.pi' perfectly captures the mathematical inequality -\u03c0 < Im(z) \u2264 \u03c0, with z.im representing the imaginary part and Real.pi representing \u03c0."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the condition e^z = 1-i, we know that z is a value of the complex logarithm of 1-i.", "statement": "We assume:\n\u2022 z is a complex number [tc_1]\n\u2022 e^z = 1 - i [tc_2]\nTherefore, we conclude:\n\u2022 z is a value of the complex logarithm of (1 - i) [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h : Complex.exp z = 1 - Complex.I) :\n  \u2203 w : \u2102, Complex.exp w = 1 - Complex.I \u2227 w = z := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h : Complex.exp z = 1 - Complex.I) :\n  \u2203 w : \u2102, Complex.exp w = 1 - Complex.I \u2227 w = z := by\n  have h_main : \u2203 (w : \u2102), Complex.exp w = 1 - Complex.I \u2227 w = z := by\n    refine' \u27e8z, _\u27e9\n    constructor\n    \u00b7 -- Prove that exp(z) = 1 - i\n      exact h\n    \u00b7 -- Prove that w = z\n      rfl\n  -- The main goal follows directly from h_main\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The premise about z being complex with e^z = 1 - i is properly represented, and the conclusion that z is a value of the complex logarithm of (1 - i) is accurately formalized as the existence of a complex number w (equal to z) such that e^w = 1 - i. The mathematical logic is preserved completely."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "The real part of z is Re(z) = ln|1-i|, which we calculate as ln(sqrt(1^2+(-1)^2)) = (1/2)ln(2).", "statement": "We assume:\n\u2022 z is a value of the complex logarithm of (1 - i) [l1]\nTherefore, we conclude:\n\u2022 Re(z) = (1/2)ln(2) [l2].", "dependencies": ["l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (h : Complex.exp z = 1 - Complex.I) :\n  Complex.re z = (1/2) * Real.log 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (h : Complex.exp z = 1 - Complex.I) :\n  Complex.re z = (1/2) * Real.log 2 := by\n  have h\u2081 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n    have h\u2082 : Complex.abs (Complex.exp z) = Complex.abs (1 - Complex.I) := by rw [h]\n    have h\u2083 : Complex.abs (Complex.exp z) = Real.exp (Complex.re z) := by\n      simp [Complex.abs_exp]\n    have h\u2084 : Complex.abs (1 - Complex.I) = Real.sqrt 2 := by\n      simp [Complex.abs, Complex.normSq, Real.sqrt_eq_iff_sq_eq, pow_two]\n      <;> ring_nf\n      <;> norm_num\n      <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n      <;> ring_nf\n      <;> norm_num\n    rw [h\u2083] at h\u2082\n    rw [h\u2084] at h\u2082\n    exact h\u2082\n  \n  have h\u2082 : Complex.re z = (1/2) * Real.log 2 := by\n    have h\u2083 : Real.exp (Complex.re z) = Real.sqrt 2 := h\u2081\n    have h\u2084 : Real.log (Real.exp (Complex.re z)) = Real.log (Real.sqrt 2) := by rw [h\u2083]\n    have h\u2085 : Real.log (Real.exp (Complex.re z)) = Complex.re z := by\n      rw [Real.log_exp]\n    have h\u2086 : Real.log (Real.sqrt 2) = (1 / 2 : \u211d) * Real.log 2 := by\n      have h\u2087 : Real.log (Real.sqrt 2) = Real.log (2 ^ (1 / 2 : \u211d)) := by\n        norm_num [Real.sqrt_eq_rpow]\n      rw [h\u2087]\n      have h\u2088 : Real.log (2 ^ (1 / 2 : \u211d)) = (1 / 2 : \u211d) * Real.log 2 := by\n        rw [Real.log_rpow (by norm_num : (2 : \u211d) > 0)]\n        <;> ring_nf\n      rw [h\u2088]\n    rw [h\u2085] at h\u2084\n    rw [h\u2086] at h\u2084\n    linarith\n  \n  apply h\u2082", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The premise is correctly formalized - stating that z is a complex logarithm of (1-i) is mathematically equivalent to the hypothesis that exp(z) = 1-i", "The conclusion is accurately translated - Re(z) = (1/2)ln(2) maps directly to Complex.re z = (1/2) * Real.log 2 with appropriate Lean notation", "The logical structure properly captures the implication from assumption to conclusion as a theorem with hypothesis leading to the stated result"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The imaginary part of z is of the form Im(z) = Arg(1-i) + 2k\u03c0, and since Arg(1-i) = -\u03c0/4, we have Im(z) = -\u03c0/4 + 2k\u03c0 for some integer k.", "statement": "We assume:\n\u2022 z is a value of the complex logarithm of (1 - i) [l1]\nTherefore, we conclude:\n\u2022 Im(z) = -\u03c0/4 + 2k\u03c0 for some integer k [l3].", "dependencies": ["l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h : Complex.exp z = 1 - Complex.I) :\n  \u2203 k : \u2124, Complex.im z = -Real.pi / 4 + 2 * k * Real.pi := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) \n  (h : Complex.exp z = 1 - Complex.I) :\n  \u2203 k : \u2124, Complex.im z = -Real.pi / 4 + 2 * k * Real.pi := by\n  have h_cos : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := by\n    have h\u2081 : Complex.exp z = 1 - Complex.I := h\n    have h\u2082 : Complex.re (Complex.exp z) = 1 := by\n      rw [h\u2081]\n      simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n    have h\u2083 : Complex.im (Complex.exp z) = -1 := by\n      rw [h\u2081]\n      simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n    have h\u2084 : Complex.re (Complex.exp z) = Real.exp (Complex.re z) * Real.cos (Complex.im z) := by\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.exp_add, Real.exp_sub]\n      <;> ring_nf\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n      <;> linarith\n    have h\u2085 : Complex.im (Complex.exp z) = Real.exp (Complex.re z) * Real.sin (Complex.im z) := by\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.exp_add, Real.exp_sub]\n      <;> ring_nf\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n      <;> linarith\n    have h\u2086 : Real.exp (Complex.re z) * Real.cos (Complex.im z) = 1 := by\n      linarith\n    have h\u2087 : Real.exp (Complex.re z) * Real.sin (Complex.im z) = -1 := by\n      linarith\n    have h\u2088 : Real.exp (Complex.re z) > 0 := Real.exp_pos _\n    have h\u2089 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n      have h\u2089\u2081 : (Real.exp (Complex.re z)) ^ 2 = 2 := by\n        have h\u2089\u2082 : (Real.exp (Complex.re z) * Real.cos (Complex.im z)) ^ 2 + (Real.exp (Complex.re z) * Real.sin (Complex.im z)) ^ 2 = 1 ^ 2 + (-1 : \u211d) ^ 2 := by\n          rw [h\u2086, h\u2087]\n          <;> norm_num\n        have h\u2089\u2083 : (Real.exp (Complex.re z) * Real.cos (Complex.im z)) ^ 2 + (Real.exp (Complex.re z) * Real.sin (Complex.im z)) ^ 2 = (Real.exp (Complex.re z)) ^ 2 * (Real.cos (Complex.im z) ^ 2 + Real.sin (Complex.im z) ^ 2) := by\n          ring_nf\n          <;> field_simp [Real.exp_ne_zero]\n          <;> ring_nf\n        have h\u2089\u2084 : Real.cos (Complex.im z) ^ 2 + Real.sin (Complex.im z) ^ 2 = 1 := by\n          rw [Real.cos_sq_add_sin_sq]\n        rw [h\u2089\u2083, h\u2089\u2084] at h\u2089\u2082\n        norm_num at h\u2089\u2082 \u22a2\n        <;> nlinarith\n      have h\u2089\u2085 : Real.exp (Complex.re z) > 0 := Real.exp_pos _\n      have h\u2089\u2086 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n        nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      exact h\u2089\u2086\n    have h\u2081\u2080 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := by\n      have h\u2081\u2080\u2081 : Real.exp (Complex.re z) * Real.cos (Complex.im z) = 1 := h\u2086\n      rw [h\u2089] at h\u2081\u2080\u2081\n      have h\u2081\u2080\u2082 : Real.sqrt 2 * Real.cos (Complex.im z) = 1 := by linarith\n      have h\u2081\u2080\u2083 : Real.cos (Complex.im z) = 1 / Real.sqrt 2 := by\n        field_simp [Real.sqrt_eq_iff_sq_eq] at h\u2081\u2080\u2082 \u22a2 <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      have h\u2081\u2080\u2084 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := by\n        rw [h\u2081\u2080\u2083]\n        field_simp [Real.sqrt_eq_iff_sq_eq] <;> ring_nf <;> norm_num <;>\n          nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      exact h\u2081\u2080\u2084\n    exact h\u2081\u2080\n  \n  have h_sin : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := by\n    have h\u2081 : Complex.exp z = 1 - Complex.I := h\n    have h\u2082 : Complex.re (Complex.exp z) = 1 := by\n      rw [h\u2081]\n      simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n    have h\u2083 : Complex.im (Complex.exp z) = -1 := by\n      rw [h\u2081]\n      simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n    have h\u2084 : Complex.re (Complex.exp z) = Real.exp (Complex.re z) * Real.cos (Complex.im z) := by\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.exp_add, Real.exp_sub]\n      <;> ring_nf\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n      <;> linarith\n    have h\u2085 : Complex.im (Complex.exp z) = Real.exp (Complex.re z) * Real.sin (Complex.im z) := by\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.exp_add, Real.exp_sub]\n      <;> ring_nf\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.re, Complex.im]\n      <;> norm_num\n      <;> linarith\n    have h\u2086 : Real.exp (Complex.re z) * Real.cos (Complex.im z) = 1 := by\n      linarith\n    have h\u2087 : Real.exp (Complex.re z) * Real.sin (Complex.im z) = -1 := by\n      linarith\n    have h\u2088 : Real.exp (Complex.re z) > 0 := Real.exp_pos _\n    have h\u2089 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n      have h\u2089\u2081 : (Real.exp (Complex.re z)) ^ 2 = 2 := by\n        have h\u2089\u2082 : (Real.exp (Complex.re z) * Real.cos (Complex.im z)) ^ 2 + (Real.exp (Complex.re z) * Real.sin (Complex.im z)) ^ 2 = 1 ^ 2 + (-1 : \u211d) ^ 2 := by\n          rw [h\u2086, h\u2087]\n          <;> norm_num\n        have h\u2089\u2083 : (Real.exp (Complex.re z) * Real.cos (Complex.im z)) ^ 2 + (Real.exp (Complex.re z) * Real.sin (Complex.im z)) ^ 2 = (Real.exp (Complex.re z)) ^ 2 * (Real.cos (Complex.im z) ^ 2 + Real.sin (Complex.im z) ^ 2) := by\n          ring_nf\n          <;> field_simp [Real.exp_ne_zero]\n          <;> ring_nf\n        have h\u2089\u2084 : Real.cos (Complex.im z) ^ 2 + Real.sin (Complex.im z) ^ 2 = 1 := by\n          rw [Real.cos_sq_add_sin_sq]\n        rw [h\u2089\u2083, h\u2089\u2084] at h\u2089\u2082\n        norm_num at h\u2089\u2082 \u22a2\n        <;> nlinarith\n      have h\u2089\u2085 : Real.exp (Complex.re z) > 0 := Real.exp_pos _\n      have h\u2089\u2086 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n        nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      exact h\u2089\u2086\n    have h\u2081\u2080 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := by\n      have h\u2081\u2080\u2081 : Real.exp (Complex.re z) * Real.sin (Complex.im z) = -1 := h\u2087\n      rw [h\u2089] at h\u2081\u2080\u2081\n      have h\u2081\u2080\u2082 : Real.sqrt 2 * Real.sin (Complex.im z) = -1 := by linarith\n      have h\u2081\u2080\u2083 : Real.sin (Complex.im z) = -1 / Real.sqrt 2 := by\n        field_simp [Real.sqrt_eq_iff_sq_eq] at h\u2081\u2080\u2082 \u22a2 <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      have h\u2081\u2080\u2084 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := by\n        rw [h\u2081\u2080\u2083]\n        field_simp [Real.sqrt_eq_iff_sq_eq] <;> ring_nf <;> norm_num <;>\n          nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      exact h\u2081\u2080\u2084\n    exact h\u2081\u2080\n  \n  have h_cos_add : Real.cos (Complex.im z + Real.pi / 4) = 1 := by\n    have h\u2081 : Real.cos (Complex.im z + Real.pi / 4) = Real.cos (Complex.im z) * Real.cos (Real.pi / 4) - Real.sin (Complex.im z) * Real.sin (Real.pi / 4) := by\n      rw [Real.cos_add]\n    rw [h\u2081]\n    have h\u2082 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n    have h\u2083 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n    rw [h\u2082, h\u2083]\n    have h\u2084 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := h_cos\n    have h\u2085 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := h_sin\n    rw [h\u2084, h\u2085]\n    <;> ring_nf <;> field_simp [Real.sqrt_eq_iff_sq_eq] <;> ring_nf <;> norm_num <;>\n      nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n  \n  have h_exists_k : \u2203 (k : \u2124), Complex.im z + Real.pi / 4 = 2 * k * Real.pi := by\n    have h\u2081 : Real.cos (Complex.im z + Real.pi / 4) = 1 := h_cos_add\n    have h\u2082 : \u2203 (k : \u2124), Complex.im z + Real.pi / 4 = 2 * k * Real.pi := by\n      -- Use the fact that cos(x) = 1 implies x = 2\u03c0k for some integer k\n      have h\u2083 : \u2203 (k : \u2124), Complex.im z + Real.pi / 4 = 2 * k * Real.pi := by\n        -- Use the property of cosine to find the integer k\n        rw [Real.cos_eq_one_iff] at h\u2081\n        obtain \u27e8k, hk\u27e9 := h\u2081\n        use k\n        <;>\n        (try norm_num at hk \u22a2) <;>\n        (try linarith) <;>\n        (try\n          {\n            ring_nf at hk \u22a2\n            <;>\n            (try linarith)\n          }) <;>\n        (try\n          {\n            simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n            ring_nf at *\n            <;>\n            norm_num at *\n            <;>\n            linarith [Real.pi_pos]\n          })\n        <;>\n        (try\n          {\n            field_simp at hk \u22a2 <;>\n            ring_nf at hk \u22a2 <;>\n            norm_cast at hk \u22a2 <;>\n            linarith [Real.pi_pos]\n          })\n        <;>\n        (try\n          {\n            simp_all [Complex.ext_iff, Complex.I_mul_I]\n            <;>\n            ring_nf at *\n            <;>\n            norm_num at *\n            <;>\n            linarith [Real.pi_pos]\n          })\n        <;>\n        (try\n          {\n            norm_num at hk \u22a2 <;>\n            linarith [Real.pi_pos]\n          })\n      exact h\u2083\n    exact h\u2082\n  \n  obtain \u27e8k, hk\u27e9 := h_exists_k\n  have h_main : Complex.im z = -Real.pi / 4 + 2 * (k : \u211d) * Real.pi := by\n    have h\u2081 : Complex.im z + Real.pi / 4 = 2 * (k : \u211d) * Real.pi := by\n      norm_cast at hk \u22a2\n      <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;> ring_nf at *\n      <;> linarith\n    have h\u2082 : Complex.im z = -Real.pi / 4 + 2 * (k : \u211d) * Real.pi := by\n      linarith\n    exact h\u2082\n  \n  refine' \u27e8k, _\u27e9\n  have h\u2082 : (Complex.im z : \u211d) = -Real.pi / 4 + 2 * (k : \u211d) * Real.pi := by\n    exact_mod_cast h_main\n  norm_num at h\u2082 \u22a2\n  <;>\n  (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n  (try ring_nf at *) <;>\n  (try norm_num at *) <;>\n  (try linarith [Real.pi_pos]) <;>\n  (try field_simp at *) <;>\n  (try norm_cast at *) <;>\n  (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n  (try ring_nf at *) <;>\n  (try norm_num at *) <;>\n  (try linarith [Real.pi_pos])\n  <;>\n  (try\n    {\n      simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      field_simp at *\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      norm_cast at *\n      <;>\n      simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      field_simp at *\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })\n  <;>\n  (try\n    {\n      norm_cast at *\n      <;>\n      simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;>\n      ring_nf at *\n      <;>\n      norm_num at *\n      <;>\n      linarith [Real.pi_pos]\n    })", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The premise is correctly formalized. The condition 'z is a value of the complex logarithm of (1-i)' is mathematically equivalent to 'Complex.exp z = 1 - Complex.I'. The use of Complex.I instead of i is just standard Lean notation for the imaginary unit.", "The conclusion is perfectly captured. The existential quantification over integers k and the formula for the imaginary part of z matches exactly, with appropriate Lean syntax for complex numbers, real numbers, and pi."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Using the condition -\u03c0 < Im(z) \u2264 \u03c0, we solve the inequality -\u03c0 < -\u03c0/4 + 2k\u03c0 \u2264 \u03c0 for an integer k, which yields k=0.", "statement": "We assume:\n\u2022 -\u03c0 < Im(z) \u2264 \u03c0 [tc_3]\n\u2022 Im(z) = -\u03c0/4 + 2k\u03c0 for some integer k [l3]\nTherefore, we conclude:\n\u2022 k = 0 [l4].", "dependencies": ["tc_3", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (z : \u2102) (k : \u2124) \n  (h1 : -Real.pi < z.im \u2227 z.im \u2264 Real.pi)\n  (h2 : z.im = -Real.pi / 4 + 2 * k * Real.pi) :\n  k = 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (z : \u2102) (k : \u2124) \n  (h1 : -Real.pi < z.im \u2227 z.im \u2264 Real.pi)\n  (h2 : z.im = -Real.pi / 4 + 2 * k * Real.pi) :\n  k = 0 := by\n  have h3 : (k : \u211d) \u2265 0 := by\n    have h3\u2081 : -Real.pi < (-Real.pi / 4 + 2 * (k : \u211d) * Real.pi) := by\n      linarith [h1.1, h2]\n    have h3\u2082 : -3 * Real.pi / 4 < 2 * (k : \u211d) * Real.pi := by\n      linarith [h3\u2081]\n    have h3\u2083 : -3 / 4 < 2 * (k : \u211d) := by\n      have h3\u2084 : 0 < Real.pi := Real.pi_pos\n      have h3\u2085 : -3 * Real.pi / 4 < 2 * (k : \u211d) * Real.pi := h3\u2082\n      have h3\u2086 : -3 / 4 < 2 * (k : \u211d) := by\n        by_contra h\n        have h3\u2087 : 2 * (k : \u211d) \u2264 -3 / 4 := by linarith\n        have h3\u2088 : 2 * (k : \u211d) * Real.pi \u2264 -3 / 4 * Real.pi := by\n          nlinarith [Real.pi_pos]\n        have h3\u2089 : -3 * Real.pi / 4 < 2 * (k : \u211d) * Real.pi := h3\u2082\n        have h3\u2081\u2080 : -3 * Real.pi / 4 < -3 / 4 * Real.pi := by linarith\n        have h3\u2081\u2081 : -3 * Real.pi / 4 = -3 / 4 * Real.pi := by ring\n        linarith\n      exact h3\u2086\n    have h3\u2084 : (k : \u211d) \u2265 0 := by\n      by_contra h\n      have h3\u2085 : (k : \u211d) < 0 := by linarith\n      have h3\u2086 : (k : \u2124) < 0 := by\n        exact_mod_cast h3\u2085\n      have h3\u2087 : (k : \u211d) \u2264 -1 := by\n        have h3\u2088 : (k : \u2124) \u2264 -1 := by\n          linarith\n        exact_mod_cast h3\u2088\n      have h3\u2088 : 2 * (k : \u211d) \u2264 -2 := by linarith\n      have h3\u2089 : (2 : \u211d) * (k : \u211d) \u2264 -2 := by linarith\n      linarith\n    exact h3\u2084\n  \n  have h4 : (k : \u211d) \u2264 0 := by\n    have h4\u2081 : (-Real.pi / 4 + 2 * (k : \u211d) * Real.pi) \u2264 Real.pi := by\n      linarith [h1.2, h2]\n    have h4\u2082 : 2 * (k : \u211d) * Real.pi \u2264 5 * Real.pi / 4 := by\n      linarith [h4\u2081]\n    have h4\u2083 : 2 * (k : \u211d) \u2264 5 / 4 := by\n      have h4\u2084 : 0 < Real.pi := Real.pi_pos\n      have h4\u2085 : 2 * (k : \u211d) * Real.pi \u2264 5 * Real.pi / 4 := h4\u2082\n      have h4\u2086 : 2 * (k : \u211d) \u2264 5 / 4 := by\n        by_contra h\n        have h4\u2087 : 2 * (k : \u211d) > 5 / 4 := by linarith\n        have h4\u2088 : 2 * (k : \u211d) * Real.pi > 5 / 4 * Real.pi := by\n          nlinarith [Real.pi_pos]\n        have h4\u2089 : 2 * (k : \u211d) * Real.pi \u2264 5 * Real.pi / 4 := h4\u2082\n        have h4\u2081\u2080 : 5 / 4 * Real.pi = 5 * Real.pi / 4 := by ring\n        linarith\n      exact h4\u2086\n    have h4\u2084 : (k : \u211d) \u2264 0 := by\n      by_contra h\n      have h4\u2085 : (k : \u211d) > 0 := by linarith\n      have h4\u2086 : (k : \u2124) > 0 := by\n        exact_mod_cast h4\u2085\n      have h4\u2087 : (k : \u211d) \u2265 1 := by\n        have h4\u2088 : (k : \u2124) \u2265 1 := by\n          linarith\n        exact_mod_cast h4\u2088\n      have h4\u2088 : 2 * (k : \u211d) \u2265 2 := by linarith\n      have h4\u2089 : (2 : \u211d) * (k : \u211d) \u2265 2 := by linarith\n      linarith\n    exact h4\u2084\n  \n  have h5 : k = 0 := by\n    have h5\u2081 : (k : \u211d) = 0 := by\n      linarith\n    have h5\u2082 : k = 0 := by\n      norm_cast at h5\u2081 \u22a2\n      <;> linarith\n    exact h5\u2082\n  \n  exact h5", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The constraint -\u03c0 < Im(z) \u2264 \u03c0 is correctly formalized with proper inequality operators", "The expression Im(z) = -\u03c0/4 + 2k\u03c0 is accurately represented with correct arithmetic operations and k properly typed as integer", "The conclusion k = 0 is identically represented", "The logical structure correctly captures the deductive reasoning from premises to conclusion using Lean's theorem format"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "With the real part and the value of k, we can determine z = (1/2)ln(2) + i(-\u03c0/4 + 2(0)\u03c0) = (1/2)ln(2) - i(\u03c0/4).", "statement": "We assume:\n\u2022 z is a complex number [tc_1]\n\u2022 Re(z) = (1/2)ln(2) [l2]\n\u2022 Im(z) = -\u03c0/4 + 2k\u03c0 for some integer k [l3]\n\u2022 k = 0 [l4]\nTherefore, we conclude:\n\u2022 z = (1/2)ln(2) - i(\u03c0/4) [ts_1].", "dependencies": ["tc_1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem main (z : \u2102) \n  (h1 : Complex.exp z = 1 - Complex.I)\n  (h2 : -Real.pi < Complex.im z \u2227 Complex.im z \u2264 Real.pi) :\n  z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem main (z : \u2102) \n  (h1 : Complex.exp z = 1 - Complex.I)\n  (h2 : -Real.pi < Complex.im z \u2227 Complex.im z \u2264 Real.pi) :\n  z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n  have h3 : Real.exp (Complex.re z) = Real.sqrt 2 := by\n    have h3\u2081 : Complex.abs (Complex.exp z) = Complex.abs (1 - Complex.I) := by rw [h1]\n    have h3\u2082 : Complex.abs (Complex.exp z) = Real.exp (Complex.re z) := by\n      simp [Complex.abs_exp]\n    have h3\u2083 : Complex.abs (1 - Complex.I) = Real.sqrt 2 := by\n      simp [Complex.abs, Complex.normSq, Real.sqrt_eq_iff_sq_eq]\n      <;> ring_nf <;> norm_num <;>\n      rw [Real.sqrt_eq_iff_sq_eq] <;> norm_num\n    rw [h3\u2082] at h3\u2081\n    rw [h3\u2083] at h3\u2081\n    linarith\n  \n  have h4 : Complex.re z = (1/2 : \u211d) * Real.log 2 := by\n    have h4\u2081 : Real.exp (Complex.re z) = Real.sqrt 2 := h3\n    have h4\u2082 : Real.log (Real.exp (Complex.re z)) = Real.log (Real.sqrt 2) := by rw [h4\u2081]\n    have h4\u2083 : Real.log (Real.exp (Complex.re z)) = Complex.re z := by\n      rw [Real.log_exp]\n    have h4\u2084 : Real.log (Real.sqrt 2) = (1 / 2 : \u211d) * Real.log 2 := by\n      have h4\u2084\u2081 : Real.log (Real.sqrt 2) = Real.log (2 ^ (1 / 2 : \u211d)) := by\n        norm_num [Real.sqrt_eq_rpow]\n      rw [h4\u2084\u2081]\n      have h4\u2084\u2082 : Real.log (2 ^ (1 / 2 : \u211d)) = (1 / 2 : \u211d) * Real.log 2 := by\n        rw [Real.log_rpow (by norm_num : (2 : \u211d) > 0)]\n        <;> ring_nf\n      rw [h4\u2084\u2082]\n    rw [h4\u2083] at h4\u2082\n    rw [h4\u2084] at h4\u2082\n    linarith\n  \n  have h5 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := by\n    have h5\u2081 : (Complex.exp z).re = (1 - Complex.I).re := by rw [h1]\n    have h5\u2082 : (Complex.exp z).re = Real.exp (Complex.re z) * Real.cos (Complex.im z) := by\n      simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> norm_num\n      <;> linarith\n    have h5\u2083 : (1 - Complex.I).re = 1 := by simp [Complex.ext_iff]\n    rw [h5\u2082] at h5\u2081\n    rw [h5\u2083] at h5\u2081\n    have h5\u2084 : Real.exp (Complex.re z) * Real.cos (Complex.im z) = 1 := by\n      exact_mod_cast h5\u2081\n    have h5\u2085 : Real.exp (Complex.re z) = Real.sqrt 2 := h3\n    rw [h5\u2085] at h5\u2084\n    have h5\u2086 : Real.sqrt 2 * Real.cos (Complex.im z) = 1 := by\n      exact h5\u2084\n    have h5\u2087 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := by\n      have h5\u2088 : Real.sqrt 2 > 0 := Real.sqrt_pos.mpr (by norm_num)\n      apply mul_left_cancel\u2080 (show (Real.sqrt 2 : \u211d) \u2260 0 by positivity)\n      nlinarith [Real.sq_sqrt (show 0 \u2264 2 by norm_num), Real.cos_le_one (Complex.im z), Real.neg_one_le_cos (Complex.im z)]\n    exact h5\u2087\n  \n  have h6 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := by\n    have h6\u2081 : (Complex.exp z).im = (1 - Complex.I).im := by rw [h1]\n    have h6\u2082 : (Complex.exp z).im = Real.exp (Complex.re z) * Real.sin (Complex.im z) := by\n      simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> field_simp [Real.exp_neg]\n      <;> ring_nf\n      <;> simp_all [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Real.exp_add]\n      <;> norm_num\n      <;> linarith\n    have h6\u2083 : (1 - Complex.I).im = -1 := by simp [Complex.ext_iff]\n    rw [h6\u2082] at h6\u2081\n    rw [h6\u2083] at h6\u2081\n    have h6\u2084 : Real.exp (Complex.re z) * Real.sin (Complex.im z) = -1 := by\n      exact_mod_cast h6\u2081\n    have h6\u2085 : Real.exp (Complex.re z) = Real.sqrt 2 := h3\n    rw [h6\u2085] at h6\u2084\n    have h6\u2086 : Real.sqrt 2 * Real.sin (Complex.im z) = -1 := by\n      exact h6\u2084\n    have h6\u2087 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := by\n      have h6\u2088 : Real.sqrt 2 > 0 := Real.sqrt_pos.mpr (by norm_num)\n      apply mul_left_cancel\u2080 (show (Real.sqrt 2 : \u211d) \u2260 0 by positivity)\n      nlinarith [Real.sq_sqrt (show 0 \u2264 2 by norm_num), Real.sin_le_one (Complex.im z), Real.neg_one_le_sin (Complex.im z)]\n    exact h6\u2087\n  \n  have h7 : Complex.im z = - (Real.pi / 4) := by\n    have h7\u2081 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := h5\n    have h7\u2082 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := h6\n    have h7\u2083 : -Real.pi < Complex.im z := h2.1\n    have h7\u2084 : Complex.im z \u2264 Real.pi := h2.2\n    have h7\u2085 : Real.cos (Complex.im z + Real.pi / 4) = 1 := by\n      have h7\u2085\u2081 : Real.cos (Complex.im z + Real.pi / 4) = Real.cos (Complex.im z) * Real.cos (Real.pi / 4) - Real.sin (Complex.im z) * Real.sin (Real.pi / 4) := by\n        rw [Real.cos_add]\n      rw [h7\u2085\u2081]\n      have h7\u2085\u2082 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n      have h7\u2085\u2083 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n      rw [h7\u2085\u2082, h7\u2085\u2083]\n      have h7\u2085\u2084 : Real.cos (Complex.im z) = Real.sqrt 2 / 2 := h7\u2081\n      have h7\u2085\u2085 : Real.sin (Complex.im z) = - (Real.sqrt 2 / 2) := h7\u2082\n      rw [h7\u2085\u2084, h7\u2085\u2085]\n      ring_nf\n      <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n      <;> ring_nf\n      <;> norm_num\n      <;>\n      linarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n    have h7\u2086 : \u2203 (k : \u2124), Complex.im z + Real.pi / 4 = 2 * k * Real.pi := by\n      have h7\u2086\u2081 : Real.cos (Complex.im z + Real.pi / 4) = 1 := h7\u2085\n      have h7\u2086\u2082 : \u2203 (k : \u2124), Complex.im z + Real.pi / 4 = 2 * k * Real.pi := by\n        rw [Real.cos_eq_one_iff] at h7\u2086\u2081\n        obtain \u27e8k, hk\u27e9 := h7\u2086\u2081\n        use k\n        <;> linarith\n      exact h7\u2086\u2082\n    obtain \u27e8k, hk\u27e9 := h7\u2086\n    have h7\u2087 : Complex.im z = - (Real.pi / 4) + 2 * k * Real.pi := by\n      linarith\n    have h7\u2088 : k = 0 := by\n      have h7\u2088\u2081 : -Real.pi < Complex.im z := h7\u2083\n      have h7\u2088\u2082 : Complex.im z \u2264 Real.pi := h7\u2084\n      rw [h7\u2087] at h7\u2088\u2081 h7\u2088\u2082\n      have h7\u2088\u2083 : -Real.pi < - (Real.pi / 4) + 2 * k * Real.pi := by linarith\n      have h7\u2088\u2084 : - (Real.pi / 4) + 2 * k * Real.pi \u2264 Real.pi := by linarith\n      have h7\u2088\u2085 : (k : \u211d) = 0 := by\n        have h7\u2088\u2085\u2081 : (k : \u211d) < 1 := by\n          by_contra h\n          have h7\u2088\u2085\u2082 : (k : \u211d) \u2265 1 := by linarith\n          have h7\u2088\u2085\u2083 : (2 : \u211d) * k * Real.pi \u2265 2 * Real.pi := by\n            have h7\u2088\u2085\u2084 : (k : \u211d) \u2265 1 := by exact_mod_cast h7\u2088\u2085\u2082\n            have h7\u2088\u2085\u2085 : (2 : \u211d) * k * Real.pi \u2265 2 * Real.pi := by\n              calc\n                (2 : \u211d) * k * Real.pi \u2265 (2 : \u211d) * 1 * Real.pi := by gcongr <;> linarith\n                _ = 2 * Real.pi := by ring\n            exact h7\u2088\u2085\u2085\n          have h7\u2088\u2085\u2086 : - (Real.pi / 4) + 2 * k * Real.pi > Real.pi := by\n            linarith [Real.pi_gt_three]\n          linarith\n        have h7\u2088\u2085\u2082 : (k : \u211d) > -1 := by\n          by_contra h\n          have h7\u2088\u2085\u2083 : (k : \u211d) \u2264 -1 := by linarith\n          have h7\u2088\u2085\u2084 : (2 : \u211d) * k * Real.pi \u2264 -2 * Real.pi := by\n            have h7\u2088\u2085\u2085 : (k : \u211d) \u2264 -1 := by exact_mod_cast h7\u2088\u2085\u2083\n            have h7\u2088\u2085\u2086 : (2 : \u211d) * k * Real.pi \u2264 -2 * Real.pi := by\n              calc\n                (2 : \u211d) * k * Real.pi \u2264 (2 : \u211d) * (-1 : \u211d) * Real.pi := by gcongr <;> linarith\n                _ = -2 * Real.pi := by ring\n            exact h7\u2088\u2085\u2086\n          have h7\u2088\u2085\u2087 : - (Real.pi / 4) + 2 * k * Real.pi < -Real.pi := by\n            linarith [Real.pi_gt_three]\n          linarith\n        have h7\u2088\u2085\u2083 : (k : \u2124) = 0 := by\n          have h7\u2088\u2085\u2084 : (k : \u2124) < 1 := by\n            by_contra h\n            have h7\u2088\u2085\u2085 : (k : \u2124) \u2265 1 := by linarith\n            have h7\u2088\u2085\u2086 : (k : \u211d) \u2265 1 := by exact_mod_cast h7\u2088\u2085\u2085\n            linarith\n          have h7\u2088\u2085\u2085 : (k : \u2124) > -1 := by\n            by_contra h\n            have h7\u2088\u2085\u2086 : (k : \u2124) \u2264 -1 := by linarith\n            have h7\u2088\u2085\u2087 : (k : \u211d) \u2264 -1 := by exact_mod_cast h7\u2088\u2085\u2086\n            linarith\n          -- Since k is an integer between -1 and 1, it must be 0\n          omega\n        -- Cast the integer result to real\n        norm_cast at h7\u2088\u2085\u2083 \u22a2\n        <;> simp_all [Int.cast_zero]\n        <;> linarith\n      -- Cast the real result to integer\n      have h7\u2088\u2086 : (k : \u2124) = 0 := by\n        norm_cast at h7\u2088\u2085 \u22a2\n        <;>\n        (try omega) <;>\n        (try linarith)\n      exact_mod_cast h7\u2088\u2086\n    -- Substitute k = 0 into the expression for Complex.im z\n    rw [h7\u2088] at h7\u2087\n    ring_nf at h7\u2087 \u22a2\n    <;>\n    (try linarith) <;>\n    (try simp_all [Complex.ext_iff]) <;>\n    (try norm_num) <;>\n    (try ring_nf at * <;> linarith)\n    <;>\n    (try field_simp at * <;> ring_nf at * <;> linarith [Real.pi_pos])\n  \n  have h8 : z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n    have h8\u2081 : Complex.re z = (1/2 : \u211d) * Real.log 2 := h4\n    have h8\u2082 : Complex.im z = - (Real.pi / 4) := h7\n    have h8\u2083 : z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n      apply Complex.ext <;> simp [Complex.ext_iff, Complex.I_mul_I, h8\u2081, h8\u2082] <;>\n      (try ring_nf at * <;> simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n      (try field_simp at * <;> ring_nf at * <;> linarith [Real.pi_pos]) <;>\n      (try norm_num at * <;> linarith [Real.pi_pos]) <;>\n      (try\n        {\n          nlinarith [Real.pi_gt_three, Real.pi_pos, Real.log_pos (by norm_num : (1 : \u211d) < 2)]\n        })\n      <;>\n      (try\n        {\n          nlinarith [Real.pi_gt_three, Real.pi_pos, Real.log_pos (by norm_num : (1 : \u211d) < 2)]\n        })\n    exact h8\u2083\n  \n  apply h8", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 192, "column": 69, "endLine": 205, "endColumn": 10, "data": "unsolved goals\ncase a\nz : \u2102\nh1 : (Complex.exp z).re = 1 \u2227 (Complex.exp z).im = -1\nh2 : -\u03c0 < \u03c0 * (-1 / 4) \u2227 \u03c0 * (-1 / 4) \u2264 \u03c0\nh3 : rexp (Real.log 2 * 2\u207b\u00b9) = \u221a2\nh7 : z.im = \u03c0 * (-1 / 4)\nh6 : sin (\u03c0 * (-1 / 4)) = \u221a2 * (-1 / 2)\nh5 : cos (\u03c0 * (-1 / 4)) = \u221a2 * 2\u207b\u00b9\nh4 : z.re = Real.log 2 * 2\u207b\u00b9\n\u22a2 Real.log 2 = (Complex.log 2).re\n\ncase a\nz : \u2102\nh1 : (Complex.exp z).re = 1 \u2227 (Complex.exp z).im = -1\nh2 : -\u03c0 < \u03c0 * (-1 / 4) \u2227 \u03c0 * (-1 / 4) \u2264 \u03c0\nh3 : rexp (Real.log 2 * 2\u207b\u00b9) = \u221a2\nh7 : z.im = \u03c0 * (-1 / 4)\nh6 : sin (\u03c0 * (-1 / 4)) = \u221a2 * (-1 / 2)\nh5 : cos (\u03c0 * (-1 / 4)) = \u221a2 * 2\u207b\u00b9\nh4 : z.re = Real.log 2 * 2\u207b\u00b9\n\u22a2 (Complex.log 2).im = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization perfectly captures the mathematical meaning of the natural language. While the natural language explicitly states the real and imaginary parts of z separately, the Lean uses the equivalent exponential form Complex.exp z = 1 - Complex.I, which mathematically implies the same conditions. The branch selection is handled equivalently: the natural language uses k=0, while Lean uses the principal branch condition. Both approaches lead to the identical conclusion z = (1/2)ln(2) - i(\u03c0/4). The formalization is mathematically sound and complete.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem main (z : \u2102) \n  (h1 : Complex.exp z = 1 - Complex.I)\n  (h2 : -Real.pi < Complex.im z \u2227 Complex.im z \u2264 Real.pi) :\n  z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n  have hx : z.re = (Real.log 2) / 2 := by\n    have h3 : Complex.exp z = 1 - Complex.I := h1\n    have h4 : Complex.exp z = \u27e8Real.exp z.re * Real.cos z.im, Real.exp z.re * Real.sin z.im\u27e9 := by\n      simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n      <;> norm_num\n    rw [h4] at h3\n    have h5 : (1 - Complex.I : \u2102) = \u27e81, -1\u27e9 := by\n      simp [Complex.ext_iff, Complex.I_re, Complex.I_im]\n      <;> norm_num\n    rw [h5] at h3\n    have h6 : Real.exp z.re * Real.cos z.im = 1 := by\n      simp [Complex.ext_iff] at h3\n      norm_num at h3 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h7 : Real.exp z.re * Real.sin z.im = -1 := by\n      simp [Complex.ext_iff] at h3\n      norm_num at h3 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h8 : Real.exp z.re > 0 := Real.exp_pos z.re\n    have h9 : (Real.exp z.re) ^ 2 = 2 := by\n      have h10 : (Real.exp z.re * Real.cos z.im) ^ 2 + (Real.exp z.re * Real.sin z.im) ^ 2 = 1 ^ 2 + (-1 : \u211d) ^ 2 := by\n        rw [h6, h7]\n        <;> norm_num\n      have h11 : (Real.exp z.re * Real.cos z.im) ^ 2 + (Real.exp z.re * Real.sin z.im) ^ 2 = (Real.exp z.re) ^ 2 * (Real.cos z.im ^ 2 + Real.sin z.im ^ 2) := by\n        ring_nf\n        <;> field_simp [Real.cos_sq_add_sin_sq]\n        <;> ring_nf\n      rw [h11] at h10\n      have h12 : Real.cos z.im ^ 2 + Real.sin z.im ^ 2 = 1 := by\n        rw [Real.cos_sq_add_sin_sq]\n      rw [h12] at h10\n      norm_num at h10 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h10 : Real.exp z.re = Real.sqrt 2 := by\n      have h11 : Real.exp z.re > 0 := Real.exp_pos z.re\n      have h12 : (Real.exp z.re) ^ 2 = 2 := h9\n      have h13 : Real.exp z.re = Real.sqrt 2 := by\n        apply Eq.symm\n        rw [Real.sqrt_eq_iff_sq_eq (by positivity) (by positivity)]\n        nlinarith\n      exact h13\n    have h11 : Real.log (Real.exp z.re) = Real.log (Real.sqrt 2) := by rw [h10]\n    have h12 : Real.log (Real.exp z.re) = z.re := by\n      rw [Real.log_exp]\n    have h13 : Real.log (Real.sqrt 2) = (Real.log 2) / 2 := by\n      have h14 : Real.log (Real.sqrt 2) = Real.log 2 / 2 := by\n        rw [Real.log_sqrt (by positivity)]\n        <;> ring_nf\n      rw [h14]\n    have h14 : z.re = (Real.log 2) / 2 := by\n      linarith\n    exact h14\n  \n  have hy : z.im = - (Real.pi / 4) := by\n    have h3 : Complex.exp z = 1 - Complex.I := h1\n    have h4 : Complex.exp z = \u27e8Real.exp z.re * Real.cos z.im, Real.exp z.re * Real.sin z.im\u27e9 := by\n      simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im]\n      <;> norm_num\n    rw [h4] at h3\n    have h5 : (1 - Complex.I : \u2102) = \u27e81, -1\u27e9 := by\n      simp [Complex.ext_iff, Complex.I_re, Complex.I_im]\n      <;> norm_num\n    rw [h5] at h3\n    have h6 : Real.exp z.re * Real.cos z.im = 1 := by\n      simp [Complex.ext_iff] at h3\n      norm_num at h3 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h7 : Real.exp z.re * Real.sin z.im = -1 := by\n      simp [Complex.ext_iff] at h3\n      norm_num at h3 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h8 : Real.exp z.re > 0 := Real.exp_pos z.re\n    have h9 : (Real.exp z.re) ^ 2 = 2 := by\n      have h10 : (Real.exp z.re * Real.cos z.im) ^ 2 + (Real.exp z.re * Real.sin z.im) ^ 2 = 1 ^ 2 + (-1 : \u211d) ^ 2 := by\n        rw [h6, h7]\n        <;> norm_num\n      have h11 : (Real.exp z.re * Real.cos z.im) ^ 2 + (Real.exp z.re * Real.sin z.im) ^ 2 = (Real.exp z.re) ^ 2 * (Real.cos z.im ^ 2 + Real.sin z.im ^ 2) := by\n        ring_nf\n        <;> field_simp [Real.cos_sq_add_sin_sq]\n        <;> ring_nf\n      rw [h11] at h10\n      have h12 : Real.cos z.im ^ 2 + Real.sin z.im ^ 2 = 1 := by\n        rw [Real.cos_sq_add_sin_sq]\n      rw [h12] at h10\n      norm_num at h10 \u22a2\n      <;> nlinarith [Real.exp_pos z.re]\n    have h10 : Real.exp z.re = Real.sqrt 2 := by\n      have h11 : Real.exp z.re > 0 := Real.exp_pos z.re\n      have h12 : (Real.exp z.re) ^ 2 = 2 := h9\n      have h13 : Real.exp z.re = Real.sqrt 2 := by\n        apply Eq.symm\n        rw [Real.sqrt_eq_iff_sq_eq (by positivity) (by positivity)]\n        nlinarith\n      exact h13\n    have h11 : Real.exp z.re * Real.cos z.im = 1 := h6\n    have h12 : Real.exp z.re * Real.sin z.im = -1 := h7\n    have h13 : Real.cos z.im = 1 / Real.sqrt 2 := by\n      have h14 : Real.exp z.re * Real.cos z.im = 1 := h6\n      rw [h10] at h14\n      have h15 : Real.sqrt 2 * Real.cos z.im = 1 := by\n        linarith\n      have h16 : Real.cos z.im = 1 / Real.sqrt 2 := by\n        field_simp at h15 \u22a2\n        <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n      exact h16\n    have h14 : Real.sin z.im = -1 / Real.sqrt 2 := by\n      have h15 : Real.exp z.re * Real.sin z.im = -1 := h7\n      rw [h10] at h15\n      have h16 : Real.sqrt 2 * Real.sin z.im = -1 := by\n        linarith\n      have h17 : Real.sin z.im = -1 / Real.sqrt 2 := by\n        field_simp at h16 \u22a2\n        <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n      exact h17\n    have h15 : Real.cos z.im = Real.cos (-(Real.pi / 4)) := by\n      have h16 : Real.cos (-(Real.pi / 4)) = Real.sqrt 2 / 2 := by\n        rw [show (- (Real.pi / 4) : \u211d) = -(Real.pi / 4) by rfl]\n        have h17 : Real.cos (-(Real.pi / 4)) = Real.cos (Real.pi / 4) := by\n          rw [Real.cos_neg]\n        rw [h17]\n        have h18 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n        rw [h18]\n        <;> field_simp\n        <;> ring_nf\n        <;> norm_num\n      have h17 : Real.cos z.im = 1 / Real.sqrt 2 := h13\n      have h18 : 1 / Real.sqrt 2 = Real.sqrt 2 / 2 := by\n        field_simp [Real.sqrt_eq_iff_sq_eq]\n        <;> ring_nf\n        <;> norm_num\n        <;> linarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      rw [h17, h18]\n      <;> linarith\n    have h16 : Real.sin z.im = Real.sin (-(Real.pi / 4)) := by\n      have h17 : Real.sin (-(Real.pi / 4)) = - (Real.sqrt 2 / 2) := by\n        rw [show (- (Real.pi / 4) : \u211d) = -(Real.pi / 4) by rfl]\n        have h18 : Real.sin (-(Real.pi / 4)) = -Real.sin (Real.pi / 4) := by\n          rw [Real.sin_neg]\n        rw [h18]\n        have h19 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n        rw [h19]\n        <;> ring_nf\n        <;> norm_num\n      have h18 : Real.sin z.im = -1 / Real.sqrt 2 := h14\n      have h19 : -1 / Real.sqrt 2 = - (Real.sqrt 2 / 2) := by\n        field_simp [Real.sqrt_eq_iff_sq_eq]\n        <;> ring_nf\n        <;> norm_num\n        <;> linarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      rw [h18, h19]\n      <;> linarith\n    have h17 : z.im = - (Real.pi / 4) := by\n      have h18 : Real.cos z.im = Real.cos (-(Real.pi / 4)) := h15\n      have h19 : Real.sin z.im = Real.sin (-(Real.pi / 4)) := h16\n      have h20 : z.im = - (Real.pi / 4) := by\n        -- We know that cos and sin are both equal to their counterparts at -\u03c0/4\n        -- We need to show that z.im is indeed -\u03c0/4 within the interval (-\u03c0, \u03c0]\n        have h21 : Real.cos z.im = Real.cos (-(Real.pi / 4)) := h18\n        have h22 : Real.sin z.im = Real.sin (-(Real.pi / 4)) := h19\n        -- Use the fact that cos and sin are the same to deduce that z.im is -\u03c0/4\n        have h23 : z.im = - (Real.pi / 4) := by\n          -- Use the fact that cos and sin are injective on the interval (-\u03c0, \u03c0]\n          have h24 : z.im > -Real.pi := by linarith [h2.1]\n          have h25 : z.im \u2264 Real.pi := by linarith [h2.2]\n          -- Use the fact that cos and sin are injective on the interval (-\u03c0, \u03c0]\n          have h26 : Real.cos z.im = Real.cos (-(Real.pi / 4)) := h21\n          have h27 : Real.sin z.im = Real.sin (-(Real.pi / 4)) := h22\n          -- Check the possible values of z.im that satisfy both cos and sin\n          have h28 : z.im = - (Real.pi / 4) := by\n            -- Use the fact that cos and sin are injective on the interval (-\u03c0, \u03c0]\n            have h29 : z.im = - (Real.pi / 4) := by\n              -- Use the fact that cos and sin are injective on the interval (-\u03c0, \u03c0]\n              apply le_antisymm\n              \u00b7 -- Show that z.im \u2264 -\u03c0/4\n                apply le_of_not_gt\n                intro h30\n                -- If z.im > -\u03c0/4, then cos(z.im) < cos(-\u03c0/4) because cos is decreasing in (-\u03c0, 0)\n                have h31 : z.im > - (Real.pi / 4) := h30\n                have h32 : Real.cos z.im < Real.cos (-(Real.pi / 4)) := by\n                  apply Real.cos_lt_cos_of_nonneg_of_le_pi (by linarith [h2.1, Real.pi_pos]) (by linarith [h2.2, Real.pi_pos])\n                  <;> linarith [Real.pi_pos]\n                linarith\n              \u00b7 -- Show that z.im \u2265 -\u03c0/4\n                apply le_of_not_gt\n                intro h30\n                -- If z.im < -\u03c0/4, then cos(z.im) > cos(-\u03c0/4) because cos is decreasing in (-\u03c0, 0)\n                have h31 : z.im < - (Real.pi / 4) := h30\n                have h32 : Real.cos z.im > Real.cos (-(Real.pi / 4)) := by\n                  apply Real.cos_lt_cos_of_nonneg_of_le_pi (by linarith [h2.1, Real.pi_pos]) (by linarith [h2.2, Real.pi_pos])\n                  <;> linarith [Real.pi_pos]\n                linarith\n            exact h29\n          exact h28\n        exact h23\n      exact h20\n    exact h17\n  \n  have hz : z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n    have h3 : z.re = (Real.log 2) / 2 := hx\n    have h4 : z.im = - (Real.pi / 4) := hy\n    have h5 : z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n      apply Complex.ext <;> simp [Complex.ext_iff, Complex.I_re, Complex.I_im, h3, h4]\n      <;> ring_nf at * <;> norm_num at * <;>\n      (try linarith [Real.pi_pos]) <;>\n      (try field_simp at *) <;>\n      (try ring_nf at *) <;>\n      (try norm_num at *) <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;> linarith [Real.pi_pos]\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;> linarith [Real.pi_pos]\n        })\n    exact h5\n  \n  exact hz\n\ntheorem negation_is_false : \u00ac (\u2203 (z : \u2102), Complex.exp z = 1 - Complex.I \u2227 (-Real.pi < Complex.im z \u2227 Complex.im z \u2264 Real.pi) \u2227 z \u2260 (1/2) * Real.log 2 - Complex.I * (Real.pi / 4)) := by\n  intro h\n  rcases h with \u27e8z, hz1, hz2, hz3\u27e9\n  have h_main : z = (1/2) * Real.log 2 - Complex.I * (Real.pi / 4) := by\n    apply main z hz1 hz2\n  apply hz3\n  exact h_main"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for positive real numbers $a, b, c$ such that $a + b + c = 6$, the following inequality holds: $$ \\sqrt[3]{a b + b c} + \\sqrt[3]{b c + c a} + \\sqrt[3]{c a + a b} \\leq 6 $$
+
+Proof: Let $x = ab+bc$, $y = bc+ca$, and $z = ca+ab$. By the power mean inequality for non-negative numbers, $rac{\sqrt[3]{x} + \sqrt[3]{y} + \sqrt[3]{z}}{3} \leq \sqrt[3]{rac{x+y+z}{3}}$. We have $x+y+z = 2(ab+bc+ca)$ and $ab+bc+ca \leq rac{(a+b+c)^2}{3}$. Given $a+b+c=6$, it follows that $x+y+z \leq 24$. Therefore, $\sqrt[3]{x} + \sqrt[3]{y} + \sqrt[3]{z} \leq 3\sqrt[3]{8} = 6$, which implies $\sqrt[3]{ab+bc} + \sqrt[3]{bc+ca} + \sqrt[3]{ca+ab} \leq 6$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "for positive real numbers $a, b, c$", "statement": "Premise:\n\u2022 Let a, b, c be positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a b c : \u211d) (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'variable (a b c : \u211d)' correctly declares a, b, c as real numbers, matching the natural language statement", "The condition '0 < a' in the conjunction 'tc_1 : 0 < a \u2227 0 < b \u2227 0 < c' perfectly matches 'a > 0'", "The condition '0 < b' in the conjunction 'tc_1 : 0 < a \u2227 0 < b \u2227 0 < c' perfectly matches 'b > 0'", "The condition '0 < c' in the conjunction 'tc_1 : 0 < a \u2227 0 < b \u2227 0 < c' perfectly matches 'c > 0'"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "such that $a + b + c = 6$", "statement": "Premise:\n\u2022 Let a, b, c be positive real numbers [tc_1].\n\u2022 a + b + c = 6 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2\n  (a b c : \u211d)\n  (h_pos : 0 < a \u2227 0 < b \u2227 0 < c)\n  (h_sum : a + b + c = 6) :\n  (a * b + b * c) ^ (1/3 : \u211d) + (b * c + c * a) ^ (1/3 : \u211d) + (c * a + a * b) ^ (1/3 : \u211d) \u2264 6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c are real numbers and positive through the type declaration and positivity constraint", "The Lean formalization exactly matches the sum constraint a + b + c = 6", "The natural language explicitly states there are no conclusions in this premise step, but the Lean theorem introduces a completely new inequality involving cube roots that was never mentioned in the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly captures that a, b, c are real numbers and positive through the type declaration and positivity constraint', 'The Lean formalization exactly matches the sum constraint a + b + c = 6', 'The natural language explicitly states there are no conclusions in this premise step, but the Lean theorem introduces a completely new inequality involving cube roots that was never mentioned in the natural language statement']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "Let $x = ab+bc$, $y = bc+ca$, and $z = ca+ab$.", "statement": "Definition:\n\u2022 Let a, b, c be positive real numbers [tc_1].\n\u2022 Let x = ab + bc, y = bc + ca, and z = ca + ab [def_1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 (a b c : \u211d) (tc_1 : 0 < a \u2227 0 < b \u2227 0 < c) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x + y + z = 2 * (a * b + b * c + c * a) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The condition about a, b, c being positive real numbers is correctly captured in Lean", "The definition x = ab + bc is correctly represented as x := a * b + b * c", "The definition y = bc + ca is correctly represented as y := b * c + c * a", "The definition z = ca + ab is correctly represented as z := c * a + a * b", "The Lean theorem introduces an additional proposition 'x + y + z = 2 * (a * b + b * c + c * a)' that is completely absent from the natural language statement, which only provides definitions without any theorem to prove"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The condition about a, b, c being positive real numbers is correctly captured in Lean', 'The definition x = ab + bc is correctly represented as x := a * b + b * c', 'The definition y = bc + ca is correctly represented as y := b * c + c * a', 'The definition z = ca + ab is correctly represented as z := c * a + a * b', \"The Lean theorem introduces an additional proposition 'x + y + z = 2 * (a * b + b * c + c * a)' that is completely absent from the natural language statement, which only provides definitions without any theorem to prove\"]"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "By the power mean inequality for non-negative numbers, $\frac{\\sqrt[3]{x} + \\sqrt[3]{y} + \\sqrt[3]{z}}{3} \\leq \\sqrt[3]{\frac{x+y+z}{3}}$.", "statement": "We assume:\n\u2022 u, v, w are non-negative real numbers.\nTherefore, we conclude:\n\u2022 (\u221bu + \u221bv + \u221bw) / 3 \u2264 \u221b((u + v + w) / 3) [l1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (u v w : \u211d) (hu : u \u2265 0) (hv : v \u2265 0) (hw : w \u2265 0) :\n  (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (u v w : \u211d) (hu : u \u2265 0) (hv : v \u2265 0) (hw : w \u2265 0) :\n  (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d) := by\n  have h_concave : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := by\n    have h\u2081 : (1 / 3 : \u211d) \u2208 Set.Icc (0 : \u211d) 1 := by\n      constructor <;> norm_num\n    -- Use the concavity of the real power function for exponents in [0,1]\n    have h\u2082 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := by\n      apply concaveOn_rpow\n      <;> norm_num at h\u2081 \u22a2 <;>\n      (try norm_num) <;>\n      (try linarith) <;>\n      (try exact h\u2081)\n    exact h\u2082\n  \n  have h_main : (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d) := by\n    have h\u2081 : 0 \u2264 (u : \u211d) := by exact_mod_cast hu\n    have h\u2082 : 0 \u2264 (v : \u211d) := by exact_mod_cast hv\n    have h\u2083 : 0 \u2264 (w : \u211d) := by exact_mod_cast hw\n    -- Use the concaveOn property to prove the inequality\n    have h\u2084 : ((u + v + w) / 3 : \u211d) ^ (1 / 3 : \u211d) \u2265 (u ^ (1 / 3 : \u211d) + v ^ (1 / 3 : \u211d) + w ^ (1 / 3 : \u211d)) / 3 := by\n      -- Use the concavity of the cube root function to prove the inequality\n      have h\u2085 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n      -- Define the finite set of points\n      have h\u2086 : (u : \u211d) \u2208 Set.Ici (0 : \u211d) := by exact Set.mem_Ici.mpr h\u2081\n      have h\u2087 : (v : \u211d) \u2208 Set.Ici (0 : \u211d) := by exact Set.mem_Ici.mpr h\u2082\n      have h\u2088 : (w : \u211d) \u2208 Set.Ici (0 : \u211d) := by exact Set.mem_Ici.mpr h\u2083\n      -- Define the weights\n      have h\u2089 : (1 / 3 : \u211d) \u2265 0 := by norm_num\n      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n      have h\u2081\u2080 : ((u + v + w) / 3 : \u211d) ^ (1 / 3 : \u211d) \u2265 (u ^ (1 / 3 : \u211d) + v ^ (1 / 3 : \u211d) + w ^ (1 / 3 : \u211d)) / 3 := by\n        -- Use the concavity of the cube root function\n        have h\u2081\u2081 : ( ( (1 : \u211d) / 3 ) * u + ( (1 : \u211d) / 3 ) * v + ( (1 : \u211d) / 3 ) * w : \u211d) = (u + v + w) / 3 := by\n          ring\n        have h\u2081\u2082 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n        have h\u2081\u2083 : ( ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) : \u211d) = (u ^ (1 / 3 : \u211d) + v ^ (1 / 3 : \u211d) + w ^ (1 / 3 : \u211d)) / 3 := by\n          ring\n        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n        have h\u2081\u2084 : ( (u + v + w) / 3 : \u211d) ^ (1 / 3 : \u211d) \u2265 (u ^ (1 / 3 : \u211d) + v ^ (1 / 3 : \u211d) + w ^ (1 / 3 : \u211d)) / 3 := by\n          -- Use the concavity of the cube root function\n          have h\u2081\u2085 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n          have h\u2081\u2086 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) \u2208 Set.Ici (0 : \u211d) := by\n            -- Prove that the sum of non-negative numbers is non-negative\n            have h\u2081\u2087 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) * u := by positivity\n            have h\u2081\u2088 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) * v := by positivity\n            have h\u2081\u2089 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) * w := by positivity\n            have h\u2082\u2080 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w := by positivity\n            exact Set.mem_Ici.mpr h\u2082\u2080\n          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n          have h\u2082\u2081 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n            have h\u2082\u2082 : \u2200 (i : Fin 3), (i : \u2115) = 0 \u2228 (i : \u2115) = 1 \u2228 (i : \u2115) = 2 := by\n              intro i\n              fin_cases i <;> simp\n            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n            have h\u2082\u2083 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n              have h\u2082\u2084 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n              have h\u2082\u2085 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2081\u2086\n              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n              have h\u2082\u2086 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n              have h\u2082\u2087 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n              have h\u2082\u2088 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n              have h\u2082\u2089 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2080 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) = ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w := by rfl\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2081 : ( ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) : \u211d) = ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by rfl\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2082 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2083 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2081\u2086\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2084 : u \u2208 Set.Ici (0 : \u211d) := h\u2086\n                have h\u2083\u2085 : v \u2208 Set.Ici (0 : \u211d) := h\u2087\n                have h\u2083\u2086 : w \u2208 Set.Ici (0 : \u211d) := h\u2088\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                have h\u2083\u2087 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2083\u2088 : ( ( (1 : \u211d) / 3 : \u211d) * u + ( (1 : \u211d) / 3 : \u211d) * v + ( (1 : \u211d) / 3 : \u211d) * w : \u211d) = ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w := by\n                    simp [smul_eq_mul]\n                    <;> ring\n                  rw [h\u2083\u2088]\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2083\u2089 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                  have h\u2084\u2080 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                  have h\u2084\u2081 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                  have h\u2084\u2082 : ( (1 : \u211d) / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2084\u2083 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2081\u2086\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2084\u2084 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) : \u211d) = ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n                    simp [smul_eq_mul]\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2084\u2085 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                    -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                    have h\u2084\u2086 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                    -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                    have h\u2084\u2087 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                    have h\u2084\u2088 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                    have h\u2084\u2089 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                    -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                    have h\u2085\u2080 : u \u2208 Set.Ici (0 : \u211d) := h\u2086\n                    have h\u2085\u2081 : v \u2208 Set.Ici (0 : \u211d) := h\u2087\n                    have h\u2085\u2082 : w \u2208 Set.Ici (0 : \u211d) := h\u2088\n                    -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                    have h\u2085\u2083 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                      have h\u2085\u2084 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                      have h\u2085\u2085 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                      have h\u2085\u2086 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                      have h\u2085\u2087 : ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by norm_num\n                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                      have h\u2085\u2088 : ( (1 : \u211d) / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num\n                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                      have h\u2085\u2089 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2081\u2086\n                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                      have h\u2086\u2080 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2081 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2082 : \u2200 (i : Fin 3), (i : \u2115) = 0 \u2228 (i : \u2115) = 1 \u2228 (i : \u2115) = 2 := by\n                          intro i\n                          fin_cases i <;> simp\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2083 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) = \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i := by\n                          simp [Fin.sum_univ_three]\n                          <;> ring_nf\n                          <;> norm_num\n                          <;> simp_all [Fin.forall_fin_succ]\n                          <;> norm_num\n                          <;> linarith\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2084 : (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) \u2208 Set.Ici (0 : \u211d) := by\n                          -- Prove that the sum of non-negative numbers is non-negative\n                          have h\u2086\u2085 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := by\n                            intro i\n                            fin_cases i <;>\n                              (try simp_all [Set.mem_Ici, smul_eq_mul]) <;>\n                              (try norm_num) <;>\n                              (try positivity)\n                          -- Use the fact that the sum of non-negative numbers is non-negative\n                          have h\u2086\u2086 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := by\n                            apply Set.mem_Ici.mpr\n                            have h\u2086\u2087 : 0 \u2264 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i := by\n                              calc\n                                0 = \u2211 i : Fin 3, 0 := by simp [Fin.sum_univ_zero]\n                                _ \u2264 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i := by\n                                  apply Finset.sum_le_sum\n                                  intro i _\n                                  have h\u2086\u2088 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i := by\n                                    have h\u2086\u2089 : 0 \u2264 ( (1 : \u211d) / 3 : \u211d) := by norm_num\n                                    have h\u2087\u2080 : 0 \u2264 ( [u, v, w] : Fin 3 \u2192 \u211d) i := by\n                                      fin_cases i <;> simp_all [Set.mem_Ici] <;> norm_num <;> linarith\n                                    positivity\n                                  linarith\n                            linarith\n                          exact h\u2086\u2086\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2085 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                          have h\u2086\u2086 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                          have h\u2086\u2087 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                            intro i\n                            norm_num\n                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                          have h\u2086\u2088 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := by\n                            intro i\n                            fin_cases i <;> simp_all [Set.mem_Ici] <;> norm_num <;> linarith\n                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                          have h\u2086\u2089 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by\n                            norm_num [Fin.sum_univ_three]\n                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                          have h\u2087\u2080 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2081 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2082 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2083 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2084 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                              intro i\n                              norm_num\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2085 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                            have h\u2087\u2086 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                              calc\n                                ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) = ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) := by rfl\n                                _ \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  have h\u2087\u2087 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  have h\u2087\u2088 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  have h\u2087\u2089 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  have h\u2088\u2080 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                                    intro i\n                                    norm_num\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  have h\u2088\u2081 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                  calc\n                                    ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      have h\u2088\u2082 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      have h\u2088\u2083 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      have h\u2088\u2084 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      have h\u2088\u2085 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                                        intro i\n                                        norm_num\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      have h\u2088\u2086 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                                      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                      calc\n                                        ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) = ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) := by rfl\n                                        _ \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          have h\u2088\u2087 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          have h\u2088\u2088 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          have h\u2088\u2089 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          have h\u2089\u2080 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                                            intro i\n                                            norm_num\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          have h\u2089\u2081 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                                          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                          calc\n                                            ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              have h\u2089\u2082 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              have h\u2089\u2083 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              have h\u2089\u2084 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              have h\u2089\u2085 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                                                intro i\n                                                norm_num\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              have h\u2089\u2086 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                                              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                              calc\n                                                ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) = ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) := by rfl\n                                                _ \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  have h\u2089\u2087 : ConcaveOn \u211d (Set.Ici 0) (fun x : \u211d => x ^ (1 / 3 : \u211d)) := h_concave\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  have h\u2089\u2088 : \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) = 1 := by norm_num [Fin.sum_univ_three]\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  have h\u2089\u2089 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) \u2208 Set.Ici (0 : \u211d) := h\u2086\u2084\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  have h\u2081\u2080\u2080 : \u2200 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2265 0 := by\n                                                    intro i\n                                                    norm_num\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  have h\u2081\u2080\u2081 : \u2200 i : Fin 3, ( [u, v, w] : Fin 3 \u2192 \u211d) i \u2208 Set.Ici (0 : \u211d) := h\u2086\u2088\n                                                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                                                  exact\n                                                    ConcaveOn.map_sum_le h_concave (fun i _ => by\n                                                      simp_all [h\u2089\u2085, h\u2081\u2080\u2080, h\u2081\u2080\u2081]\n                                                      <;> norm_num) (fun i _ => by\n                                                      simp_all [h\u2089\u2085, h\u2081\u2080\u2080, h\u2081\u2080\u2081]\n                                                      <;> norm_num) (by simp_all [h\u2089\u2085, h\u2081\u2080\u2080, h\u2081\u2080\u2081] <;> norm_num)\n                                            _ = \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by rfl\n                                        _ = \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by rfl\n                                    _ = \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := by rfl\n                            exact h\u2087\u2086\n                          exact h\u2087\u2080\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2086 : ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := h\u2086\u2085\n                        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                        have h\u2086\u2087 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                          calc\n                            ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) = ( (\u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( [u, v, w] : Fin 3 \u2192 \u211d) i) : \u211d) ^ (1 / 3 : \u211d) := by\n                              simp [Fin.sum_univ_three]\n                              <;> ring_nf\n                              <;> norm_num\n                              <;> simp_all [Fin.forall_fin_succ]\n                              <;> norm_num\n                              <;> linarith\n                            _ \u2265 \u2211 i : Fin 3, ( (1 : \u211d) / 3 : \u211d) \u2022 ( ( [u, v, w] : Fin 3 \u2192 \u211d) i) ^ (1 / 3 : \u211d) := h\u2086\u2085\n                            _ = ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                              simp [Fin.sum_univ_three]\n                              <;> ring_nf\n                              <;> norm_num\n                              <;> simp_all [Fin.forall_fin_succ]\n                              <;> norm_num\n                              <;> linarith\n                        exact h\u2086\u2087\n                      exact h\u2086\u2080\n                    exact h\u2085\u2083\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2084\u2086 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := by\n                    exact h\u2084\u2085\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  have h\u2084\u2087 : ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n                    calc\n                      ( ( (1 : \u211d) / 3 : \u211d) \u2022 u + ( (1 : \u211d) / 3 : \u211d) \u2022 v + ( (1 : \u211d) / 3 : \u211d) \u2022 w : \u211d) ^ (1 / 3 : \u211d) \u2265 ( (1 : \u211d) / 3 : \u211d) \u2022 u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) \u2022 w ^ (1 / 3 : \u211d) := h\u2084\u2086\n                      _ = ( (1 : \u211d) / 3 : \u211d) * u ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * v ^ (1 / 3 : \u211d) + ( (1 : \u211d) / 3 : \u211d) * w ^ (1 / 3 : \u211d) := by\n                        simp [smul_eq_mul]\n                  -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                  linarith\n                -- Use the concaveOn.map_sum_le lemma to prove the inequality\n                linarith\n              -- Use the concaveOn.map_sum_le lemma to prove the inequality\n              linarith\n            -- Use the concaveOn.map_sum_le lemma to prove the inequality\n            linarith\n          -- Use the concaveOn.map_sum_le lemma to prove the inequality\n          linarith\n        -- Use the concaveOn.map_sum_le lemma to prove the inequality\n        linarith\n      -- Use the concaveOn.map_sum_le lemma to prove the inequality\n      linarith\n    -- Use the concaveOn.map_sum_le lemma to prove the inequality\n    linarith\n  \n    -- Combine all the inequalities to get the final result\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations and non-negativity constraints are correctly captured with appropriate Lean syntax", "The mathematical inequality is perfectly translated, with cube roots properly represented as fractional exponents", "The logical structure from assumptions to conclusion is properly formalized as a theorem with hypotheses"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We have $x+y+z = 2(ab+bc+ca)$", "statement": "We assume:\n\u2022 Let x = ab + bc, y = bc + ca, and z = ca + ab [def_1].\nTherefore, we conclude:\n\u2022 x + y + z = 2(ab + bc + ca) [l2].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x + y + z = 2 * (a * b + b * c + c * a) := by sorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (a b c : \u211d) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x + y + z = 2 * (a * b + b * c + c * a) := by\n  intro x y z\n  have h\u2081 : x + y + z = 2 * (a * b + b * c + c * a) := by\n    dsimp only [x, y, z]\n    ring_nf\n    <;>\n    linarith\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable definitions in Lean correctly translate the natural language definitions, with explicit multiplication operators replacing implicit notation - this is the standard and correct way to represent multiplication in Lean.", "The conclusion statement perfectly captures the mathematical relationship described in natural language, with proper explicit notation for multiplication operations."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "and $ab+bc+ca \\leq \frac{(a+b+c)^2}{3}$.", "statement": "We assume:\n\u2022 a, b, c are real numbers [tc_1].\nTherefore, we conclude:\n\u2022 ab + bc + ca \u2264 (a + b + c)\u00b2 / 3 [l3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (h_sum : a + b + c = 6) :\n  a * b + b * c + c * a \u2264 (a + b + c)^2 / 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (h_sum : a + b + c = 6) :\n  a * b + b * c + c * a \u2264 (a + b + c)^2 / 3 := by\n  have h1 : a^2 + b^2 \u2265 2 * a * b := by\n    have h1 : 0 \u2264 (a - b)^2 := sq_nonneg (a - b)\n    nlinarith\n  \n  have h2 : b^2 + c^2 \u2265 2 * b * c := by\n    have h2 : 0 \u2264 (b - c)^2 := sq_nonneg (b - c)\n    nlinarith\n  \n  have h3 : c^2 + a^2 \u2265 2 * c * a := by\n    have h3 : 0 \u2264 (c - a)^2 := sq_nonneg (c - a)\n    nlinarith\n  \n  have h4 : 2 * (a^2 + b^2 + c^2) \u2265 2 * (a * b + b * c + c * a) := by\n    have h4 : 2 * (a^2 + b^2 + c^2) = (a^2 + b^2) + (b^2 + c^2) + (c^2 + a^2) := by ring\n    have h5 : 2 * (a * b + b * c + c * a) = 2 * a * b + 2 * b * c + 2 * c * a := by ring\n    have h6 : (a^2 + b^2) + (b^2 + c^2) + (c^2 + a^2) \u2265 2 * a * b + 2 * b * c + 2 * c * a := by\n      linarith [h1, h2, h3]\n    linarith\n  \n  have h5 : a^2 + b^2 + c^2 \u2265 a * b + b * c + c * a := by\n    linarith\n  \n  have h6 : (a + b + c)^2 = a^2 + b^2 + c^2 + 2 * (a * b + b * c + c * a) := by\n    ring_nf\n    <;>\n    linarith\n  \n  have h7 : (a + b + c)^2 \u2265 3 * (a * b + b * c + c * a) := by\n    have h7 : (a + b + c)^2 = a^2 + b^2 + c^2 + 2 * (a * b + b * c + c * a) := by rw [h6]\n    have h8 : a^2 + b^2 + c^2 \u2265 a * b + b * c + c * a := h5\n    nlinarith\n  \n  have h8 : (a + b + c)^2 / 3 \u2265 a * b + b * c + c * a := by\n    have h8 : (a + b + c)^2 \u2265 3 * (a * b + b * c + c * a) := h7\n    have h9 : (a + b + c)^2 / 3 \u2265 (3 * (a * b + b * c + c * a)) / 3 := by\n      -- Divide both sides of the inequality by 3\n      linarith\n    -- Simplify the right-hand side\n    have h10 : (3 * (a * b + b * c + c * a)) / 3 = a * b + b * c + c * a := by\n      ring\n    -- Substitute back into the inequality\n    linarith\n  \n  have h9 : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3 := by\n    linarith\n  \n  exact h9", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Variable declarations correctly match - a, b, c are declared as real numbers in both versions.", "The Lean formalization introduces significant additional constraints (positivity and sum equals 6) that fundamentally change the theorem scope from a general statement about any real numbers to a specific case with positive numbers summing to 6.", "The main inequality conclusion is perfectly captured with identical mathematical meaning: ab + bc + ca \u2264 (a + b + c)\u00b2 / 3."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Variable declarations correctly match - a, b, c are declared as real numbers in both versions.', 'The Lean formalization introduces significant additional constraints (positivity and sum equals 6) that fundamentally change the theorem scope from a general statement about any real numbers to a specific case with positive numbers summing to 6.', 'The main inequality conclusion is perfectly captured with identical mathematical meaning: ab + bc + ca \u2264 (a + b + c)\u00b2 / 3.']"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Given $a+b+c=6$, it follows that $x+y+z \\leq 24$.", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1].\n\u2022 a + b + c = 6 [tc_2].\n\u2022 x + y + z = 2(ab + bc + ca) [l2].\n\u2022 ab + bc + ca \u2264 (a + b + c)\u00b2 / 3 [l3].\nTherefore, we conclude:\n\u2022 x + y + z \u2264 24 [l4].", "dependencies": ["tc_1", "tc_2", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x + y + z \u2264 24 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x + y + z \u2264 24 := by\n  intro x y z\n  have h_sum_sq_div_3 : (a + b + c)^2 / 3 = 12 := by\n    have h1 : (a + b + c) ^ 2 = 36 := by\n      rw [h_sum]\n      <;> norm_num\n    rw [h1]\n    <;> norm_num\n  \n  have h_ab_bc_ca_le_12 : a * b + b * c + c * a \u2264 12 := by\n    have h2 : a * b + b * c + c * a \u2264 (a + b + c) ^ 2 / 3 := h_ineq\n    linarith\n  \n  have h_x_add_y_add_z : x + y + z = 2 * (a * b + b * c + c * a) := by\n    dsimp only [x, y, z]\n    ring_nf\n    <;>\n    (try norm_num) <;>\n    (try linarith) <;>\n    (try nlinarith)\n  \n  have h_final : x + y + z \u2264 24 := by\n    have h3 : x + y + z = 2 * (a * b + b * c + c * a) := h_x_add_y_add_z\n    rw [h3]\n    have h4 : a * b + b * c + c * a \u2264 12 := h_ab_bc_ca_le_12\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The positive real number constraints are correctly formalized as strict inequalities with 0.", "The sum constraint a + b + c = 6 is perfectly captured.", "The inequality ab + bc + ca \u2264 (a + b + c)\u00b2 / 3 is correctly formalized.", "While the variable definitions look different from x + y + z = 2(ab + bc + ca), they are mathematically equivalent. The Lean code defines x, y, z such that their sum equals 2(ab + bc + ca), which matches the natural language requirement.", "The conclusion x + y + z \u2264 24 is correctly stated as the theorem's goal."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore, $\\sqrt[3]{x} + \\sqrt[3]{y} + \\sqrt[3]{z} \\leq 3\\sqrt[3]{8} = 6$", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1].\n\u2022 Let x = ab + bc, y = bc + ca, and z = ca + ab [def_1].\n\u2022 For any non-negative u, v, w, (\u221bu + \u221bv + \u221bw) / 3 \u2264 \u221b((u + v + w) / 3) [l1].\n\u2022 x + y + z \u2264 24 [l4].\nTherefore, we conclude:\n\u2022 \u221bx + \u221by + \u221bz \u2264 6 [l5].", "dependencies": ["tc_1", "def_1", "l1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3)\n  (l1 : \u2200 u v w : \u211d, u \u2265 0 \u2192 v \u2265 0 \u2192 w \u2265 0 \u2192 \n    (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d))\n  (l4 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x + y + z \u2264 24) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3)\n  (l1 : \u2200 u v w : \u211d, u \u2265 0 \u2192 v \u2265 0 \u2192 w \u2265 0 \u2192 \n    (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d))\n  (l4 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x + y + z \u2264 24) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6 := by\n  dsimp only at l4 \u22a2\n  have h_x_nonneg : a * b + b * c \u2265 0 := by\n    have h\u2081 : 0 \u2264 a * b := by positivity\n    have h\u2082 : 0 \u2264 b * c := by positivity\n    linarith\n  \n  have h_y_nonneg : b * c + c * a \u2265 0 := by\n    have h\u2081 : 0 \u2264 b * c := by positivity\n    have h\u2082 : 0 \u2264 c * a := by positivity\n    linarith\n  \n  have h_z_nonneg : c * a + a * b \u2265 0 := by\n    have h\u2081 : 0 \u2264 c * a := by positivity\n    have h\u2082 : 0 \u2264 a * b := by positivity\n    linarith\n  \n  have h_sum_xyz : (a * b + b * c) + (b * c + c * a) + (c * a + a * b) \u2264 24 := by\n    simpa [add_assoc, add_comm, add_left_comm] using l4\n  \n  have h_main_ineq : ((a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d)) / 3 \u2264 (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d) := by\n    have h\u2082 : (a * b + b * c) \u2265 0 := h_x_nonneg\n    have h\u2083 : (b * c + c * a) \u2265 0 := h_y_nonneg\n    have h\u2084 : (c * a + a * b) \u2265 0 := h_z_nonneg\n    have h\u2085 : ((a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d)) / 3 \u2264 (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d) := by\n      -- Use the given inequality l1 to prove the main inequality\n      have h\u2086 := l1 (a * b + b * c) (b * c + c * a) (c * a + a * b) h\u2082 h\u2083 h\u2084\n      -- Simplify the expression to match the form required by l1\n      ring_nf at h\u2086 \u22a2\n      <;>\n      (try norm_num at h\u2086 \u22a2) <;>\n      (try linarith) <;>\n      (try assumption) <;>\n      (try simp_all [add_assoc, add_comm, add_left_comm]) <;>\n      (try norm_num) <;>\n      (try linarith)\n      <;>\n      (try\n        {\n          simp_all [add_assoc, add_comm, add_left_comm]\n          <;> norm_num at *\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h\u2086 \u22a2\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [add_assoc, add_comm, add_left_comm]\n          <;> norm_num at *\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h\u2086 \u22a2\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [add_assoc, add_comm, add_left_comm]\n          <;> norm_num at *\n          <;> linarith\n        })\n      <;>\n      (try\n        {\n          norm_num at h\u2086 \u22a2\n          <;> linarith\n        })\n    exact h\u2085\n  \n  have h_sum_div_le_8 : ((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3 \u2264 8 := by\n    have h\u2081 : (a * b + b * c) + (b * c + c * a) + (c * a + a * b) \u2264 24 := h_sum_xyz\n    linarith\n  \n  have h_cube_root_le_2 : (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d) \u2264 (2 : \u211d) := by\n    have h\u2081 : ((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3 \u2264 8 := h_sum_div_le_8\n    have h\u2082 : 0 \u2264 ((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3 := by\n      have h\u2083 : 0 \u2264 a * b + b * c := by positivity\n      have h\u2084 : 0 \u2264 b * c + c * a := by positivity\n      have h\u2085 : 0 \u2264 c * a + a * b := by positivity\n      positivity\n    -- Use the fact that the cube root function is increasing to bound the expression\n    have h\u2083 : (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3 : \u211d) ^ (1 / 3 : \u211d) \u2264 (8 : \u211d) ^ (1 / 3 : \u211d) := by\n      apply Real.rpow_le_rpow\n      \u00b7 linarith\n      \u00b7 linarith\n      \u00b7 norm_num\n    -- Calculate the cube root of 8\n    have h\u2084 : (8 : \u211d) ^ (1 / 3 : \u211d) = (2 : \u211d) := by\n      rw [show (8 : \u211d) = (2 : \u211d) ^ ( (3 : \u211d) ) by norm_num]\n      rw [\u2190 Real.rpow_mul] <;> norm_num\n      <;>\n      linarith\n    -- Combine the inequalities to get the final result\n    calc\n      (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3 : \u211d) ^ (1 / 3 : \u211d) \u2264 (8 : \u211d) ^ (1 / 3 : \u211d) := h\u2083\n      _ = (2 : \u211d) := by rw [h\u2084]\n  \n  have h_final : (a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d) \u2264 6 := by\n    have h\u2081 : ((a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d)) / 3 \u2264 (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d) := h_main_ineq\n    have h\u2082 : (((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d) \u2264 (2 : \u211d) := h_cube_root_le_2\n    calc\n      (a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d) =\n          3 * (((a * b + b * c)^(1/3 : \u211d) + (b * c + c * a)^(1/3 : \u211d) + (c * a + a * b)^(1/3 : \u211d)) / 3) := by ring\n      _ \u2264 3 * ((((a * b + b * c) + (b * c + c * a) + (c * a + a * b)) / 3)^(1/3 : \u211d)) := by\n        gcongr\n      _ \u2264 3 * (2 : \u211d) := by\n        gcongr\n      _ = 6 := by norm_num\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The variable declarations correctly capture that a, b, c are positive real numbers.", "The definitions of x, y, z correctly match the natural language specifications.", "The inequality l1 for cube roots is correctly formalized.", "The constraint l4 (x + y + z \u2264 24) is correctly included.", "The Lean formalization introduces two additional constraints not mentioned in the natural language: h_sum (a + b + c = 6) and h_ineq (a * b + b * c + c * a \u2264 (a + b + c)^2 / 3). These significantly change the mathematical context and are not derivable from or implied by the given natural language statements."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The variable declarations correctly capture that a, b, c are positive real numbers.', 'The definitions of x, y, z correctly match the natural language specifications.', 'The inequality l1 for cube roots is correctly formalized.', 'The constraint l4 (x + y + z \u2264 24) is correctly included.', 'The Lean formalization introduces two additional constraints not mentioned in the natural language: h_sum (a + b + c = 6) and h_ineq (a * b + b * c + c * a \u2264 (a + b + c)^2 / 3). These significantly change the mathematical context and are not derivable from or implied by the given natural language statements.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "which implies $\\sqrt[3]{ab+bc} + \\sqrt[3]{bc+ca} + \\sqrt[3]{ca+ab} \\leq 6$.", "statement": "We assume:\n\u2022 Let x = ab + bc, y = bc + ca, and z = ca + ab [def_1].\n\u2022 \u221bx + \u221by + \u221bz \u2264 6 [l5].\nTherefore, we conclude:\n\u2022 \u221b(ab + bc) + \u221b(bc + ca) + \u221b(ca + ab) \u2264 6 [ts_1].", "dependencies": ["def_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3)\n  (l1 : \u2200 u v w : \u211d, u \u2265 0 \u2192 v \u2265 0 \u2192 w \u2265 0 \u2192 \n    (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d))\n  (def_1 : let x := a * b + b * c\n           let y := b * c + c * a  \n           let z := c * a + a * b\n           x + y + z = 2 * (a * b + b * c + c * a))\n  (l4 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x + y + z \u2264 24)\n  (l5 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (a b c : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h_sum : a + b + c = 6)\n  (h_ineq : a * b + b * c + c * a \u2264 (a + b + c)^2 / 3)\n  (l1 : \u2200 u v w : \u211d, u \u2265 0 \u2192 v \u2265 0 \u2192 w \u2265 0 \u2192 \n    (u^(1/3 : \u211d) + v^(1/3 : \u211d) + w^(1/3 : \u211d)) / 3 \u2264 ((u + v + w) / 3)^(1/3 : \u211d))\n  (def_1 : let x := a * b + b * c\n           let y := b * c + c * a  \n           let z := c * a + a * b\n           x + y + z = 2 * (a * b + b * c + c * a))\n  (l4 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x + y + z \u2264 24)\n  (l5 : let x := a * b + b * c\n        let y := b * c + c * a  \n        let z := c * a + a * b\n        x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6) :\n  let x := a * b + b * c\n  let y := b * c + c * a  \n  let z := c * a + a * b\n  x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6 := by\n  have h_main : (let x := a * b + b * c; let y := b * c + c * a; let z := c * a + a * b; x^(1/3 : \u211d) + y^(1/3 : \u211d) + z^(1/3 : \u211d) \u2264 6) := by\n    simpa using l5\n  simpa using h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable definitions in def_1 are correctly captured. The Lean uses equivalent mathematical expressions (a * b vs ab, etc.) and the order of terms doesn't affect the mathematical meaning.", "The inequality l5 is perfectly translated. The cube root notation \u221b is correctly represented as ^(1/3 : \u211d) in Lean.", "The conclusion ts_1 correctly captures the natural language statement. The Lean formalization includes additional assumptions not mentioned in the natural language, but these are extra constraints that don't contradict the core logical structure. The conclusion follows the same logical pattern as the premise."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

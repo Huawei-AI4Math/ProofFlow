@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z = x+iy$ be a complex number with $x, y \in \mathbb{R}$. If $\cos(z) = 2$, $x = 0$, and $y > 0$, then $z = i \ln(2+\sqrt{3})$.
+
+Proof: Using the identity for the complex cosine, $\cos(z) = \cos(x)\cosh(y) - i\sin(x)\sinh(y)$, and substituting the condition $x=0$, we get $\cos(z) = \cosh(y)$. Combining this with the condition $\cos(z)=2$ gives the equation $\cosh(y)=2$. Solving this equation using the exponential definition of cosh leads to the quadratic equation $(e^y)^2 - 4e^y + 1 = 0$, whose solutions for $e^y$ are $2 \pm \sqrt{3}$. Given the condition $y > 0$, we must select the solution $e^y = 2 + \sqrt{3}$. Taking the logarithm gives $y = \ln(2+\sqrt{3})$, and since $z=iy$ from $x=0$, we conclude $z = i \ln(2+\sqrt{3})$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $z = x+iy$ be a complex number with $x, y \\in \\mathbb{R}$.", "statement": "Premise:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102) (x y : \u211d)\n(tc_1 : z = x + y * I)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number equal to x + iy. The notation 'y * I' in Lean is equivalent to 'iy' in mathematical notation, where I represents the imaginary unit.", "The Lean declaration 'x y : \u211d' correctly specifies that both x and y are real numbers, matching the natural language conditions.", "All components of the premise are accurately represented in the Lean formalization with appropriate types and the correct mathematical relationship."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $\\cos(z) = 2$", "statement": "Premise:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number equal to x + iy where x and y are real numbers. The use of 'I' for the imaginary unit and 'y * I' for 'iy' is the standard Lean notation and semantically equivalent.", "The Lean formalization correctly captures that the complex cosine of z equals 2. 'Complex.cos' is the appropriate function for complex cosine in Lean."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "$x = 0$", "statement": "Premise:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that z is a complex number equal to x + iy where x and y are real numbers. The variable declarations (z : \u2102) (x y : \u211d) establish the types, and tc_1 : z = x + y * I expresses the relationship, where I is the imaginary unit in Lean's complex number notation.", "The Lean formalization Complex.cos z = 2 perfectly matches the mathematical statement cos(z) = 2, using Lean's complex cosine function.", "The Lean formalization tc_3 : x = 0 directly matches the mathematical condition x = 0."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_4": {"id": "tc_4", "natural_language": "$y > 0$", "statement": "Premise:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly declares z as a complex number (\u2102), x and y as real numbers (\u211d), and establishes z = x + y * I, which is equivalent to z = x + iy in mathematical notation", "The Lean formalization uses Complex.cos z = 2, which correctly represents cos(z) = 2 using Lean's complex cosine function", "The condition x = 0 is directly and exactly represented in Lean as tc_3 : x = 0", "The condition y > 0 is directly and exactly represented in Lean as tc_4 : y > 0"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Using the identity for the complex cosine, $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4].\nTherefore, we conclude:\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0) :\n  Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0) :\n  Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y := by\n  rw [tc_1]\n  simp only [Complex.cos_add, Complex.cos_ofReal_re, Complex.sin_ofReal_re, tc_3]\n  simp [Complex.cos_zero, Complex.sin_zero, zero_mul, sub_zero, mul_one]\n  rw [Complex.cos_mul_I, Complex.sin_mul_I]\n  simp [Complex.cosh, Complex.sinh]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 6, "endLine": 15, "endColumn": 23, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  Complex.cos (?x * Complex.I)\nI z : \u2102\nx y : \u211d\ntc_1 : z = \u2191x + \u2191y * I\ntc_2 : Complex.cos z = 2\ntc_3 : x = 0\ntc_4 : y > 0\n\u22a2 Complex.cos (\u2191y * I) = Complex.cosh \u2191y"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Complex number representation z = x+iy is correctly formalized as z = x + y * I", "Cosine condition cos(z) = 2 is perfectly captured as Complex.cos z = 2", "Real part condition x = 0 is exactly preserved", "Imaginary part condition y > 0 is exactly preserved", "Variable types x, y \u2208 \u211d are correctly declared as (x y : \u211d)", "The cosine formula conclusion is mathematically equivalent, with appropriate Lean notation for complex operations", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1_neg\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0) :\n  \u00ac(Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y) := by\n  rw [tc_1, tc_3]\n  simp only [Complex.cos_zero, Complex.sin_zero, zero_mul, sub_zero, mul_one]\n  rw [tc_2]\n  intro h\n  have : Complex.cosh y = 2 := h\n  have : y = Real.arccosh 2 := by\n    apply Real.cosh_inj_of_nonneg\n    \u00b7 exact le_of_lt tc_4\n    \u00b7 exact le_of_lt (Real.arccosh_pos.2 (by norm_num))\n    \u00b7 rw [this, Real.cosh_arccosh (by norm_num)]\n  have : Real.arccosh 2 = Real.log (2 + Real.sqrt 3) := by\n    rw [Real.arccosh_eq_log]\n    norm_num\n  norm_num at this"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "and substituting the condition $x=0$, we get $\\cos(z) = \\cosh(y)$.", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4];\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1].\nTherefore, we conclude:\n\u2022 $\\cos(z) = \\cosh(y)$ [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y) :\n  Complex.cos z = Complex.cosh y := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y) :\n  Complex.cos z = Complex.cosh y := by\n  rw [l1, tc_3]\n  simp only [Complex.cos_zero, Complex.sin_zero, zero_mul, mul_zero, sub_zero, one_mul, Complex.ofReal_zero]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical content from the natural language. The only differences are notational: 'i' vs 'I' for the imaginary unit, and explicit type declarations in Lean. All logical components - the complex number representation, the cosine equation, the conditions on x and y, the complex cosine formula, and the conclusion - are faithfully represented. The mathematical meaning is preserved completely."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Combining this with the condition $\\cos(z)=2$ gives the equation $\\cosh(y)=2$.", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4];\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1];\n\u2022 $\\cos(z) = \\cosh(y)$ [l2].\nTherefore, we conclude:\n\u2022 $\\cosh(y) = 2$ [l3].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y) :\n  Complex.cosh y = 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y) :\n  Complex.cosh y = 2 := by\n  rw [\u2190 tc_2, l2]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations correctly capture the complex number z = x + iy with real components x and y", "The condition cos(z) = 2 is perfectly represented", "The constraint x = 0 is correctly formalized", "The constraint y > 0 is correctly formalized", "The complex cosine formula is accurately represented using Lean's complex number notation", "The simplified form cos(z) = cosh(y) is correctly stated", "The conclusion cosh(y) = 2 follows logically and is properly formalized"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Solving this equation using the exponential definition of cosh", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4];\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1];\n\u2022 $\\cos(z) = \\cosh(y)$ [l2];\n\u2022 $\\cosh(y) = 2$ [l3].\nDefinition:\n\u2022 The hyperbolic cosine is defined as $\\cosh(y) = (e^y + e^{-y}) / 2$ [def_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (y : \u211d)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization only declares y as real but completely omits the complex number z = x + iy and the declaration of x as real", "The condition cos(z) = 2 is completely missing from the Lean formalization", "The condition x = 0 is completely missing from the Lean formalization", "The condition y > 0 is completely missing from the Lean formalization", "The formula for complex cosine cos(z) = cos(x)cosh(y) - i*sin(x)sinh(y) is completely missing from the Lean formalization", "The conclusion cos(z) = cosh(y) is completely missing from the Lean formalization", "The conclusion cosh(y) = 2 is completely missing from the Lean formalization", "The definition of hyperbolic cosine is present but uses Complex.cosh instead of a more general cosh function, and uses Real.exp instead of a more general exp. The mathematical meaning is essentially the same though"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization only declares y as real but completely omits the complex number z = x + iy and the declaration of x as real', 'The condition cos(z) = 2 is completely missing from the Lean formalization', 'The condition x = 0 is completely missing from the Lean formalization', 'The condition y > 0 is completely missing from the Lean formalization', 'The formula for complex cosine cos(z) = cos(x)cosh(y) - i*sin(x)sinh(y) is completely missing from the Lean formalization', 'The conclusion cos(z) = cosh(y) is completely missing from the Lean formalization', 'The conclusion cosh(y) = 2 is completely missing from the Lean formalization', 'The definition of hyperbolic cosine is present but uses Complex.cosh instead of a more general cosh function, and uses Real.exp instead of a more general exp. The mathematical meaning is essentially the same though']"}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "leads to the quadratic equation $(e^y)^2 - 4e^y + 1 = 0$", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4];\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1];\n\u2022 $\\cos(z) = \\cosh(y)$ [l2];\n\u2022 $\\cosh(y) = 2$ [l3];\n\u2022 The hyperbolic cosine is defined as $\\cosh(y) = (e^y + e^{-y}) / 2$ [def_1].\nTherefore, we conclude:\n\u2022 $(e^y)^2 - 4e^y + 1 = 0$ [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (y : \u211d)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2) :\n  (Real.exp y)^2 - 4 * Real.exp y + 1 = 0 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (y : \u211d)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2) :\n  (Real.exp y)^2 - 4 * Real.exp y + 1 = 0 := by\n  rw [def_1] at l3\n  rw [\u2190 l3, mul_comm]\n  ring_nf\n  rw [\u2190 mul_assoc, \u2190 add_mul, mul_comm (Real.exp y)]\n  norm_num", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 6, "endLine": 11, "endColumn": 10, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2\ny : \u211d\nl3 : (\u2191(rexp y) + \u2191(rexp (-y))) / 2 = 2\ndef_1 : Complex.cosh \u2191y = (\u2191(rexp y) + \u2191(rexp (-y))) / 2\n\u22a2 rexp y ^ 2 - 4 * rexp y + 1 = 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the essential mathematical relationship from the natural language. While it omits some intermediate steps and assumptions that aren't necessary for the final conclusion, it includes the key components: the constraint that cosh(y) = 2, the definition of hyperbolic cosine, and the target algebraic equation. The formalization is mathematically sound and sufficient to prove the stated conclusion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (y : \u211d)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2) :\n  \u00ac((Real.exp y)^2 - 4 * Real.exp y + 1 = 0) := by\n  rw [def_1] at l3\n  have : Real.exp y \u2260 0 := by exact exp_ne_zero y\n  field_simp at l3\n  have h : (Real.exp y)^2 - 4 * Real.exp y + 1 = (Real.exp y)^2 - 4 * Real.exp y + 4 - 3 := by ring\n  rw [h]\n  intro H\n  have : (Real.exp y)^2 - 4 * Real.exp y + 4 = 3 := by linarith\n  have : (Real.exp y - 2)^2 = 3 := by\n    ring_nf\n    exact this\n  have : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3 := by\n    rw [\u2190 sub_eq_zero, \u2190 pow_two]\n    simp [this]\n  cases this\n  \u00b7 rw [this] at l3\n    norm_num at l3\n    have : Real.sqrt 3 > 0 := by exact Real.sqrt_pos.2 (by norm_num)\n    linarith\n  \u00b7 rw [this] at l3\n    norm_num at l3\n    have : Real.sqrt 3 > 0 := by exact Real.sqrt_pos.2 (by norm_num)\n    linarith"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "whose solutions for $e^y$ are $2 \\pm \\sqrt{3}$.", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $\\cos(z) = 2$ [tc_2];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y > 0$ [tc_4];\n\u2022 For a complex number $z = x+iy$, the cosine is given by $\\cos(z) = \\cos(x)\\cosh(y) - i\\sin(x)\\sinh(y)$ [l1];\n\u2022 $\\cos(z) = \\cosh(y)$ [l2];\n\u2022 $\\cosh(y) = 2$ [l3];\n\u2022 The hyperbolic cosine is defined as $\\cosh(y) = (e^y + e^{-y}) / 2$ [def_1];\n\u2022 $(e^y)^2 - 4e^y + 1 = 0$ [l4].\nTherefore, we conclude:\n\u2022 $e^y = 2 + \\sqrt{3}$ or $e^y = 2 - \\sqrt{3}$ [l5].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "def_1", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0) :\n  Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0) :\n  Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3 := by\n  have h : Real.exp y \u2260 0 := by\n    intro h'\n    have : (Real.exp y)^2 - 4 * Real.exp y + 1 = 1 := by simp [h']\n    linarith [l4]\n  set a := Real.exp y with ha\n  have h_eq : a^2 - 4 * a + 1 = 0 := l4\n  have h_sqrt12 : Real.sqrt 12 = 2 * Real.sqrt 3 := by\n    rw [\u2190Real.sqrt_mul (by positivity) (by positivity)]\n    norm_num\n  have roots : a = (4 + Real.sqrt 12) / 2 \u2228 a = (4 - Real.sqrt 12) / 2 := by\n    rw [\u2190quadratic_formula]\n    exact \u27e8h, h_eq\u27e9\n  rw [h_sqrt12] at roots\n  cases' roots with r1 r2\n  \u00b7 left; rw [r1]; field_simp; ring\n  \u00b7 right; rw [r2]; field_simp; ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 24, "column": 8, "endLine": 24, "endColumn": 54, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u221a?m.4673 * \u221a?m.4675\nz x I y : \u211d\ntc_1 : z = x + y * I\ntc_2 : Complex.cos \u2191z = 2\ntc_3 : x = 0\ntc_4 : y > 0\nl1 : Complex.cos \u2191z = Complex.cos \u2191x * Complex.cosh \u2191y - \u2191I * Complex.sin \u2191x * Complex.sinh \u2191y\nl2 : Complex.cos \u2191z = Complex.cosh \u2191y\nl3 : Complex.cosh \u2191y = 2\na : \u211d := rexp y\ndef_1 : Complex.cosh \u2191y = (\u2191a + \u2191(rexp (-y))) / 2\nl4 : a ^ 2 - 4 * a + 1 = 0\nh : a \u2260 0\nha : a = rexp y\nh_eq : a ^ 2 - 4 * a + 1 = 0\n\u22a2 \u221a12 = 2 * \u221a3"}, {"line": 24, "column": 27, "endLine": 24, "endColumn": 37, "data": "failed to prove positivity/nonnegativity/nonzeroness"}, {"line": 24, "column": 43, "endLine": 24, "endColumn": 53, "data": "not a positivity goal"}, {"line": 27, "column": 9, "endLine": 27, "endColumn": 26, "data": "unknown identifier 'quadratic_formula'"}, {"line": 27, "column": 8, "endLine": 27, "endColumn": 26, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.9090\nz x I y : \u211d\ntc_1 : z = x + y * I\ntc_2 : Complex.cos \u2191z = 2\ntc_3 : x = 0\ntc_4 : y > 0\nl1 : Complex.cos \u2191z = Complex.cos \u2191x * Complex.cosh \u2191y - \u2191I * Complex.sin \u2191x * Complex.sinh \u2191y\nl2 : Complex.cos \u2191z = Complex.cosh \u2191y\nl3 : Complex.cosh \u2191y = 2\na : \u211d := rexp y\ndef_1 : Complex.cosh \u2191y = (\u2191a + \u2191(rexp (-y))) / 2\nl4 : a ^ 2 - 4 * a + 1 = 0\nh : a \u2260 0\nha : a = rexp y\nh_eq : a ^ 2 - 4 * a + 1 = 0\nh_sqrt12 : \u221a12 = 2 * \u221a3\n\u22a2 a = (4 + \u221a12) / 2 \u2228 a = (4 - \u221a12) / 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization captures the mathematical content correctly, but has minor structural issues: (1) Missing explicit variable declarations for z and x in the parameter list, though they appear in hypotheses, and (2) Type mixing between Complex.cosh and Real.exp in def_1. However, the logical meaning and mathematical relationships are preserved throughout, and the conclusion correctly represents the disjunctive result about the two possible values of e^y.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization captures the mathematical content correctly, but has minor structural issues: (1) Missing explicit variable declarations for z and x in the parameter list, though they appear in hypotheses, and (2) Type mixing between Complex.cosh and Real.exp in def_1. However, the logical meaning and mathematical relationships are preserved throughout, and the conclusion correctly represents the disjunctive result about the two possible values of e^y.']"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Given the condition $y > 0$, we must select the solution $e^y = 2 + \\sqrt{3}$.", "statement": "We assume:\n\u2022 $y > 0$ [tc_4];\n\u2022 $e^y = 2 + \\sqrt{3}$ or $e^y = 2 - \\sqrt{3}$ [l5].\nTherefore, we conclude:\n\u2022 $e^y = 2 + \\sqrt{3}$ [l6].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "def_1", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (y : \u211d)\n  (z : \u2102) (x : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0)\n  (l5 : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3) :\n  Real.exp y = 2 + Real.sqrt 3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (y : \u211d)\n  (z : \u2102) (x : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0)\n  (l5 : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3) :\n  Real.exp y = 2 + Real.sqrt 3 := by\n  cases l5 with\n  | inl h => exact h\n  | inr h =>\n    have : Real.exp y < 2 := by\n      rw [h]\n      have : Real.sqrt 3 > 1 := by\n        rw [Real.sqrt_lt (by norm_num)]\n        norm_num\n      linarith\n    have : Real.exp y > 2 := by\n      rw [\u2190l3]\n      exact Real.cosh_pos y\n    linarith", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 25, "column": 12, "endLine": 25, "endColumn": 38, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u221a?m.1712 < ?m.1713\nI : \u2102\ny : \u211d\nz : \u2102\nx : \u211d\ntc_1 : z = \u2191x + \u2191y * I\ntc_2 : Complex.cos z = 2\ntc_3 : x = 0\ntc_4 : y > 0\nl1 : Complex.cos z = Complex.cos \u2191x * Complex.cosh \u2191y - I * Complex.sin \u2191x * Complex.sinh \u2191y\nl2 : Complex.cos z = Complex.cosh \u2191y\nl3 : Complex.cosh \u2191y = 2\ndef_1 : Complex.cosh \u2191y = (\u2191(rexp y) + \u2191(rexp (-y))) / 2\nl4 : rexp y ^ 2 - 4 * rexp y + 1 = 0\nh : rexp y = 2 - \u221a3\n\u22a2 \u221a3 > 1"}, {"line": 25, "column": 26, "endLine": 25, "endColumn": 37, "data": "unsolved goals\nI : \u2102\ny : \u211d\nz : \u2102\nx : \u211d\ntc_1 : z = \u2191x + \u2191y * I\ntc_2 : Complex.cos z = 2\ntc_3 : x = 0\ntc_4 : y > 0\nl1 : Complex.cos z = Complex.cos \u2191x * Complex.cosh \u2191y - I * Complex.sin \u2191x * Complex.sinh \u2191y\nl2 : Complex.cos z = Complex.cosh \u2191y\nl3 : Complex.cosh \u2191y = 2\ndef_1 : Complex.cosh \u2191y = (\u2191(rexp y) + \u2191(rexp (-y))) / 2\nl4 : rexp y ^ 2 - 4 * rexp y + 1 = 0\nh : rexp y = 2 - \u221a3\n\u22a2 0 \u2264 ?m.1712"}, {"line": 29, "column": 10, "endLine": 29, "endColumn": 13, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  2\nI : \u2102\ny : \u211d\nz : \u2102\nx : \u211d\ntc_1 : z = \u2191x + \u2191y * I\ntc_2 : Complex.cos z = 2\ntc_3 : x = 0\ntc_4 : y > 0\nl1 : Complex.cos z = Complex.cos \u2191x * Complex.cosh \u2191y - I * Complex.sin \u2191x * Complex.sinh \u2191y\nl2 : Complex.cos z = Complex.cosh \u2191y\nl3 : Complex.cosh \u2191y = 2\ndef_1 : Complex.cosh \u2191y = (\u2191(rexp y) + \u2191(rexp (-y))) / 2\nl4 : rexp y ^ 2 - 4 * rexp y + 1 = 0\nh : rexp y = 2 - \u221a3\nthis : rexp y < 2\n\u22a2 rexp y > 2"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The assumptions y > 0 and the disjunction about e^y are correctly captured in the Lean formalization with identical logical meaning.", "The conclusion e^y = 2 + \u221a3 is perfectly represented as the goal of the lemma.", "The additional mathematical context in the Lean formalization (complex numbers, hyperbolic functions, etc.) provides consistent background that supports the reasoning, even though not explicitly mentioned in the natural language excerpt.", "The overall logical structure of the argument (from assumptions to conclusion) is faithfully preserved in the Lean formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l6\n  (y : \u211d)\n  (z : \u2102) (x : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0)\n  (l5 : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3) :\n  \u00ac (Real.exp y = 2 + Real.sqrt 3) := by\n  intro h\n  have h1 : Real.sqrt 3 > 0 := by exact Real.sqrt_pos.mpr (by norm_num)\n  have h2 : 2 - Real.sqrt 3 < 2 + Real.sqrt 3 := by linarith\n  have h3 : 2 - Real.sqrt 3 > 0 := by\n    have : Real.sqrt 3 < 2 := by\n      rw [Real.sqrt_lt_iff_sq_lt (by norm_num)]\n      norm_num\n    linarith\n  cases l5 with\n  | inl h' => rw [h'] at h; simp at h\n  | inr h' =>\n    rw [h'] at h\n    have : Real.exp y > 0 := Real.exp_pos y\n    have : 2 + Real.sqrt 3 = 2 - Real.sqrt 3 := h.symm\n    linarith"}, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Taking the logarithm gives $y = \\ln(2+\\sqrt{3})$", "statement": "We assume:\n\u2022 $e^y = 2 + \\sqrt{3}$ [l6].\nTherefore, we conclude:\n\u2022 $y = \\ln(2+\\sqrt{3})$ [l7].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "def_1", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (y : \u211d) (z : \u2102) (x : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0)\n  (l5 : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3)\n  (l6 : Real.exp y = 2 + Real.sqrt 3) :\n  y = Real.log (2 + Real.sqrt 3) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (y : \u211d) (z : \u2102) (x : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_2 : Complex.cos z = 2)\n  (tc_3 : x = 0)\n  (tc_4 : y > 0)\n  (l1 : Complex.cos z = Complex.cos x * Complex.cosh y - I * Complex.sin x * Complex.sinh y)\n  (l2 : Complex.cos z = Complex.cosh y)\n  (l3 : Complex.cosh y = 2)\n  (def_1 : Complex.cosh y = (Real.exp y + Real.exp (-y)) / 2)\n  (l4 : (Real.exp y)^2 - 4 * Real.exp y + 1 = 0)\n  (l5 : Real.exp y = 2 + Real.sqrt 3 \u2228 Real.exp y = 2 - Real.sqrt 3)\n  (l6 : Real.exp y = 2 + Real.sqrt 3) :\n  y = Real.log (2 + Real.sqrt 3) := by\n  have h : 2 + Real.sqrt 3 > 0 := by\n    have : Real.sqrt 3 > 0 := Real.sqrt_pos.mpr (by norm_num)\n    linarith\n  rw [\u2190 Real.log_exp y, l6]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The premise 'e^y = 2 + \u221a3' is perfectly captured in Lean as 'Real.exp y = 2 + Real.sqrt 3'. The mathematical expression and its role as an assumption are identical.", "The conclusion 'y = ln(2+\u221a3)' is perfectly captured in Lean as 'y = Real.log (2 + Real.sqrt 3)'. The Lean formalization correctly uses Real.log for the natural logarithm function. While there are many additional premises in the Lean code, they provide consistent mathematical context and don't contradict the core logical inference from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "and since $z=iy$ from $x=0$, we conclude $z = i \\ln(2+\\sqrt{3})$.", "statement": "We assume:\n\u2022 $z = x+iy$ is a complex number with $x, y \\in \\mathbb{R}$ [tc_1];\n\u2022 $x = 0$ [tc_3];\n\u2022 $y = \\ln(2+\\sqrt{3})$ [l7].\nTherefore, we conclude:\n\u2022 $z = i \\ln(2+\\sqrt{3})$ [ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "tc_4", "l1", "l2", "l3", "def_1", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_3 : x = 0)\n  (l7 : y = Real.log (2 + Real.sqrt 3)) :\n  z = I * Real.log (2 + Real.sqrt 3) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_3 : x = 0)\n  (l7 : y = Real.log (2 + Real.sqrt 3)) :\n  z = I * Real.log (2 + Real.sqrt 3) := by\n  rw [tc_1, tc_3, l7, zero_add]\n  rw [mul_comm]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 11, "column": 22, "endLine": 11, "endColumn": 30, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  0 + ?a\nI z : \u2102\nx y : \u211d\ntc_1 : z = \u2191x + \u2191y * I\ntc_3 : x = 0\nl7 : y = Real.log (2 + \u221a3)\n\u22a2 \u21910 + \u2191(Real.log (2 + \u221a3)) * I = I * \u2191(Real.log (2 + \u221a3))"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The complex number representation z = x + y * I in Lean correctly captures z = x + iy from natural language, just using Lean's notation for the imaginary unit", "The type declarations (x y : \u211d) properly formalize the constraint that x, y \u2208 \u211d", "The condition x = 0 is identical in both versions", "Real.log (2 + Real.sqrt 3) correctly represents ln(2+\u221a3) using Lean's standard library functions", "The conclusion z = I * Real.log (2 + Real.sqrt 3) properly formalizes z = i ln(2+\u221a3), maintaining the same mathematical meaning", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (z : \u2102) (x y : \u211d)\n  (tc_1 : z = x + y * I)\n  (tc_3 : x = 0)\n  (l7 : y = Real.log (2 + Real.sqrt 3)) :\n  \u00ac(z = I * Real.log (2 + Real.sqrt 3)) := by\n  simp [tc_1, tc_3, l7]\n  intro h\n  rw [mul_comm] at h\n  simp at h"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_4", "label": "tc_4", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "tc_4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $X$ and $Y$ be random variables on the same probability space, where $X$ has a finite second moment (i.e., $E[X^2] < \infty$). Then, the law of total variance holds: $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$. Furthermore, it follows that $Var(E[X|Y]) \le Var(X)$.
+
+Proof: The proof starts with the definition of variance, $Var(X) = E[X^2] - (E[X])^2$. By the law of total expectation, we have $E[X] = E[E[X|Y]]$ and also $E[X^2] = E[E[X^2|Y]]$. Substituting these into the variance formula gives $Var(X) = E[E[X^2|Y]] - (E[E[X|Y]])^2$. From the definition of conditional variance, $Var(X|Y) = E[X^2|Y] - (E[X|Y])^2$, we can rearrange this to state $E[X^2|Y] = Var(X|Y) + (E[X|Y])^2$. We now substitute this expression for $E[X^2|Y]$ into our equation for $Var(X)$, which after applying linearity of expectation yields $Var(X) = E[Var(X|Y)] + E[(E[X|Y])^2] - (E[E[X|Y]])^2$. The term $E[(E[X|Y])^2] - (E[E[X|Y]])^2$ is precisely the variance of the random variable $E[X|Y]$, denoted $Var(E[X|Y])$. By substitution, we arrive at the first result: $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$. For the second result, we note that since variance is non-negative, $Var(X|Y) \ge 0$, and thus its expectation $E[Var(X|Y)] \ge 0$. From the first result, it immediately follows that $Var(X) \ge Var(E[X|Y])$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $X$ and $Y$ be random variables on the same probability space", "statement": "Premise:\n\u2022 $X$ and $Y$ are random variables on the same probability space [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) (hX : Measurable X) (hY : Measurable Y)\n  (hX2 : MeasureTheory.Integrable (fun \u03c9 => X \u03c9 ^ 2) \u03bc)", "lean_pass": true, "error_msg": [], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures X and Y as random variables on the same probability space. The formal definition includes the sample space \u03a9 with measurable structure, probability measure \u03bc, and X, Y as measurable functions. The additional condition that X\u00b2 is integrable is an extra constraint not mentioned in the natural language, but this is acceptable as it doesn't contradict the original statement and may be needed for subsequent mathematical development."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "where $X$ has a finite second moment (i.e., $E[X^2] < \\infty$)", "statement": "Premise:\n\u2022 $X$ is a random variable with a finite second moment, i.e., $E[X^2] < \\infty$ [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03a9 : Type*} [MeasurableSpace \u03a9] (X : \u03a9 \u2192 \u211d)\n(tc_2 : \u2203 M : \u211d, MeasureTheory.integral (MeasureTheory.volume.restrict (Set.range X)) (fun x => x^2) \u2264 M)", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly represents X as a random variable using a measurable function from a measurable space to the reals.", "The Lean formalization uses an integral over the range of X with volume measure, but E[X^2] should be the integral of X^2 with respect to the probability measure on the original probability space \u03a9. This is a fundamental difference in how the expectation is computed.", "Since this conclusion is equivalent to the previous condition about E[X^2] < \u221e, it has the same major inconsistency in the formalization of the expectation."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly represents X as a random variable using a measurable function from a measurable space to the reals.', 'The Lean formalization uses an integral over the range of X with volume measure, but E[X^2] should be the integral of X^2 with respect to the probability measure on the original probability space \u03a9. This is a fundamental difference in how the expectation is computed.', 'Since this conclusion is equivalent to the previous condition about E[X^2] < \u221e, it has the same major inconsistency in the formalization of the expectation.']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "The proof starts with the definition of variance, $Var(X) = E[X^2] - (E[X])^2$.", "statement": "Definition:\n\u2022 For a random variable $Z$ with a finite second moment, its variance is defined as $Var(Z) = E[Z^2] - (E[Z])^2$ [def_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (Z : \u03a9 \u2192 \u211d) -- random variable\nvariable (E : (\u03a9 \u2192 \u211d) \u2192 \u211d) -- expectation operator\nvariable (h_finite : E (fun \u03c9 => Z \u03c9 ^ 2) < \u221e) -- finite second moment\n\ndef_1 : E (fun \u03c9 => Z \u03c9 ^ 2) - (E Z) ^ 2 := by sorry", "lean_pass": false, "error_msg": [], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "By the law of total expectation, we have $E[X] = E[E[X|Y]]$", "statement": "We assume:\n\u2022 $X$ and $Y$ are random variables on the same probability space [tc_1].\nTherefore, we conclude:\n\u2022 The law of total expectation holds for $X$: $E[X] = E[E[X|Y]]$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc) :\n  \u222b \u03c9, X \u03c9 \u2202\u03bc = \u222b \u03c9, (\u222b y, X y \u2202\u03bc) \u2202\u03bc := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc) :\n  \u222b \u03c9, X \u03c9 \u2202\u03bc = \u222b \u03c9, (\u222b y, X y \u2202\u03bc) \u2202\u03bc := by\n  have h1 : (\u222b \u03c9 : \u03a9, (\u222b y : \u03a9, X y \u2202\u03bc) \u2202\u03bc) = (\u222b y : \u03a9, X y \u2202\u03bc) := by\n    have h2 : (\u222b \u03c9 : \u03a9, (\u222b y : \u03a9, X y \u2202\u03bc) \u2202\u03bc) = (\u222b y : \u03a9, X y \u2202\u03bc) * \u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc := by\n      have h3 : (\u222b \u03c9 : \u03a9, (\u222b y : \u03a9, X y \u2202\u03bc) \u2202\u03bc) = \u222b \u03c9 : \u03a9, ((\u222b y : \u03a9, X y \u2202\u03bc) * (1 : \u211d)) \u2202\u03bc := by\n        congr\n        ext \u03c9\n        ring\n      rw [h3]\n      have h4 : \u222b \u03c9 : \u03a9, ((\u222b y : \u03a9, X y \u2202\u03bc) * (1 : \u211d)) \u2202\u03bc = (\u222b y : \u03a9, X y \u2202\u03bc) * \u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc := by\n        rw [MeasureTheory.integral_mul_left]\n        <;>\n        (try simp_all)\n        <;>\n        (try norm_num)\n        <;>\n        (try apply MeasureTheory.integrable_const)\n        <;>\n        (try apply MeasureTheory.integrable_one)\n      rw [h4]\n      <;>\n      (try simp_all)\n      <;>\n      (try norm_num)\n      <;>\n      (try apply MeasureTheory.integrable_const)\n      <;>\n      (try apply MeasureTheory.integrable_one)\n    have h5 : (\u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc) = 1 := by\n      have h6 : \u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc = 1 := by\n        -- The integral of the constant function 1 is the measure of the space, which is 1 for a probability measure.\n        have h7 : \u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc = 1 := by\n          -- Use the fact that the integral of 1 is the measure of the space, which is 1 for a probability measure.\n          have h8 : \u222b \u03c9 : \u03a9, (1 : \u211d) \u2202\u03bc = 1 := by\n            -- Use the fact that the integral of 1 is the measure of the space, which is 1 for a probability measure.\n            simp [MeasureTheory.integral_const, MeasureTheory.IsProbabilityMeasure.measure_univ]\n            <;> norm_num\n            <;>\n            (try simp_all [MeasureTheory.integral_const, MeasureTheory.IsProbabilityMeasure.measure_univ])\n            <;>\n            (try norm_num)\n            <;>\n            (try linarith)\n          exact h8\n        exact h7\n      exact h6\n    rw [h2, h5]\n    <;> ring\n  \n  have h2 : \u222b \u03c9 : \u03a9, X \u03c9 \u2202\u03bc = \u222b y : \u03a9, X y \u2202\u03bc := by\n    rfl\n  \n  have h3 : \u222b \u03c9 : \u03a9, X \u03c9 \u2202\u03bc = \u222b \u03c9 : \u03a9, (\u222b y : \u03a9, X y \u2202\u03bc) \u2202\u03bc := by\n    have h4 : \u222b \u03c9 : \u03a9, (\u222b y : \u03a9, X y \u2202\u03bc) \u2202\u03bc = \u222b y : \u03a9, X y \u2202\u03bc := by\n      rw [h1]\n    have h5 : \u222b \u03c9 : \u03a9, X \u03c9 \u2202\u03bc = \u222b y : \u03a9, X y \u2202\u03bc := by\n      rw [h2]\n    linarith\n  \n  exact h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The setup correctly captures that X and Y are random variables on the same probability space, with appropriate measurability conditions and probability measure structure.", "The Lean formalization completely misrepresents the law of total expectation. The expression '\u222b y, X y \u2202\u03bc' does not represent conditional expectation E[X|Y], but rather integrates X(y) over the entire probability space with respect to y. The law of total expectation requires the conditional expectation operator, not this nested integral structure."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The setup correctly captures that X and Y are random variables on the same probability space, with appropriate measurability conditions and probability measure structure.', \"The Lean formalization completely misrepresents the law of total expectation. The expression '\u222b y, X y \u2202\u03bc' does not represent conditional expectation E[X|Y], but rather integrates X(y) over the entire probability space with respect to y. The law of total expectation requires the conditional expectation operator, not this nested integral structure.\"]"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "and also $E[X^2] = E[E[X^2|Y]]$.", "statement": "We assume:\n\u2022 $X$ and $Y$ are random variables on the same probability space [tc_1].\n\u2022 $X$ has a finite second moment, $E[X^2] < \\infty$ [tc_2].\nTherefore, we conclude:\n\u2022 The law of total expectation holds for $X^2$: $E[X^2] = E[E[X^2|Y]]$ [l2].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) (hX : Measurable X) (hY : Measurable Y)\n  (hX2 : \u2203 M : \u211d, MeasureTheory.integral \u03bc (fun \u03c9 => (X \u03c9) ^ 2) \u2264 M)\n  (E_X_sq_given_Y : \u03a9 \u2192 \u211d) \n  (h_cond_exp : \u2200 y : \u211d, \u2203 M_y : \u211d, \n    \u2200 s : Set \u03a9, s \u2286 {\u03c9 | Y \u03c9 = y} \u2192 \n    MeasureTheory.integral (MeasureTheory.volume.restrict s) (fun \u03c9 => (X \u03c9) ^ 2) \u2264 M_y) :\n  MeasureTheory.integral \u03bc (fun \u03c9 => (X \u03c9) ^ 2) = \n  MeasureTheory.integral \u03bc E_X_sq_given_Y := by sorry", "lean_pass": false, "error_msg": [{"line": 13, "column": 28, "endLine": 13, "endColumn": 59, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (\u03a9 : Type*) [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) (hX : Measurable X) (hY : Measurable Y)\n  (hX2 : \u2203 M : \u211d, MeasureTheory.integral \u03bc (fun \u03c9 => (X \u03c9) ^ 2) \u2264 M)\n  (E_X_sq_given_Y : \u03a9 \u2192 \u211d) \n  (h_cond_exp : \u2200 y : \u211d, \u2203 M_y : \u211d, \n    \u2200 s : Set \u03a9, s \u2286 {\u03c9 | Y \u03c9 = y} \u2192 \n    MeasureTheory.integral (MeasureTheory.volume.restrict s) (fun \u03c9 => (X \u03c9) ^ 2) \u2264 M_y) :\n  MeasureTheory.integral \u03bc (fun \u03c9 => (X \u03c9) ^ 2) = \n  MeasureTheory.integral \u03bc E_X_sq_given_Y := by\n  have h_main : False := by\n    -- Use h_cond_exp to get a M_y for y = 0\n    have h\u2082 := h_cond_exp 0\n    obtain \u27e8M_y, hM_y\u27e9 := h\u2082\n    -- Try to use the volume measure on \u2205 to derive a contradiction\n    have h\u2083 := hM_y \u2205\n    have h\u2084 : (\u2205 : Set \u03a9) \u2286 {\u03c9 : \u03a9 | Y \u03c9 = (0 : \u211d)} := by simp\n    have h\u2085 := h\u2083 h\u2084\n    -- Simplify the integral over \u2205 to 0\n    simp [MeasureTheory.integral_zero] at h\u2085\n    <;>\n    (try contradiction) <;>\n    (try simp_all) <;>\n    (try norm_num) <;>\n    (try linarith)\n    <;>\n    (try {\n      exfalso\n      -- Use the fact that the volume measure cannot be restricted to \u03a9\n      have h\u2086 : \u00acNonempty (MeasureTheory.MeasureSpace \u03a9) := by\n        intro h\n        -- If there were a measure space instance for \u03a9, we could use it\n        have h\u2087 : Nonempty (MeasureTheory.MeasureSpace \u03a9) := h\n        -- But we don't need to do anything here because Lean will not find the instance\n        simp_all [MeasureTheory.MeasureSpace]\n        <;>\n        (try contradiction) <;>\n        (try simp_all) <;>\n        (try norm_num) <;>\n        (try linarith)\n      -- Derive False from the lack of a measure space instance\n      simp_all [MeasureTheory.MeasureSpace]\n      <;>\n      (try contradiction) <;>\n      (try simp_all) <;>\n      (try norm_num) <;>\n      (try linarith)\n    })\n  exfalso\n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 28, "endLine": 10, "endColumn": 59, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u03a9\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 25, "endLine": 50, "endColumn": 6, "data": "unsolved goals\ncase intro\n\u03a9 : Type u_1\ninst\u271d\u00b9 : MeasurableSpace \u03a9\n\u03bc : MeasureTheory.Measure \u03a9\ninst\u271d : MeasureTheory.IsProbabilityMeasure \u03bc\nX Y : \u03a9 \u2192 \u211d\nhX : Measurable X\nhY : Measurable Y\nhX2 : \u2203 M, \u222b (\u03c9 : \u03a9), X \u03c9 ^ 2 \u2202\u03bc \u2264 M\nE_X_sq_given_Y : \u03a9 \u2192 \u211d\nh_cond_exp : \u2200 (y : \u211d), \u2203 M_y, \u2200 s \u2286 {\u03c9 | Y \u03c9 = y}, \u222b (\u03c9 : \u03a9) in s, X \u03c9 ^ 2 \u2264 M_y\nM_y : \u211d\nhM_y : \u2200 s \u2286 {\u03c9 | Y \u03c9 = 0}, \u222b (\u03c9 : \u03a9) in s, X \u03c9 ^ 2 \u2264 M_y\nh\u2085 : 0 \u2264 M_y\n\u22a2 False"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Substituting these into the variance formula gives $Var(X) = E[E[X^2|Y]] - (E[E[X|Y]])^2$.", "statement": "We assume:\n\u2022 The variance of $X$ is defined as $Var(X) = E[X^2] - (E[X])^2$ [def_1].\n\u2022 $E[X] = E[E[X|Y]]$ [l1].\n\u2022 $E[X^2] = E[E[X^2|Y]]$ [l2].\nTherefore, we conclude:\n\u2022 $Var(X) = E[E[X^2|Y]] - (E[E[X|Y]])^2$ [l3].", "dependencies": ["def_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc)\n  (hX_integrable : MeasureTheory.Integrable X \u03bc)\n  (hX2_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9)^2) \u03bc)\n  (l1 : \u222b \u03c9, X \u03c9 \u2202\u03bc = \u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc) -- E[X] = E[E[X|Y]]\n  (l2 : \u222b \u03c9, (X \u03c9)^2 \u2202\u03bc = \u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) -- E[X\u00b2] = E[E[X\u00b2|Y]]\n  (def_1 : \u2200 Z : \u03a9 \u2192 \u211d, MeasureTheory.Integrable Z \u03bc \u2192 \n    (\u222b \u03c9, (Z \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, Z \u03c9 \u2202\u03bc)^2 \u2265 0) -- Var(Z) \u2265 0\n  : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = \n    (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nimport Mathlib.MeasureTheory.Probability.Space\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc)\n  (hX_integrable : MeasureTheory.Integrable X \u03bc)\n  (hX2_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9)^2) \u03bc)\n  (l1 : \u222b \u03c9, X \u03c9 \u2202\u03bc = \u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)\n  (l2 : \u222b \u03c9, (X \u03c9)^2 \u2202\u03bc = \u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc)\n  (def_1 : \u2200 Z : \u03a9 \u2192 \u211d, MeasureTheory.Integrable Z \u03bc \u2192 \n    (\u222b \u03c9, (Z \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, Z \u03c9 \u2202\u03bc)^2 \u2265 0)\n  : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = \n    (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) := by\n  have h3 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) = (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 := by\n    have h3\u2081 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) = (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 * \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc := by\n      calc\n        (\u222b y : \u03a9, (\u222b \u03c9, X \u03c9 \u2202\u03bc : \u211d)^2 \u2202\u03bc) = \u222b y : \u03a9, ((\u222b \u03c9, X \u03c9 \u2202\u03bc : \u211d)^2 * (1 : \u211d)) \u2202\u03bc := by\n          congr with y\n          <;> ring\n        _ = (\u222b \u03c9, X \u03c9 \u2202\u03bc : \u211d)^2 * \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc := by\n          -- Factor out the constant (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 from the integral\n          rw [MeasureTheory.integral_mul_left]\n          <;>\n          simp [hX_integrable]\n          <;>\n          try norm_num\n          <;>\n          try linarith\n    have h3\u2082 : (\u222b y : \u03a9, (1 : \u211d) \u2202\u03bc) = 1 := by\n      -- Since \u03bc is a probability measure, the integral of 1 is 1\n      have h3\u2083 : \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc = 1 := by\n        -- Use the lemma that for a probability measure, the integral of 1 is 1\n        exact MeasureTheory.IsProbabilityMeasure.integral_one\n      exact h3\u2083\n    rw [h3\u2081, h3\u2082]\n    <;> ring\n    <;> simp_all\n  \n  have h4 : (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) = (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) := by\n    have h4\u2081 : (\u222b y : \u03a9, (\u222b \u03c9, (X \u03c9 : \u211d)^2 \u2202\u03bc) \u2202\u03bc) = (\u222b \u03c9, (X \u03c9 : \u211d)^2 \u2202\u03bc) * \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc := by\n      calc\n        (\u222b y : \u03a9, (\u222b \u03c9, (X \u03c9 : \u211d)^2 \u2202\u03bc) \u2202\u03bc) = \u222b y : \u03a9, ((\u222b \u03c9, (X \u03c9 : \u211d)^2 \u2202\u03bc) * (1 : \u211d)) \u2202\u03bc := by\n          congr with y\n          <;> ring\n        _ = (\u222b \u03c9, (X \u03c9 : \u211d)^2 \u2202\u03bc) * \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc := by\n          -- Factor out the constant (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) from the integral\n          rw [MeasureTheory.integral_mul_left]\n          <;>\n          simp [hX2_integrable]\n          <;>\n          try norm_num\n          <;>\n          try linarith\n    have h4\u2082 : (\u222b y : \u03a9, (1 : \u211d) \u2202\u03bc) = 1 := by\n      -- Since \u03bc is a probability measure, the integral of 1 is 1\n      have h4\u2083 : \u222b y : \u03a9, (1 : \u211d) \u2202\u03bc = 1 := by\n        -- Use the lemma that for a probability measure, the integral of 1 is 1\n        exact MeasureTheory.IsProbabilityMeasure.integral_one\n      exact h4\u2083\n    rw [h4\u2081, h4\u2082]\n    <;> ring\n    <;> simp_all\n  \n  have h5 : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) := by\n    rw [h4, h3]\n    <;>\n    simp_all\n    <;>\n    linarith\n  \n  exact h5", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 40, "column": 14, "endLine": 40, "endColumn": 61, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  MeasureTheory.IsProbabilityMeasure\nhas type\n  MeasureTheory.Measure ?m.10446 \u2192 Prop"}, {"line": 65, "column": 14, "endLine": 65, "endColumn": 61, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  MeasureTheory.IsProbabilityMeasure\nhas type\n  MeasureTheory.Measure ?m.13513 \u2192 Prop"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["def_1 should define variance as a formula Var(X) = E[X\u00b2] - (E[X])\u00b2, but instead states that variance is non-negative, which is a property rather than a definition", "l1 incorrectly formalizes E[E[X|Y]] as an integral of the constant E[X] over Y, rather than properly representing conditional expectation E[X|Y]", "l2 has the same fundamental error as l1 - it represents E[E[X\u00b2|Y]] as an integral of the constant E[X\u00b2] rather than the conditional expectation E[X\u00b2|Y]", "l3 becomes a tautology due to the errors in l1 and l2, rather than representing the meaningful conclusion about variance decomposition using conditional expectations", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['def_1 should define variance as a formula Var(X) = E[X\u00b2] - (E[X])\u00b2, but instead states that variance is non-negative, which is a property rather than a definition', 'l1 incorrectly formalizes E[E[X|Y]] as an integral of the constant E[X] over Y, rather than properly representing conditional expectation E[X|Y]', 'l2 has the same fundamental error as l1 - it represents E[E[X\u00b2|Y]] as an integral of the constant E[X\u00b2] rather than the conditional expectation E[X\u00b2|Y]', 'l3 becomes a tautology due to the errors in l1 and l2, rather than representing the meaningful conclusion about variance decomposition using conditional expectations']"}, "solved_negation": null, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "From the definition of conditional variance, $Var(X|Y) = E[X^2|Y] - (E[X|Y])^2$,", "statement": "Definition:\n\u2022 The conditional variance of $X$ given $Y$ is defined as the random variable $Var(X|Y) = E[X^2|Y] - (E[X|Y])^2$ [def_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\n-- Definition of conditional variance\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03a9 : Type*} (X Y : \u03a9 \u2192 \u211d) \n  (E_X_given_Y : \u03a9 \u2192 \u211d) (E_X2_given_Y : \u03a9 \u2192 \u211d)\n\ndef Var_X_given_Y : \u03a9 \u2192 \u211d := \n  fun \u03c9 => E_X2_given_Y \u03c9 - (E_X_given_Y \u03c9) ^ 2", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The Lean formalization correctly represents X and Y as random variables (functions from sample space \u03a9 to \u211d)", "The Lean code declares E_X_given_Y and E_X2_given_Y as arbitrary functions \u03a9 \u2192 \u211d rather than defining them as the actual conditional expectations E[X|Y] and E[X\u00b2|Y]. While this captures the structural requirement, it doesn't establish the mathematical relationship between these functions and the original random variables X and Y", "The Lean definition perfectly captures the mathematical formula Var(X|Y) = E[X\u00b2|Y] - (E[X|Y])\u00b2, with the function mapping each \u03c9 to the difference E_X2_given_Y \u03c9 - (E_X_given_Y \u03c9)\u00b2"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l4": {"id": "l4", "natural_language": "we can rearrange this to state $E[X^2|Y] = Var(X|Y) + (E[X|Y])^2$.", "statement": "We assume:\n\u2022 The conditional variance is defined as $Var(X|Y) = E[X^2|Y] - (E[X|Y])^2$ [def_2].\nTherefore, we conclude:\n\u2022 $E[X^2|Y] = Var(X|Y) + (E[X|Y])^2$ [l4].", "dependencies": ["def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} (X Y : \u03a9 \u2192 \u211d) \n  (E_X_given_Y E_X2_given_Y Var_X_given_Y : \u03a9 \u2192 \u211d)\n  (h_def : \u2200 \u03c9, Var_X_given_Y \u03c9 = E_X2_given_Y \u03c9 - (E_X_given_Y \u03c9) ^ 2) :\n  \u2200 \u03c9, E_X2_given_Y \u03c9 = Var_X_given_Y \u03c9 + (E_X_given_Y \u03c9) ^ 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  {\u03a9 : Type*} (X Y : \u03a9 \u2192 \u211d) \n  (E_X_given_Y E_X2_given_Y Var_X_given_Y : \u03a9 \u2192 \u211d)\n  (h_def : \u2200 \u03c9, Var_X_given_Y \u03c9 = E_X2_given_Y \u03c9 - (E_X_given_Y \u03c9) ^ 2) :\n  \u2200 \u03c9, E_X2_given_Y \u03c9 = Var_X_given_Y \u03c9 + (E_X_given_Y \u03c9) ^ 2 := by\n  intro \u03c9\n  have h_main : E_X2_given_Y \u03c9 = Var_X_given_Y \u03c9 + (E_X_given_Y \u03c9) ^ 2 := by\n    have h1 : Var_X_given_Y \u03c9 = E_X2_given_Y \u03c9 - (E_X_given_Y \u03c9) ^ 2 := h_def \u03c9\n    have h2 : Var_X_given_Y \u03c9 + (E_X_given_Y \u03c9) ^ 2 = E_X2_given_Y \u03c9 := by\n      linarith\n    linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The definition of conditional variance is correctly captured as a hypothesis. The pointwise formulation using \u2200 \u03c9 appropriately represents the conditional expectation relationship.", "The conclusion correctly states the rearranged formula for E[X\u00b2|Y]. The mathematical relationship is preserved exactly, just with additional structural details needed for Lean."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "We now substitute this expression for $E[X^2|Y]$ into our equation for $Var(X)$, which after applying linearity of expectation yields $Var(X) = E[Var(X|Y)] + E[(E[X|Y])^2] - (E[E[X|Y]])^2$.", "statement": "We assume:\n\u2022 $Var(X) = E[E[X^2|Y]] - (E[E[X|Y]])^2$ [l3].\n\u2022 $E[X^2|Y] = Var(X|Y) + (E[X|Y])^2$ [l4].\nTherefore, we conclude:\n\u2022 $Var(X) = E[Var(X|Y)] + E[(E[X|Y])^2] - (E[E[X|Y]])^2$ [l5].", "dependencies": ["l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hX_integrable : MeasureTheory.Integrable X \u03bc)\n  (hX2_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9)^2) \u03bc)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc)\n  (hX_cond_Y_integrable : \u2200 y, MeasureTheory.Integrable (fun \u03c9 => X \u03c9) (MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y)))\n  (hX2_cond_Y_integrable : \u2200 y, MeasureTheory.Integrable (fun \u03c9 => (X \u03c9)^2) (MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y)))\n  (l3 : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = \n    (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y)))) \u2202\u03bc) - \n    (\u222b y, (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))))^2 \u2202\u03bc))\n  (l4 : \u2200 y, (\u222b \u03c9, (X \u03c9)^2 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))) = \n    (\u222b \u03c9, (X \u03c9)^2 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))) - \n    (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))))^2 + \n    (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))))^2)\n  : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = \n    (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y)))) \u2202\u03bc) - \n    (\u222b y, (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))))^2 \u2202\u03bc) + \n    (\u222b y, (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y))))^2 \u2202\u03bc) - \n    (\u222b y, (\u222b \u03c9, X \u03c9 \u2202(MeasureTheory.condMeasure \u03bc (MeasurableSet.range Y)))) \u2202\u03bc)^2 := by sorry", "lean_pass": false, "error_msg": [{"line": 18, "column": 80, "endLine": 18, "endColumn": 82, "data": "unexpected token '\u2202'; expected ')'"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5 \n  {\u03a9 : Type*} [MeasurableSpace \u03a9] (\u03bc : MeasureTheory.Measure \u03a9) [MeasureTheory.IsProbabilityMeasure \u03bc]\n  (X Y : \u03a9 \u2192 \u211d) \n  (hX : Measurable X) \n  (hY : Measurable Y)\n  (hX_integrable : MeasureTheory.Integrable X \u03bc)\n  (hX2_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9)^2) \u03bc)\n  (hXY_integrable : MeasureTheory.Integrable (fun \u03c9 => \u222b y, X y \u2202\u03bc) \u03bc)\n  (l3 : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2)\n  : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 + (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 := by\n  have h_main : (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) - (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 = (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 + (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 := by\n    have h\u2081 := l3\n    have h\u2082 : (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 + (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 = (\u222b y, (\u222b \u03c9, (X \u03c9)^2 \u2202\u03bc) \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 := by\n      have h\u2083 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 = 0 := by\n        have h\u2084 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) = (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 := by\n          have h\u2085 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) = (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 := by\n            simp [sq, mul_comm]\n            <;>\n            rw [MeasureTheory.integral_mul] <;>\n            (try simp_all [hX_integrable, hX2_integrable]) <;>\n            (try norm_num) <;>\n            (try ring_nf) <;>\n            (try field_simp) <;>\n            (try linarith)\n            <;>\n            (try {\n              simp_all [MeasureTheory.integrable_const]\n              <;>\n              norm_num\n              <;>\n              linarith\n            })\n          exact h\u2085\n        linarith\n      have h\u2086 : (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc)^2 \u2202\u03bc) - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202\u03bc) \u2202\u03bc)^2 = 0 := by\n        exact h\u2083\n      linarith\n    linarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "The term $E[(E[X|Y])^2] - (E[E[X|Y]])^2$ is precisely the variance of the random variable $E[X|Y]$, denoted $Var(E[X|Y])$.", "statement": "We assume:\n\u2022 For a random variable $Z$, its variance is $Var(Z) = E[Z^2] - (E[Z])^2$ [def_1].\nTherefore, we conclude:\n\u2022 $Var(E[X|Y]) = E[(E[X|Y])^2] - (E[E[X|Y]])^2$ [l6].", "dependencies": ["def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  -- Assume we have a probability space and random variables X, Y\n  (X Y : \u211d) \n  (E : \u211d \u2192 \u211d) -- expectation operator\n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) -- conditional expectation E[X|Y]\n  (Z_var : \u211d \u2192 \u211d) -- variance operator: Var(Z) = E[Z\u00b2] - (E[Z])\u00b2\n  (def_1 : \u2200 Z : \u211d, Z_var Z = E (Z ^ 2) - (E Z) ^ 2) -- given variance definition\n  : Z_var (E_cond X Y) = E ((E_cond X Y) ^ 2) - (E (E_cond X Y)) ^ 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6 \n  (X Y : \u211d) \n  (E : \u211d \u2192 \u211d) \n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) \n  (Z_var : \u211d \u2192 \u211d) \n  (def_1 : \u2200 Z : \u211d, Z_var Z = E (Z ^ 2) - (E Z) ^ 2) \n  : Z_var (E_cond X Y) = E ((E_cond X Y) ^ 2) - (E (E_cond X Y)) ^ 2 := by\n  have h_main : Z_var (E_cond X Y) = E ((E_cond X Y) ^ 2) - (E (E_cond X Y)) ^ 2 := by\n    have h\u2081 : Z_var (E_cond X Y) = E ((E_cond X Y) ^ 2) - (E (E_cond X Y)) ^ 2 := by\n      have h\u2082 : Z_var (E_cond X Y) = E ((E_cond X Y) ^ 2) - (E (E_cond X Y)) ^ 2 := by\n        -- Apply the given definition of variance to Z = E_cond X Y\n        have h\u2083 := def_1 (E_cond X Y)\n        -- Simplify the expression using the definition\n        ring_nf at h\u2083 \u22a2\n        <;> linarith\n      exact h\u2082\n    exact h\u2081\n  \n  apply h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["X and Y are declared as simple real numbers rather than random variables, which changes the mathematical context but the operators are appropriately declared", "The variance definition is correctly translated with proper mathematical notation and quantification", "The main conclusion l6 is stated as an independent theorem rather than being derived from def_1. The natural language shows l6 follows logically from applying def_1 to Z = E[X|Y], but this derivation is missing in the Lean formalization"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['X and Y are declared as simple real numbers rather than random variables, which changes the mathematical context but the operators are appropriately declared', 'The variance definition is correctly translated with proper mathematical notation and quantification', 'The main conclusion l6 is stated as an independent theorem rather than being derived from def_1. The natural language shows l6 follows logically from applying def_1 to Z = E[X|Y], but this derivation is missing in the Lean formalization']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "By substitution, we arrive at the first result: $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$.", "statement": "We assume:\n\u2022 $Var(X) = E[Var(X|Y)] + E[(E[X|Y])^2] - (E[E[X|Y]])^2$ [l5].\n\u2022 $Var(E[X|Y]) = E[(E[X|Y])^2] - (E[E[X|Y]])^2$ [l6].\nTherefore, we conclude:\n\u2022 $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$ [ts_1].", "dependencies": ["l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (X Y : \u211d) \n  (E : \u211d \u2192 \u211d) -- expectation operator\n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) -- conditional expectation E[X|Y]\n  (Var : \u211d \u2192 \u211d) -- variance operator\n  (l5 : E_cond X Y = E_cond X Y) -- dependency lemma l5\n  (l6 : E_cond X Y = E_cond X Y) -- dependency lemma l6\n  : Var X = E (Var (E_cond X Y)) + Var (E_cond X Y) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (X Y : \u211d) \n  (E : \u211d \u2192 \u211d) \n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) \n  (Var : \u211d \u2192 \u211d) \n  (l5 : E_cond X Y = E_cond X Y) \n  (l6 : E_cond X Y = E_cond X Y) \n  : Var X = E (Var (E_cond X Y)) + Var (E_cond X Y) := by\n  have h\u2081 : False := by\n    sorry\n  have h\u2082 : Var X = E (Var (E_cond X Y)) + Var (E_cond X Y) := by\n    exfalso\n    exact h\u2081\n  exact h\u2082", "lean_pass": true, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable and operator declarations appropriately capture the mathematical objects involved, though the modeling of random variables as simple real numbers is a simplification.", "The dependency lemmas l5 and l6 are formalized as meaningless tautologies (E_cond X Y = E_cond X Y) instead of the actual variance decomposition formulas stated in the natural language. This completely misses the mathematical content of the assumptions.", "The conclusion statement correctly captures the law of total variance formula Var(X) = E[Var(X|Y)] + Var(E[X|Y]) from the natural language.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Variable and operator declarations appropriately capture the mathematical objects involved, though the modeling of random variables as simple real numbers is a simplification.', 'The dependency lemmas l5 and l6 are formalized as meaningless tautologies (E_cond X Y = E_cond X Y) instead of the actual variance decomposition formulas stated in the natural language. This completely misses the mathematical content of the assumptions.', 'The conclusion statement correctly captures the law of total variance formula Var(X) = E[Var(X|Y)] + Var(E[X|Y]) from the natural language.']"}, "solved_negation": null, "type": "solution"}, "l7": {"id": "l7", "natural_language": "For the second result, we note that since variance is non-negative, $Var(X|Y) \\ge 0$,", "statement": "We assume:\n\u2022 (General property of conditional variance)\nTherefore, we conclude:\n\u2022 The conditional variance is a non-negative random variable: $Var(X|Y) \\ge 0$ [l7].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (P : Type*) [MeasurableSpace P] \n  (\u03bc : MeasureTheory.Measure P) \n  (h\u03bc : MeasureTheory.IsProbabilityMeasure \u03bc)\n  (X Y : P \u2192 \u211d) \n  (hX : MeasureTheory.Integrable X \u03bc) \n  (hY : MeasureTheory.Integrable Y \u03bc)\n  (hX2 : MeasureTheory.Integrable (fun p => (X p)^2) \u03bc)\n  (hXY : MeasureTheory.Integrable (fun p => X p * Y p) \u03bc)\n  (E_X_given_Y : P \u2192 \u211d) \n  (Var_X_given_Y : P \u2192 \u211d) \n  (hE : \u2200 p, E_X_given_Y p = \u222b q, X q * (Y q)\u207b\u00b9 * (MeasureTheory.condDensity \u03bc (fun p => Y p) p))\n  (hVar : \u2200 p, Var_X_given_Y p = \u222b q, (X q - E_X_given_Y q)^2 * (MeasureTheory.condDensity \u03bc (fun p => Y p) p)) :\n  \u2200 p, Var_X_given_Y p \u2265 0 := by sorry", "lean_pass": false, "error_msg": [{"line": 18, "column": 51, "endLine": 18, "endColumn": 76, "data": "unknown identifier 'MeasureTheory.condDensity'"}, {"line": 18, "column": 29, "endLine": 18, "endColumn": 96, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace P\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 19, "column": 65, "endLine": 19, "endColumn": 90, "data": "unknown identifier 'MeasureTheory.condDensity'"}, {"line": 19, "column": 33, "endLine": 19, "endColumn": 110, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace P\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7 \n  (P : Type*) [MeasurableSpace P] \n  (\u03bc : MeasureTheory.Measure P) \n  (h\u03bc : MeasureTheory.IsProbabilityMeasure \u03bc)\n  (X Y : P \u2192 \u211d) \n  (hX : MeasureTheory.Integrable X \u03bc) \n  (hY : MeasureTheory.Integrable Y \u03bc)\n  (hX2 : MeasureTheory.Integrable (fun p => (X p)^2) \u03bc)\n  (hXY : MeasureTheory.Integrable (fun p => X p * Y p) \u03bc)\n  (E_X_given_Y : P \u2192 \u211d) \n  (Var_X_given_Y : P \u2192 \u211d) \n  (hE : \u2200 p, E_X_given_Y p = \u222b q, X q * (Y q)\u207b\u00b9 * (MeasureTheory.condDensity \u03bc (fun p => Y p) p))\n  (hVar : \u2200 p, Var_X_given_Y p = \u222b q, (X q - E_X_given_Y q)^2 * (MeasureTheory.condDensity \u03bc (fun p => Y p) p)) :\n  \u2200 p, Var_X_given_Y p \u2265 0 := by\n  have h_main : \u2200 p, Var_X_given_Y p \u2265 0 := by\n    intro p\n    have h\u2081 : Var_X_given_Y p = \u222b q, (X q - E_X_given_Y q)^2 * (MeasureTheory.condDensity \u03bc (fun p => Y p) q) := by\n      rw [hVar]\n    rw [h\u2081]\n    -- Since `MeasureTheory.condDensity` is not available, perhaps we can try to use `trivial`.\n    trivial\n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 51, "endLine": 15, "endColumn": 76, "data": "unknown identifier 'MeasureTheory.condDensity'"}, {"line": 15, "column": 29, "endLine": 15, "endColumn": 96, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace P\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 16, "column": 65, "endLine": 16, "endColumn": 90, "data": "unknown identifier 'MeasureTheory.condDensity'"}, {"line": 16, "column": 33, "endLine": 16, "endColumn": 110, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace P\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 20, "column": 64, "endLine": 20, "endColumn": 89, "data": "unknown identifier 'MeasureTheory.condDensity'"}, {"line": 20, "column": 32, "endLine": 20, "endColumn": 109, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace P\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 24, "column": 4, "endLine": 24, "endColumn": 11, "data": "tactic 'assumption' failed\ncase refine_2\nP : Type u_1\ninst\u271d : MeasurableSpace P\n\u03bc : MeasureTheory.Measure P\nh\u03bc : MeasureTheory.IsProbabilityMeasure \u03bc\nX Y : P \u2192 \u211d\nhX : MeasureTheory.Integrable X \u03bc\nhY : MeasureTheory.Integrable Y \u03bc\nhX2 : MeasureTheory.Integrable (fun p => X p ^ 2) \u03bc\nhXY : MeasureTheory.Integrable (fun p => X p * Y p) \u03bc\nE_X_given_Y Var_X_given_Y : P \u2192 \u211d\nhE : \u2200 (p : P), E_X_given_Y p = \u222b (q : P), X q * (Y q)\u207b\u00b9 * sorry\nhVar : \u2200 (p : P), Var_X_given_Y p = \u222b (q : P), (X q - E_X_given_Y q) ^ 2 * sorry\np : P\nh\u2081 : Var_X_given_Y p = \u222b (q : P), (X q - E_X_given_Y q) ^ 2 * sorry\n\u22a2 \u222b (q : P), (X q - E_X_given_Y q) ^ 2 * sorry \u2265 0"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "and thus its expectation $E[Var(X|Y)] \\ge 0$.", "statement": "We assume:\n\u2022 The random variable $Var(X|Y)$ is non-negative: $Var(X|Y) \\ge 0$ [l7].\nTherefore, we conclude:\n\u2022 The expectation of a non-negative random variable is non-negative: $E[Var(X|Y)] \\ge 0$ [l8].", "dependencies": ["l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem law_of_total_variance \n  (X Y : \u211d \u2192 \u211d) \n  (hX_integrable : MeasureTheory.Integrable X)\n  (hX_squared_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9) ^ 2))\n  (h_conditional_integrable : \u2200 y, MeasureTheory.Integrable (fun \u03c9 => (X \u03c9 - E[X|Y]) ^ 2))\n  (h_l7 : \u2200 y, \u222b \u03c9, (X \u03c9 - E[X|Y]) ^ 2 \u2265 0) :\n  -- Law of total variance: Var(X) = E[Var(X|Y)] + Var(E[X|Y])\n  (\u222b \u03c9, (X \u03c9) ^ 2 - (\u222b \u03c9, X \u03c9) ^ 2) = \n  (\u222b y, \u222b \u03c9, (X \u03c9 - E[X|Y]) ^ 2) + \n  (\u222b y, (E[X|Y]) ^ 2 - (\u222b y, E[X|Y]) ^ 2) \u2227\n  -- Proof step l8: E[Var(X|Y)] \u2265 0 (expectation of non-negative random variable is non-negative)\n  (\u222b y, \u222b \u03c9, (X \u03c9 - E[X|Y]) ^ 2) \u2265 0 := by sorry", "lean_pass": false, "error_msg": [{"line": 11, "column": 80, "endLine": 11, "endColumn": 81, "data": "unexpected token '|'; expected ':', ']' or ']''"}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem law_of_total_variance \n  (X Y : \u211d \u2192 \u211d) \n  (hX_integrable : MeasureTheory.Integrable X MeasureTheory.volume)\n  (hX_squared_integrable : MeasureTheory.Integrable (fun \u03c9 => (X \u03c9) ^ 2) MeasureTheory.volume)\n  (h_conditional_integrable : \u2200 y, MeasureTheory.Integrable (fun \u03c9 => (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2) MeasureTheory.volume)\n  (h_l7 : \u2200 y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume \u2265 0) :\n  (\u222b \u03c9, (X \u03c9) ^ 2 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume) ^ 2 \u2202MeasureTheory.volume) = \n  (\u222b y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) + \n  (\u222b y, ((\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2227\n  (\u222b y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n  have h_inequality : (\u222b y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n    have h\u2081 : \u2200 y : \u211d, (\u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n      intro y\n      have h\u2082 := h_l7 y\n      exact h\u2082\n    have h\u2082 : (\u222b y : \u211d, \u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n      have h\u2083 : \u2200 y : \u211d, (\u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := h\u2081\n      have h\u2084 : (\u222b y : \u211d, \u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n        -- Use the fact that the integral of a non-negative function is non-negative.\n        have h\u2085 : \u2200 y : \u211d, (\u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := h\u2083\n        -- Use the integral_nonneg lemma to conclude that the integral is non-negative.\n        have h\u2086 : (\u222b y : \u211d, \u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n          apply MeasureTheory.integral_nonneg\n          intro y\n          have h\u2087 : (\u222b \u03c9 : \u211d, (X \u03c9 - (\u222b \u03c9 : \u211d, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := h\u2085 y\n          simpa using h\u2087\n        exact h\u2086\n      exact h\u2084\n    exact h\u2082\n  \n  have h_main : (\u222b \u03c9, (X \u03c9) ^ 2 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume) ^ 2 \u2202MeasureTheory.volume) = (\u222b y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) + (\u222b y, ((\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 - (\u222b y, (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2227 (\u222b y, \u222b \u03c9, (X \u03c9 - (\u222b \u03c9, X \u03c9 \u2202MeasureTheory.volume)) ^ 2 \u2202MeasureTheory.volume) \u2265 0 := by\n    refine' \u27e8_, h_inequality\u27e9\n    -- The equality part is marked as sorry because it is complex and the formalization might be incorrect.\n    sorry\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 3, "endLine": 13, "endColumn": 79, "data": "typeclass instance problem is stuck, it is often due to metavariables\n  MeasureTheory.MeasureSpace ?m.3695"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "ts_2": {"id": "ts_2", "natural_language": "From the first result, it immediately follows that $Var(X) \\ge Var(E[X|Y])$.", "statement": "We assume:\n\u2022 The law of total variance holds: $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$ [ts_1].\n\u2022 $E[Var(X|Y)] \\ge 0$ [l8].\nTherefore, we conclude:\n\u2022 $Var(E[X|Y]) \\le Var(X)$ [ts_2].", "dependencies": ["ts_1", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_2 \n  (X Y : \u211d) \n  (E : (\u211d \u2192 \u211d)) -- expectation operator\n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) -- conditional expectation E[X|Y]\n  (Var : \u211d \u2192 \u211d) -- variance operator\n  (ts_1 : Var X = E (Var (E_cond X Y)) + Var (E_cond X Y))\n  (l8 : E (Var (E_cond X Y)) \u2265 0) :\n  Var (E_cond X Y) \u2264 Var X := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_2 \n  (X Y : \u211d) \n  (E : (\u211d \u2192 \u211d)) \n  (E_cond : \u211d \u2192 \u211d \u2192 \u211d) \n  (Var : \u211d \u2192 \u211d) \n  (ts_1 : Var X = E (Var (E_cond X Y)) + Var (E_cond X Y))\n  (l8 : E (Var (E_cond X Y)) \u2265 0) :\n  Var (E_cond X Y) \u2264 Var X := by\n  have h_main : Var (E_cond X Y) \u2264 Var X := by\n    have h\u2081 : Var (E_cond X Y) = Var X - E (Var (E_cond X Y)) := by\n      -- Rearrange ts_1 to express Var (E_cond X Y) in terms of Var X and E (Var (E_cond X Y))\n      linarith\n    -- Use the fact that E (Var (E_cond X Y)) is non-negative to show that Var (E_cond X Y) \u2264 Var X\n    have h\u2082 : Var (E_cond X Y) \u2264 Var X := by\n      linarith\n    exact h\u2082\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Random variables X and Y are modeled as real numbers rather than random variables (functions from sample space to reals), which is a fundamental misrepresentation of the probability theory context", "The expectation operator E is declared as \u211d \u2192 \u211d but used inconsistently - in ts_1 and l8, E is applied to Var(E_cond X Y) which has type \u211d, creating a type mismatch since E expects a function", "The law of total variance formula has type inconsistencies where E is applied to a real number rather than a random variable, making the mathematical statement ill-formed", "The final conclusion Var(E_cond X Y) \u2264 Var X correctly captures the intended inequality from the natural language"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Random variables X and Y are modeled as real numbers rather than random variables (functions from sample space to reals), which is a fundamental misrepresentation of the probability theory context', 'The expectation operator E is declared as \u211d \u2192 \u211d but used inconsistently - in ts_1 and l8, E is applied to Var(E_cond X Y) which has type \u211d, creating a type mismatch since E expects a function', 'The law of total variance formula has type inconsistencies where E is applied to a real number rather than a random variable, making the mathematical statement ill-formed', 'The final conclusion Var(E_cond X Y) \u2264 Var X correctly captures the intended inequality from the natural language']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#fa2c07", "highlight": {"background": "#cfb795", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_2", "label": "ts_2", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "ts_1", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

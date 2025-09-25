@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number. If $\operatorname{Re}(z) = 2$ and $\operatorname{Im}(z) = 3$, then $|e^{z^2}| = e^{-5}$.
+
+Proof: From the conditions $\operatorname{Re}(z) = 2$ and $\operatorname{Im}(z) = 3$, we can write $z = 2+3i$. We then compute the square of $z$, which is $z^2 = (2+3i)^2 = -5+12i$. Now we consider the expression $e^{z^2}$, which is $e^{-5+12i}$. The modulus of a complex exponential $e^{a+ib}$ is $e^a$, so we find that $|e^{z^2}| = |e^{-5+12i}| = e^{-5}$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $z$ be a complex number.", "statement": "Premise:\n\u2022 $z$ is a complex number [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'variable (z : \u2102)' perfectly captures the condition that z is a complex number, where \u2102 represents the complex number type in Lean"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "If $\\operatorname{Re}(z) = 2$", "statement": "Premise:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  Complex.abs (Complex.exp (z^2)) = Real.exp (-5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean declaration `(z : \u2102)` correctly captures that z is a complex number", "The Lean condition `(h1 : z.re = 2)` perfectly matches the natural language condition that the real part of z equals 2", "The Lean theorem introduces an additional condition `(h2 : z.im = 3)` that is not mentioned in the natural language, and more importantly, it derives a specific conclusion `Complex.abs (Complex.exp (z^2)) = Real.exp (-5)` while the natural language explicitly states there are no new derived facts - only the given conditions. This is a major logical inconsistency."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean declaration `(z : \u2102)` correctly captures that z is a complex number', 'The Lean condition `(h1 : z.re = 2)` perfectly matches the natural language condition that the real part of z equals 2', 'The Lean theorem introduces an additional condition `(h2 : z.im = 3)` that is not mentioned in the natural language, and more importantly, it derives a specific conclusion `Complex.abs (Complex.exp (z^2)) = Real.exp (-5)` while the natural language explicitly states there are no new derived facts - only the given conditions. This is a major logical inconsistency.']"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "and $\\operatorname{Im}(z) = 3$", "statement": "Premise:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  Complex.abs (Complex.exp (z^2)) = Real.exp (-5) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean declaration (z : \u2102) perfectly matches the condition that z is a complex number", "The Lean condition (h1 : z.re = 2) perfectly matches Re(z) = 2, where z.re is the standard Lean notation for the real part", "The Lean condition (h2 : z.im = 3) perfectly matches Im(z) = 3, where z.im is the standard Lean notation for the imaginary part", "The natural language explicitly states there are no conclusions derived from this premise, but the Lean formalization introduces a substantial mathematical conclusion about Complex.abs (Complex.exp (z^2)) = Real.exp (-5) that is not mentioned in the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean declaration (z : \u2102) perfectly matches the condition that z is a complex number', 'The Lean condition (h1 : z.re = 2) perfectly matches Re(z) = 2, where z.re is the standard Lean notation for the real part', 'The Lean condition (h2 : z.im = 3) perfectly matches Im(z) = 3, where z.im is the standard Lean notation for the imaginary part', 'The natural language explicitly states there are no conclusions derived from this premise, but the Lean formalization introduces a substantial mathematical conclusion about Complex.abs (Complex.exp (z^2)) = Real.exp (-5) that is not mentioned in the natural language statement']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "From the conditions $\\operatorname{Re}(z) = 2$ and $\\operatorname{Im}(z) = 3$, we can write $z = 2+3i$.", "statement": "We assume:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3].\nTherefore, we conclude:\n\u2022 $z = 2+3i$ [l1].", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  z = 2 + 3 * Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  z = 2 + 3 * Complex.I := by\n  have h3 : z = 2 + 3 * Complex.I := by\n    apply Complex.ext\n    <;> simp [h1, h2, Complex.ext_iff, pow_two]\n    <;> norm_num\n    <;> linarith\n  exact h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly and completely captures all the mathematical content from the natural language. The complex number z is properly declared, the conditions on its real and imaginary parts are accurately represented as hypotheses (h1: z.re = 2 and h2: z.im = 3), and the conclusion z = 2 + 3 * Complex.I correctly represents z = 2+3i. The logical structure of assumptions leading to a conclusion is preserved through the theorem format. The theorem name 'tc_3' is different from the natural language labeling but this doesn't affect the mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "We then compute the square of $z$, which is $z^2 = (2+3i)^2 = -5+12i$.", "statement": "We assume:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3];\n\u2022 $z = 2+3i$ [l1].\nTherefore, we conclude:\n\u2022 $z^2 = -5+12i$ [l2].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  z^2 = -5 + 12 * Complex.I := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  z^2 = -5 + 12 * Complex.I := by\n  have h3 : z = 2 + 3 * Complex.I := by\n    apply Complex.ext <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num <;>\n    (try ring_nf at * <;> simp_all) <;>\n    (try linarith) <;>\n    (try nlinarith)\n  \n  rw [h3]\n  norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I, Complex.mul_re, Complex.mul_im]\n  <;>\n  simp [Complex.ext_iff, pow_two, Complex.I_mul_I, Complex.mul_re, Complex.mul_im]\n  <;>\n  norm_num\n  <;>\n  ring_nf\n  <;>\n  simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I, Complex.mul_re, Complex.mul_im]\n  <;>\n  norm_num\n  <;>\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the essential mathematical content from the natural language. While it doesn't explicitly state all four assumptions mentioned in the natural language, the missing ones are either captured by the type system (z being complex) or are logically derivable from the given hypotheses (z = 2+3i follows from the real and imaginary part conditions). The conclusion is perfectly translated with correct mathematical notation."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Now we consider the expression $e^{z^2}$, which is $e^{-5+12i}$.", "statement": "We assume:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3];\n\u2022 $z = 2+3i$ [l1];\n\u2022 $z^2 = -5+12i$ [l2].\nTherefore, we conclude:\n\u2022 $e^{z^2} = e^{-5+12i}$ [l3].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nopen BigOperators Real Nat Topology Rat\n\ntheorem tc_2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  Complex.exp (z^2) = Complex.exp (-5 + 12 * Complex.I) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) (h1 : z.re = 2) (h2 : z.im = 3) : \n  Complex.exp (z^2) = Complex.exp (-5 + 12 * Complex.I) := by\n  have h3 : z = 2 + 3 * Complex.I := by\n    apply Complex.ext <;> simp_all [Complex.ext_iff, pow_two]\n    <;> ring_nf at * <;> norm_num <;> linarith\n  \n  have h4 : z ^ 2 = -5 + 12 * Complex.I := by\n    rw [h3]\n    simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;> norm_num <;>\n    ring_nf <;>\n    simp [Complex.ext_iff, pow_two, Complex.I_mul_I] <;>\n    norm_num <;>\n    simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I] <;>\n    norm_num <;>\n    linarith\n  \n  rw [h4]\n  <;>\n  simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n  <;>\n  norm_num\n  <;>\n  ring_nf\n  <;>\n  simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n  <;>\n  norm_num\n  <;>\n  simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n  <;>\n  norm_num\n  <;>\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the essential mathematical content from the natural language. The hypotheses about the real and imaginary parts of z are properly encoded, and the conclusion about the exponential is correctly stated. While the intermediate steps (z = 2+3i and z\u00b2 = -5+12i) are not explicitly mentioned in the Lean code, they are logically derivable from the given conditions and the conclusion follows correctly. The notation -5 + 12 * Complex.I is the appropriate Lean representation of -5 + 12i."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "The modulus of a complex exponential $e^{a+ib}$ is $e^a$.", "statement": "We assume:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3];\n\u2022 $z = 2+3i$ [l1];\n\u2022 $z^2 = -5+12i$ [l2];\n\u2022 $e^{z^2} = e^{-5+12i}$ [l3].\nTherefore, we conclude:\n\u2022 For any real numbers $a$ and $b$, the modulus of the complex exponential is given by $|e^{a+ib}| = e^a$ [l4].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 :\n  \u2200 (a b : \u211d), Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a := by\n    sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 :\n  \u2200 (a b : \u211d), Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a := by\n  intro a b\n  have h\u2081 : Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a := by\n    have h\u2082 : Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a := by\n      simp [Complex.abs_exp, Complex.normSq, Complex.ext_iff, pow_two]\n      <;> ring_nf\n      <;> simp [Real.exp_add, Real.exp_neg, mul_comm]\n      <;> field_simp [Real.exp_ne_zero]\n      <;> ring_nf\n      <;> simp [Real.exp_add, Real.exp_neg, mul_comm]\n      <;> field_simp [Real.exp_ne_zero]\n      <;> ring_nf\n      <;> norm_num\n      <;> linarith [Real.exp_pos a]\n    exact h\u2082\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization only captures the final theorem l4 about the general property |e^(a+ib)| = e^a, but completely omits all the preliminary assumptions and specific statements about the complex number z (tc_1, tc_2, tc_3, l1, l2, l3). While the theorem l4 itself is perfectly formalized, the missing context represents a significant portion of the mathematical content described in the natural language, constituting a major inconsistency."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization only captures the final theorem l4 about the general property |e^(a+ib)| = e^a, but completely omits all the preliminary assumptions and specific statements about the complex number z (tc_1, tc_2, tc_3, l1, l2, l3). While the theorem l4 itself is perfectly formalized, the missing context represents a significant portion of the mathematical content described in the natural language, constituting a major inconsistency.']"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "so we find that $|e^{z^2}| = |e^{-5+12i}| = e^{-5}$", "statement": "We assume:\n\u2022 $z$ is a complex number [tc_1];\n\u2022 The real part of $z$, $\\operatorname{Re}(z)$, is 2 [tc_2];\n\u2022 The imaginary part of $z$, $\\operatorname{Im}(z)$, is 3 [tc_3];\n\u2022 $z = 2+3i$ [l1];\n\u2022 $z^2 = -5+12i$ [l2];\n\u2022 $e^{z^2} = e^{-5+12i}$ [l3];\n\u2022 For any real numbers $a$ and $b$, the modulus of the complex exponential is given by $|e^{a+ib}| = e^a$ [l4].\nTherefore, we conclude:\n\u2022 $|e^{z^2}| = e^{-5}$ [ts_1].", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102) \n  (tc_1 : \u2203 (z : \u2102), True)  -- z is a complex number\n  (tc_2 : z.re = 2)          -- Re(z) = 2\n  (tc_3 : z.im = 3)          -- Im(z) = 3\n  (l1 : z = 2 + 3 * Complex.I) -- z = 2+3i\n  (l2 : z^2 = -5 + 12 * Complex.I) -- z^2 = -5+12i\n  (l3 : Complex.exp (z^2) = Complex.exp (-5 + 12 * Complex.I)) -- e^(z^2) = e^(-5+12i)\n  (l4 : \u2200 (a b : \u211d), Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a) : -- |e^(a+ib)| = e^a\n  Complex.abs (Complex.exp (z^2)) = Real.exp (-5) := by\n    sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102) \n  (tc_1 : \u2203 (z : \u2102), True)  \n  (tc_2 : z.re = 2)          \n  (tc_3 : z.im = 3)          \n  (l1 : z = 2 + 3 * Complex.I) \n  (l2 : z^2 = -5 + 12 * Complex.I) \n  (l3 : Complex.exp (z^2) = Complex.exp (-5 + 12 * Complex.I)) \n  (l4 : \u2200 (a b : \u211d), Complex.abs (Complex.exp (a + b * Complex.I)) = Real.exp a) : \n  Complex.abs (Complex.exp (z^2)) = Real.exp (-5) := by\n  have h\u2081 : Complex.abs (Complex.exp (z^2)) = Real.exp (-5) := by\n    have h\u2082 : z^2 = -5 + 12 * Complex.I := l2\n    have h\u2083 : Complex.exp (z^2) = Complex.exp (-5 + 12 * Complex.I) := l3\n    have h\u2084 : Complex.abs (Complex.exp (z^2)) = Complex.abs (Complex.exp (-5 + 12 * Complex.I)) := by\n      rw [h\u2083]\n    rw [h\u2084]\n    have h\u2085 : Complex.abs (Complex.exp (-5 + 12 * Complex.I)) = Real.exp (-5) := by\n      have h\u2086 : Complex.abs (Complex.exp (-5 + 12 * Complex.I)) = Real.exp (-5 : \u211d) := by\n        have h\u2087 : Complex.abs (Complex.exp (-5 + 12 * Complex.I)) = Real.exp (-5 : \u211d) := by\n          -- Use the property of the modulus of the complex exponential\n          have h\u2088 := l4 (-5 : \u211d) (12 : \u211d)\n          simp [Complex.abs, Complex.normSq, Complex.exp_re, Complex.exp_im, Real.exp_neg,\n            Real.exp_add, Real.exp_mul, Real.exp_log] at h\u2088 \u22a2\n          <;>\n          (try ring_nf at h\u2088 \u22a2) <;>\n          (try norm_num at h\u2088 \u22a2) <;>\n          (try field_simp [Real.exp_neg, Real.exp_add, Real.exp_mul, Real.exp_log] at h\u2088 \u22a2) <;>\n          (try linarith) <;>\n          (try simp_all [Complex.ext_iff, pow_two]) <;>\n          (try norm_num) <;>\n          (try ring_nf at * <;> simp_all [Complex.ext_iff, pow_two]) <;>\n          (try linarith)\n          <;>\n          simp_all [Complex.ext_iff, pow_two]\n          <;>\n          norm_num\n          <;>\n          linarith\n        exact h\u2087\n      exact h\u2086\n    rw [h\u2085]\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.88, "semantic_feedback": ["tc_1 states '\u2203 (z : \u2102), True' which means 'there exists some complex number z such that True', but the natural language simply assumes 'z is a complex number'. The existential quantification introduces a different logical meaning - it's asserting existence of some complex number rather than assuming z itself is complex.", "tc_2 correctly captures 'Re(z) = 2' using z.re = 2", "tc_3 correctly captures 'Im(z) = 3' using z.im = 3", "l1 correctly represents 'z = 2+3i' using Lean's complex number notation", "l2 correctly represents 'z^2 = -5+12i' using Lean's complex number notation", "l3 correctly captures 'e^(z^2) = e^(-5+12i)' using Complex.exp", "l4 correctly formalizes the general rule '|e^(a+ib)| = e^a' for real numbers a and b", "The conclusion correctly states '|e^(z^2)| = e^(-5)' using appropriate Lean notation for complex absolute value and real exponential"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

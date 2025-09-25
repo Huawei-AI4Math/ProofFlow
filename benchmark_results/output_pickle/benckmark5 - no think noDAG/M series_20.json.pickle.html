@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=2$, and the recurrence relation $a_n = a_{n-1} \cdot a_{n-2}$ for $n \geq 3$. Prove that for all integers $n \geq 1$, the formula for the nth term is $a_n = 2^{F_{n-1}}$ where $F_n$ is the $n$-th Fibonacci number with $F_0=0$, $F_1=1$.
+
+Proof: This proof uses **strong mathematical induction** because the recurrence relation depends on two previous terms. First, we verify the formula for the initial terms, $n=1$ and $n=2$. For $n=1$, the formula gives $a_1 = 2^{F_{1-1}} = 2^{F_0} = 2^0 = 1$, which matches the given value. For $n=2$, the formula gives $a_2 = 2^{F_{2-1}} = 2^{F_1} = 2^1 = 2$, which also matches. Now for the inductive step, assume the formula holds for all integers $j$ such that $1 \leq j \leq k$ for some integer $k \geq 2$. So, we assume $a_j = 2^{F_{j-1}}$ is true. We must now prove that the formula holds for $n=k+1$, i.e., $a_{k+1} = 2^{F_{k}}$. Using the given recurrence relation for $n=k+1$, we have $a_{k+1} = a_k \cdot a_{k-1}$. By our inductive assumption, we substitute the formulas for $a_k$ and $a_{k-1}$: $a_{k+1} = (2^{F_{k-1}}) \cdot (2^{F_{k-2}})$. Using the laws of exponents, we add the powers: $a_{k+1} = 2^{F_{k-1} + F_{k-2}}$. By the definition of the Fibonacci numbers, we know that $F_{k-1} + F_{k-2} = F_k$. Thus, $a_{k+1} = 2^{F_k}$. This result matches the formula for $n=k+1$. Therefore, by the principle of **strong mathematical induction**, the formula $a_n = 2^{F_{n-1}}$ is true for all integers $n \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let the sequence $(a_n)$ be defined by $a_1=1$, $a_2=2$, and the recurrence relation $a_n = a_{n-1} \\cdot a_{n-2}$ for $n \\geq 3$.", "statement": "Premise:\n\u2022 The sequence (a_n) of integers is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u2124)\n(tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The condition a_1 = 1 is directly captured in the Lean formalization as 'a 1 = 1'", "The condition a_2 = 2 is directly captured in the Lean formalization as 'a 2 = 2'", "The recurrence relation a_n = a_{n-1} * a_{n-2} for n \u2265 3 is exactly captured as '\u2200 n \u2265 3, a n = a (n - 1) * a (n - 2)'", "The requirement that the sequence consists of integers is captured by the type declaration 'a : \u2115 \u2192 \u2124', which declares a as a function mapping to integers", "The conclusion that the sequence is well-defined for all positive integers n is implicitly captured by the type declaration 'a : \u2115 \u2192 \u2124' and the complete specification of the recurrence relation, which together ensure the sequence is defined for all natural numbers (which includes all positive integers)"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "where $F_n$ is the $n$-th Fibonacci number with $F_0=0$, $F_1=1$.", "statement": "Premise:\n\u2022 The sequence (a_n) of integers is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) of Fibonacci numbers is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2124)\n(tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n(tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the sequence (a_n) definition with a_1=1, a_2=2, and the recurrence relation a_n = a_{n-1} * a_{n-2} for n \u2265 3. The type declaration (a : \u2115 \u2192 \u2124) correctly specifies it as a sequence of integers.", "The Lean formalization perfectly captures the Fibonacci sequence definition with F_0=0, F_1=1, and the recurrence relation F_n = F_{n-1} + F_{n-2} for n \u2265 2. The type declaration (F : \u2115 \u2192 \u2124) correctly specifies it as a sequence of integers.", "The Lean formalization establishes both sequences with their complete definitions including initial values and recurrence relations, exactly as stated in the natural language conclusion."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "For $n=1$, the formula gives $a_1 = 2^{F_{1-1}} = 2^{F_0} = 2^0 = 1$, which matches the given value.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\nTherefore, we conclude:\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds, as a_1 = 2^{F_{1-1}} = 2^{F_0} = 2^0 = 1 [l1].", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2)) :\n  a 1 = 2^(F (1 - 1)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2)) :\n  a 1 = 2^(F (1 - 1)) := by\n  rw [tc_1.1, tc_2.1]\n  simp", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence (a_n) definition is correctly formalized with all three components: initial values and recurrence relation", "The Fibonacci sequence (F_n) definition is accurately captured in Lean syntax", "The goal statement correctly represents the n=1 case of the formula, with the arithmetic evaluation implicit but mathematically equivalent", "The overall logical structure and mathematical content are faithfully preserved from natural language to Lean formalization"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "For $n=2$, the formula gives $a_2 = 2^{F_{2-1}} = 2^{F_1} = 2^1 = 2$, which also matches.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\nTherefore, we conclude:\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds, as a_2 = 2^{F_{2-1}} = 2^{F_1} = 2^1 = 2 [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1))) :\n  a 2 = 2 ^ (F (2 - 1)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1))) :\n  a 2 = 2 ^ (F (2 - 1)) := by\n  have h : 2 - 1 = 1 := by simp\n  rw [h, tc_2.right.left]\n  exact tc_1.right.left", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly and completely captures all the mathematical content from the natural language. The sequence definitions for both (a_n) and (F_n) are accurately translated, the base case assumption l1 is properly formalized, and the goal statement l2 correctly represents what needs to be proven. The type declarations (\u2115 \u2192 \u2124 for a and \u2115 \u2192 \u2115 for F) are reasonable choices that don't contradict the natural language. The logical structure as a lemma with hypotheses and conclusion perfectly matches the natural language presentation."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Now for the inductive step, assume the formula holds for all integers $j$ such that $1 \\leq j \\leq k$ for some integer $k \\geq 2$. So, we assume $a_j = 2^{F_{j-1}}$ is true.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\nDefinition:\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.8, "semantic_feedback": ["The Lean formalization exactly captures the recursive definition of sequence a_n with the same base cases and recurrence relation.", "The Lean formalization exactly captures the Fibonacci sequence definition with the same base cases and recurrence relation.", "The Lean formalization exactly represents a_1 = 2^{F_0} using explicit arithmetic (1-1=0).", "The Lean formalization exactly represents a_2 = 2^{F_1} using explicit arithmetic (2-1=1).", "The natural language states 'for some integer k \u2265 2' but the Lean code uses '{k : \u2115}' without explicitly constraining k \u2265 2. While \u2115 includes all natural numbers starting from 0, the constraint k \u2265 2 is not explicitly stated in the Lean formalization."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "Using the given recurrence relation for $n=k+1$, we have $a_{k+1} = a_k \\cdot a_{k-1}$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\nTherefore, we conclude:\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (hk : k \u2265 2) :\n  a (k + 1) = a k * a (k - 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (hk : k \u2265 2) :\n  a (k + 1) = a k * a (k - 1) := by\n  have h : k + 1 \u2265 3 := by linarith\n  exact tc_1.2.2 (k + 1) h", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence (a_n) definition is correctly formalized with all initial conditions and recurrence relation.", "The Fibonacci sequence (F_n) definition is accurately captured.", "The base case for n=1 is properly formalized.", "The base case for n=2 is properly formalized.", "The inductive hypothesis is correctly formalized, including the constraint k \u2265 2 as a separate hypothesis.", "The conclusion statement is accurately represented.", "Type declarations are appropriate additions that don't contradict the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By our inductive assumption, we substitute the formulas for $a_k$ and $a_{k-1}$: $a_{k+1} = (2^{F_{k-1}}) \\cdot (2^{F_{k-2}})$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].\nTherefore, we conclude:\n\u2022 a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) [l4].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1)) :\n  a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1)) :\n  a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))) := by\n  have hk : 1 \u2264 k \u2227 k \u2264 k := by simp\n  have hk1 : 1 \u2264 k - 1 \u2227 k - 1 \u2264 k := by\n    cases k\n    \u00b7 simp at *\n    \u00b7 simp [Nat.succ_eq_add_one, Nat.le_refl]\n  rw [l3, def_1 k hk, def_1 (k - 1) hk1]\n  cases k\n  \u00b7 simp at hk\n  \u00b7 simp [Nat.succ_eq_add_one, Nat.sub_succ, Nat.sub_add_cancel (by omega)]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 29, "endLine": 14, "endColumn": 36, "data": "unsolved goals\na : \u2115 \u2192 \u2124\nF : \u2115 \u2192 \u2115\ntc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2)\ntc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2)\nl1 : a 1 = 2 ^ F (1 - 1)\nl2 : a 2 = 2 ^ F (2 - 1)\nk : \u2115\ndef_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ F (j - 1)\nl3 : a (k + 1) = a k * a (k - 1)\n\u22a2 1 \u2264 k"}, {"line": 18, "column": 4, "endLine": 18, "endColumn": 45, "data": "unsolved goals\ncase succ\na : \u2115 \u2192 \u2124\nF : \u2115 \u2192 \u2115\ntc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2)\ntc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2)\nl1 : a 1 = 2 ^ F (1 - 1)\nl2 : a 2 = 2 ^ F (2 - 1)\nn\u271d : \u2115\ndef_1 : \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 n\u271d + 1 \u2192 a j = 2 ^ F (j - 1)\nl3 : a (n\u271d + 1 + 1) = a (n\u271d + 1) * a (n\u271d + 1 - 1)\nhk : 1 \u2264 n\u271d + 1 \u2227 n\u271d + 1 \u2264 n\u271d + 1\n\u22a2 1 \u2264 n\u271d"}, {"line": 22, "column": 68, "endLine": 22, "endColumn": 73, "data": "omega could not prove the goal:\na possible counterexample may satisfy the constraints\n  d \u2265 0\n  c \u2265 0\n  c - d \u2265 1\n  b \u2265 1\nwhere\n b := \u2191(n\u271d + 1 - 1)\n c := \u2191?m.65999\n d := \u2191?m.65998"}, {"line": 22, "column": 4, "endLine": 22, "endColumn": 75, "data": "tactic 'simp' failed, nested error:\nmaximum recursion depth has been reached\nuse `set_option maxRecDepth <num>` to increase limit\nuse `set_option diagnostics true` to get diagnostic information"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence (a_n) definition is correctly formalized with all components matching exactly.", "The Fibonacci sequence (F_n) definition is correctly formalized with all components matching exactly.", "Both base cases l1 and l2 are correctly formalized, capturing the formula for n=1 and n=2.", "The inductive hypothesis is mostly correct but missing the constraint k \u2265 2 mentioned in the natural language. However, the core logical structure is preserved.", "The recurrence relation application l3 is perfectly formalized.", "The conclusion l4 correctly captures the substitution result using the inductive hypothesis.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.83 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l4\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1)) :\n  \u00ac(a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2)))) := by\n  have hk : k = 2 := by omega\n  subst hk\n  have hF2 : F 2 = 1 := by\n    rw [tc_2.2.2 2 (by decide), tc_2.1, tc_2.2.1]\n    simp\n  have hF1 : F 1 = 1 := tc_2.2.1\n  have hF0 : F 0 = 0 := tc_2.1\n  have h3 : a 3 = 2 := by\n    rw [tc_1.2.2 3 (by decide), tc_1.2.1, tc_1.1]\n    simp\n  have hgoal : a 3 = (2 ^ (F (3 - 1))) * (2 ^ (F (3 - 2))) := by\n    rw [hF2, hF1]\n    norm_num\n  rw [h3, hgoal]\n  norm_num\n  intro h\n  contradiction"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Using the laws of exponents, we add the powers: $a_{k+1} = 2^{F_{k-1} + F_{k-2}}$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].\n\u2022 a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) [l4].\nTherefore, we conclude:\n\u2022 a_{k+1} = 2^{F_{k-1} + F_{k-2}} [l5].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2)))) :\n  a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2)))) :\n  a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)) := by\n  rw [l4, pow_add]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The sequence definition tc_1 is correctly formalized with proper conjunction and universal quantification.", "The Fibonacci sequence definition tc_2 accurately captures the recurrence relation.", "Base cases l1 and l2 are properly formalized using the correct indexing.", "The inductive hypothesis def_1 correctly formalizes the assumption for all j in the range [1,k].", "The recurrence step l3 is exactly as stated in natural language.", "The substitution step l4 correctly applies the inductive hypothesis.", "The conclusion l5 properly uses the exponent addition rule for powers.", "Type declarations provide additional but consistent mathematical context without contradicting the natural language statements."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "By the definition of the Fibonacci numbers, we know that $F_{k-1} + F_{k-2} = F_k$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].\n\u2022 a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) [l4].\n\u2022 a_{k+1} = 2^{F_{k-1} + F_{k-2}} [l5].\nTherefore, we conclude:\n\u2022 F_{k-1} + F_{k-2} = F_k [l6].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (hk : k \u2265 2)\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))))\n  (l5 : a (k + 1) = 2 ^ (F (k - 1) + F (k - 2))) :\n  F (k - 1) + F (k - 2) = F k := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (hk : k \u2265 2)\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))))\n  (l5 : a (k + 1) = 2 ^ (F (k - 1) + F (k - 2))) :\n  F (k - 1) + F (k - 2) = F k := by\n  have hk' : k \u2265 2 := hk\n  rw [\u2190 tc_2.2.2 k hk']", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization accurately captures all the mathematical content from the natural language. The sequence definitions, base cases, inductive hypothesis, and conclusion are all correctly represented. The use of natural numbers instead of integers for indices is appropriate since we're dealing with positive sequence indices. The additional constraint k \u2265 2 is mathematically sound and necessary for the proof structure. All logical relationships and the final conclusion about the Fibonacci recurrence relation are properly formalized."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Thus, $a_{k+1} = 2^{F_k}$. This result matches the formula for $n=k+1$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].\n\u2022 a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) [l4].\n\u2022 a_{k+1} = 2^{F_{k-1} + F_{k-2}} [l5].\n\u2022 F_{k-1} + F_{k-2} = F_k [l6].\nTherefore, we conclude:\n\u2022 a_{k+1} = 2^{F_k} [l7].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))))\n  (l5 : a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)))\n  (l6 : F (k - 1) + F (k - 2) = F k) :\n  a (k + 1) = 2 ^ (F k) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  {k : \u2115} (def_1 : \u2200 j : \u2115, 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1)))\n  (l3 : a (k + 1) = a k * a (k - 1))\n  (l4 : a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))))\n  (l5 : a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)))\n  (l6 : F (k - 1) + F (k - 2) = F k) :\n  a (k + 1) = 2 ^ (F k) := by\n  rw [l5, l6]", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures all the essential logical and mathematical content from the natural language. The main differences are: (1) the constraint k \u2265 2 is not explicitly stated in Lean, though it's implicitly required for mathematical validity, and (2) natural numbers are used for indices instead of integers, which is mathematically appropriate. All sequence definitions, base cases, inductive hypothesis, derivation steps, and conclusion are accurately represented. The semantic meaning is preserved despite these minor structural differences."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures all the essential logical and mathematical content from the natural language. The main differences are: (1) the constraint k \u2265 2 is not explicitly stated in Lean, though it's implicitly required for mathematical validity, and (2) natural numbers are used for indices instead of integers, which is mathematically appropriate. All sequence definitions, base cases, inductive hypothesis, derivation steps, and conclusion are accurately represented. The semantic meaning is preserved despite these minor structural differences.\"]"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, by the principle of **strong mathematical induction**, the formula $a_n = 2^{F_{n-1}}$ is true for all integers $n \\geq 1$.", "statement": "We assume:\n\u2022 The sequence (a_n) is defined by a_1=1, a_2=2, and a_n = a_{n-1} * a_{n-2} for n \u2265 3 [tc_1].\n\u2022 The sequence (F_n) is defined by F_0=0, F_1=1, and F_n = F_{n-1} + F_{n-2} for n \u2265 2 [tc_2].\n\u2022 For n=1, the formula a_n = 2^{F_{n-1}} holds [l1].\n\u2022 For n=2, the formula a_n = 2^{F_{n-1}} holds [l2].\n\u2022 For some integer k \u2265 2, we assume as the inductive hypothesis that for all integers j such that 1 \u2264 j \u2264 k, the formula a_j = 2^{F_{j-1}} holds [def_1].\n\u2022 a_{k+1} = a_k * a_{k-1} [l3].\n\u2022 a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) [l4].\n\u2022 a_{k+1} = 2^{F_{k-1} + F_{k-2}} [l5].\n\u2022 F_{k-1} + F_{k-2} = F_k [l6].\n\u2022 The formula holds for n=k+1: a_{k+1} = 2^{F_k} [l7].\nTherefore, we conclude:\n\u2022 For all integers n \u2265 1, the formula a_n = 2^{F_{n-1}} is true [ts_1].", "dependencies": ["tc_1", "tc_2", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  (def_1 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1))))\n  (l3 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = a k * a (k - 1))\n  (l4 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = (2 ^ (F k)) / 2 * (2 ^ (F (k - 1))) / 2)\n  (l5 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)))\n  (l6 : \u2200 (k : \u2115), k \u2265 2 \u2192 F (k - 1) + F (k - 2) = F k)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F k)) :\n  \u2200 n \u2265 1, a n = 2 ^ (F (n - 1)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  (def_1 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1))))\n  (l3 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = a k * a (k - 1))\n  (l4 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = (2 ^ (F (k - 1))) * (2 ^ (F (k - 2))))\n  (l5 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)))\n  (l6 : \u2200 (k : \u2115), k \u2265 2 \u2192 F (k - 1) + F (k - 2) = F k)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F k)) :\n  \u2200 n \u2265 1, a n = 2 ^ (F (n - 1)) := by\n  intro n hn\n  induction n using Nat.strong_induction_on with\n  | h n ih =>\n    cases n with\n    | zero => contradiction\n    | succ n =>\n      cases n with\n      | zero => exact l1\n      | succ n =>\n        cases n with\n        | zero => exact l2\n        | succ n =>\n          have hk : n + 3 \u2265 3 := by omega\n          have := tc_1.2.2 (n + 3) hk\n          rw [this]\n          have h1 : n + 3 - 1 = n + 2 := by omega\n          have h2 : n + 3 - 2 = n + 1 := by omega\n          rw [h1, h2]\n          have ih1 := ih (n + 2) (by omega) (by omega)\n          have ih2 := ih (n + 1) (by omega) (by omega)\n          rw [ih1, ih2]\n          rw [\u2190 pow_add]\n          congr\n          have : F (n + 2) = F (n + 1) + F n := tc_2.2.2 (n + 2) (by omega)\n          rw [\u2190 this]\n          simp [Nat.sub_add_cancel (by omega)]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 42, "column": 14, "endLine": 42, "endColumn": 20, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  F (n + 1) + F n\ncase h.succ.succ.succ.e_a\na : \u2115 \u2192 \u2124\nF : \u2115 \u2192 \u2115\ntc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2)\ntc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2)\nl1 : a 1 = 2 ^ F (1 - 1)\nl2 : a 2 = 2 ^ F (2 - 1)\ndef_1 : \u2200 k \u2265 2, \u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ F (j - 1)\nl3 : \u2200 k \u2265 2, a (k + 1) = a k * a (k - 1)\nl4 : \u2200 k \u2265 2, a (k + 1) = 2 ^ F (k - 1) * 2 ^ F (k - 2)\nl5 : \u2200 k \u2265 2, a (k + 1) = 2 ^ (F (k - 1) + F (k - 2))\nl6 : \u2200 k \u2265 2, F (k - 1) + F (k - 2) = F k\nl7 : \u2200 k \u2265 2, a (k + 1) = 2 ^ F k\nn : \u2115\nih : \u2200 m < n + 1 + 1 + 1, m \u2265 1 \u2192 a m = 2 ^ F (m - 1)\nhn : n + 1 + 1 + 1 \u2265 1\nhk : n + 3 \u2265 3\nthis\u271d : a (n + 3) = a (n + 3 - 1) * a (n + 3 - 2)\nh1 : n + 3 - 1 = n + 2\nh2 : n + 3 - 2 = n + 1\nih1 : a (n + 2) = 2 ^ F (n + 2 - 1)\nih2 : a (n + 1) = 2 ^ F (n + 1 - 1)\nthis : F (n + 2) = F (n + 1) + F n\n\u22a2 F (n + 2 - 1) + F (n + 1 - 1) = F (n + 2)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1: Sequence definition correctly captures the recurrence relation", "tc_2: Fibonacci sequence definition is properly formalized", "l1: Base case for n=1 correctly formalized", "l2: Base case for n=2 correctly formalized", "def_1: Inductive hypothesis properly represented", "l3: Recurrence application correctly captured", "l4: Major inconsistency - natural language shows direct substitution a_{k+1} = (2^{F_{k-1}}) * (2^{F_{k-2}}) but Lean has a (k + 1) = (2 ^ (F k)) / 2 * (2 ^ (F (k - 1))) / 2 with incorrect indices and unexpected division operations", "l5: Exponent addition rule correctly formalized", "l6: Fibonacci recurrence relation correctly captured", "l7: Inductive step conclusion properly formalized", "ts_1: Final theorem statement correctly captures the conclusion", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.9 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_ts_1\n  (a : \u2115 \u2192 \u2124) (F : \u2115 \u2192 \u2115)\n  (tc_1 : a 1 = 1 \u2227 a 2 = 2 \u2227 \u2200 n \u2265 3, a n = a (n - 1) * a (n - 2))\n  (tc_2 : F 0 = 0 \u2227 F 1 = 1 \u2227 \u2200 n \u2265 2, F n = F (n - 1) + F (n - 2))\n  (l1 : a 1 = 2 ^ (F (1 - 1)))\n  (l2 : a 2 = 2 ^ (F (2 - 1)))\n  (def_1 : \u2200 (k : \u2115), k \u2265 2 \u2192 (\u2200 (j : \u2115), 1 \u2264 j \u2227 j \u2264 k \u2192 a j = 2 ^ (F (j - 1))))\n  (l3 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = a k * a (k - 1))\n  (l4 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = (2 ^ (F k)) / 2 * (2 ^ (F (k - 1))) / 2)\n  (l5 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F (k - 1) + F (k - 2)))\n  (l6 : \u2200 (k : \u2115), k \u2265 2 \u2192 F (k - 1) + F (k - 2) = F k)\n  (l7 : \u2200 (k : \u2115), k \u2265 2 \u2192 a (k + 1) = 2 ^ (F k)) :\n  \u00ac \u2200 n \u2265 1, a n = 2 ^ (F (n - 1)) := by\n  intro h\n  have h3 := h 3 (by decide)\n  have a3 : a 3 = 2 := by\n    have := tc_1.2.2 3 (by decide)\n    simp [tc_1.1, tc_1.2.1] at this\n    exact this\n  rw [a3] at h3\n  have F2 : F 2 = 1 := by\n    have := tc_2.2.2 2 (by decide)\n    simp [tc_2.1, tc_2.2.1] at this\n    exact this\n  have F1 : F 1 = 1 := tc_2.2.1\n  have F0 : F 0 = 0 := tc_2.1\n  rw [F2, F1, F0] at h3\n  simp at h3\n  norm_num at h3"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

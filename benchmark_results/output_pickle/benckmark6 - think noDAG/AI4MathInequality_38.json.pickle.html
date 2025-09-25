@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for any triangle with semi-perimeter $s$ and inradius $r$, the inequality $s \\geq 3\\sqrt{3}r$ holds.
+
+Proof: Let $a, b, c$ be the sides of a triangle with semi-perimeter $s = (a+b+c)/2$ and inradius $r$. The area can be expressed as $P = rs = \sqrt{s(s-a)(s-b)(s-c)}$, so $r^2 s = (s-a)(s-b)(s-c)$. To prove $s \ge 3\sqrt{3}\,r$, observe that this is equivalent to $s^3 \ge 27(s-a)(s-b)(s-c)$. Setting $x = s-a$, $y = s-b$, $z = s-c$, we have $x+y+z = s$, and by AM–GM, $(x+y+z)^3 \ge 27xyz$, giving $s^3 \ge 27(s-a)(s-b)(s-c) = 27 r^2 s$, hence $s^2 \ge 27 r^2$ and $s \ge 3\sqrt{3}\,r$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $a, b, c$ be the sides of a triangle with semi-perimeter $s = (a+b+c)/2$ and inradius $r$.", "statement": "Premise:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem semi_perimeter_inradius (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s) :\n  s \u2265 3 * Real.sqrt 3 * r := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures that a, b, c are triangle sides by explicitly stating they are positive reals satisfying triangle inequalities. This is a more precise mathematical formalization of the same concept.", "The Lean formalization exactly matches the semi-perimeter definition with s = (a + b + c) / 2.", "The Lean formalization correctly captures the inradius concept through the standard mathematical relationship area = r * s, along with Heron's formula for area. This is more explicit than the natural language but represents the same mathematical concept."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "The area can be expressed as $P = rs = \\sqrt{s(s-a)(s-b)(s-c)}$, so $r^2 s = (s-a)(s-b)(s-c)$.", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1].\nTherefore, we conclude:\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s) :\n  r^2 * s = (s - a) * (s - b) * (s - c) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s) :\n  r^2 * s = (s - a) * (s - b) * (s - c) := by\n  have h_s_pos : s > 0 := by\n    have h\u2081 : 0 < a + b + c := by linarith\n    have h\u2082 : s = (a + b + c) / 2 := hs\n    rw [h\u2082]\n    linarith\n  \n  have h_rs_pos : r * s > 0 := by\n    have h\u2081 : r > 0 := hr\n    have h\u2082 : s > 0 := h_s_pos\n    positivity\n  \n  have h_sqrt_arg_pos : s * (s - a) * (s - b) * (s - c) > 0 := by\n    have h\u2081 : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)) := heron\n    have h\u2082 : area > 0 := ha_pos\n    have h\u2083 : Real.sqrt (s * (s - a) * (s - b) * (s - c)) > 0 := by linarith\n    have h\u2084 : s * (s - a) * (s - b) * (s - c) > 0 := by\n      by_contra h\n      have h\u2085 : s * (s - a) * (s - b) * (s - c) \u2264 0 := by linarith\n      have h\u2086 : Real.sqrt (s * (s - a) * (s - b) * (s - c)) = 0 := by\n        have h\u2087 : s * (s - a) * (s - b) * (s - c) \u2264 0 := h\u2085\n        have h\u2088 : Real.sqrt (s * (s - a) * (s - b) * (s - c)) = 0 := by\n          apply Real.sqrt_eq_zero_of_nonpos\n          linarith\n        exact h\u2088\n      linarith\n    exact h\u2084\n  \n  have h_squared : (r * s)^2 = s * (s - a) * (s - b) * (s - c) := by\n    have h\u2081 : area = r * s := inradius\n    have h\u2082 : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)) := heron\n    have h\u2083 : r * s = Real.sqrt (s * (s - a) * (s - b) * (s - c)) := by linarith\n    have h\u2084 : (r * s) ^ 2 = (Real.sqrt (s * (s - a) * (s - b) * (s - c))) ^ 2 := by rw [h\u2083]\n    have h\u2085 : (Real.sqrt (s * (s - a) * (s - b) * (s - c))) ^ 2 = s * (s - a) * (s - b) * (s - c) := by\n      rw [Real.sq_sqrt] <;>\n      (try positivity) <;>\n      (try nlinarith) <;>\n      (try linarith) <;>\n      (try nlinarith [h_sqrt_arg_pos])\n    nlinarith\n  \n  have h_main : r^2 * s = (s - a) * (s - b) * (s - c) := by\n    have h\u2081 : (r * s)^2 = s * (s - a) * (s - b) * (s - c) := h_squared\n    have h\u2082 : r^2 * s^2 = s * (s - a) * (s - b) * (s - c) := by\n      calc\n        r^2 * s^2 = (r * s)^2 := by ring\n        _ = s * (s - a) * (s - b) * (s - c) := by rw [h\u2081]\n    have h\u2083 : r^2 * s = (s - a) * (s - b) * (s - c) := by\n      have h\u2084 : s > 0 := h_s_pos\n      have h\u2085 : r^2 * s^2 = s * (s - a) * (s - b) * (s - c) := h\u2082\n      have h\u2086 : r^2 * s = (s - a) * (s - b) * (s - c) := by\n        calc\n          r^2 * s = (r^2 * s^2) / s := by\n            field_simp [h\u2084.ne']\n            <;> ring_nf\n            <;> field_simp [h\u2084.ne']\n            <;> nlinarith\n          _ = (s * (s - a) * (s - b) * (s - c)) / s := by rw [h\u2085]\n          _ = (s - a) * (s - b) * (s - c) := by\n            field_simp [h\u2084.ne']\n            <;> ring_nf\n            <;> field_simp [h\u2084.ne']\n            <;> nlinarith\n      exact h\u2086\n    exact h\u2083\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components from the natural language. The triangle sides a, b, c are properly declared with necessary positivity and triangle inequality constraints. The semi-perimeter s is defined exactly as stated. The inradius r is declared with appropriate positivity constraint. The conclusion formula is translated exactly. The additional mathematical framework (area, Heron's formula, inradius formula) provides the necessary foundation for the theorem without contradicting the natural language premise."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "To prove $s \\ge 3\\sqrt{3}\\,r$, observe that this is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$.", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1].\nTherefore, we conclude:\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c)) :\n  s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c)) :\n  s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n  have h_s_pos : s > 0 := by\n    have h\u2081 : 0 < a + b + c := by linarith\n    have h\u2082 : s = (a + b + c) / 2 := hs\n    rw [h\u2082]\n    linarith\n  \n  have h_sa_pos : s - a > 0 := by\n    have h\u2081 : s - a = (b + c - a) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2081]\n    have h\u2082 : b + c > a := by linarith [triangle_ineq.2.1]\n    linarith\n  \n  have h_sb_pos : s - b > 0 := by\n    have h\u2081 : s - b = (a + c - b) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2081]\n    have h\u2082 : a + c > b := by linarith [triangle_ineq.2.2]\n    linarith\n  \n  have h_sc_pos : s - c > 0 := by\n    have h\u2081 : s - c = (a + b - c) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2081]\n    have h\u2082 : a + b > c := by linarith [triangle_ineq.1]\n    linarith\n  \n  have h_product_pos : (s - a) * (s - b) * (s - c) > 0 := by\n    have h\u2081 : 0 < s - a := h_sa_pos\n    have h\u2082 : 0 < s - b := h_sb_pos\n    have h\u2083 : 0 < s - c := h_sc_pos\n    have h\u2084 : 0 < (s - a) * (s - b) := by positivity\n    have h\u2085 : 0 < (s - a) * (s - b) * (s - c) := by positivity\n    linarith\n  \n  have h_imp_forward : s \u2265 3 * Real.sqrt 3 * r \u2192 s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n    intro h\n    have h\u2081 : s \u2265 3 * Real.sqrt 3 * r := h\n    have h\u2082 : s > 0 := h_s_pos\n    have h\u2083 : r > 0 := hr\n    have h\u2084 : (3 * Real.sqrt 3 * r) \u2265 0 := by positivity\n    have h\u2085 : s ^ 2 \u2265 (3 * Real.sqrt 3 * r) ^ 2 := by\n      nlinarith [Real.sqrt_nonneg 3, Real.sq_sqrt (show 0 \u2264 3 by norm_num)]\n    have h\u2086 : (3 * Real.sqrt 3 * r) ^ 2 = 27 * r ^ 2 := by\n      nlinarith [Real.sqrt_nonneg 3, Real.sq_sqrt (show 0 \u2264 3 by norm_num)]\n    have h\u2087 : s ^ 2 \u2265 27 * r ^ 2 := by\n      linarith\n    have h\u2088 : s ^ 3 \u2265 27 * r ^ 2 * s := by\n      have h\u2088\u2081 : 0 < s := h_s_pos\n      have h\u2088\u2082 : 0 < s ^ 2 := by positivity\n      nlinarith\n    have h\u2089 : 27 * r ^ 2 * s = 27 * (r ^ 2 * s) := by ring\n    have h\u2081\u2080 : r ^ 2 * s = (s - a) * (s - b) * (s - c) := by\n      linarith\n    have h\u2081\u2081 : 27 * r ^ 2 * s = 27 * ((s - a) * (s - b) * (s - c)) := by\n      calc\n        27 * r ^ 2 * s = 27 * (r ^ 2 * s) := by ring\n        _ = 27 * ((s - a) * (s - b) * (s - c)) := by rw [h\u2081\u2080]\n    have h\u2081\u2082 : s ^ 3 \u2265 27 * ((s - a) * (s - b) * (s - c)) := by\n      linarith\n    have h\u2081\u2083 : s ^ 3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n      calc\n        s ^ 3 \u2265 27 * ((s - a) * (s - b) * (s - c)) := h\u2081\u2082\n        _ = 27 * (s - a) * (s - b) * (s - c) := by ring\n    exact h\u2081\u2083\n  \n  have h_imp_backward : s^3 \u2265 27 * (s - a) * (s - b) * (s - c) \u2192 s \u2265 3 * Real.sqrt 3 * r := by\n    intro h\n    have h\u2081 : s ^ 3 \u2265 27 * (s - a) * (s - b) * (s - c) := h\n    have h\u2082 : r ^ 2 * s = (s - a) * (s - b) * (s - c) := by linarith\n    have h\u2083 : s ^ 3 \u2265 27 * (r ^ 2 * s) := by\n      calc\n        s ^ 3 \u2265 27 * (s - a) * (s - b) * (s - c) := h\u2081\n        _ = 27 * ((s - a) * (s - b) * (s - c)) := by ring\n        _ = 27 * (r ^ 2 * s) := by\n          calc\n            27 * ((s - a) * (s - b) * (s - c)) = 27 * (r ^ 2 * s) := by\n              rw [h\u2082]\n              <;> ring\n            _ = 27 * (r ^ 2 * s) := by rfl\n    have h\u2084 : s > 0 := h_s_pos\n    have h\u2085 : s ^ 2 \u2265 27 * r ^ 2 := by\n      have h\u2085\u2081 : s ^ 3 \u2265 27 * (r ^ 2 * s) := h\u2083\n      have h\u2085\u2082 : 0 < s := h_s_pos\n      have h\u2085\u2083 : 0 < s ^ 2 := by positivity\n      have h\u2085\u2084 : s ^ 3 = s ^ 2 * s := by ring\n      rw [h\u2085\u2084] at h\u2085\u2081\n      have h\u2085\u2085 : s ^ 2 * s \u2265 27 * (r ^ 2 * s) := by linarith\n      have h\u2085\u2086 : s ^ 2 * s \u2265 27 * r ^ 2 * s := by\n        calc\n          s ^ 2 * s \u2265 27 * (r ^ 2 * s) := h\u2085\u2085\n          _ = 27 * r ^ 2 * s := by ring\n      have h\u2085\u2087 : s ^ 2 \u2265 27 * r ^ 2 := by\n        nlinarith\n      exact h\u2085\u2087\n    have h\u2086 : s \u2265 3 * Real.sqrt 3 * r := by\n      have h\u2086\u2081 : 0 < Real.sqrt 3 := Real.sqrt_pos.mpr (by norm_num)\n      have h\u2086\u2082 : 0 < Real.sqrt 3 * r := by positivity\n      have h\u2086\u2083 : (3 * Real.sqrt 3 * r) ^ 2 = 27 * r ^ 2 := by\n        nlinarith [Real.sq_sqrt (show 0 \u2264 3 by norm_num)]\n      have h\u2086\u2084 : s ^ 2 \u2265 (3 * Real.sqrt 3 * r) ^ 2 := by\n        nlinarith [Real.sqrt_nonneg 3, Real.sq_sqrt (show 0 \u2264 3 by norm_num)]\n      have h\u2086\u2085 : s \u2265 0 := by linarith\n      have h\u2086\u2086 : 3 * Real.sqrt 3 * r \u2265 0 := by positivity\n      nlinarith [Real.sqrt_nonneg 3, Real.sq_sqrt (show 0 \u2264 3 by norm_num),\n        sq_nonneg (s - 3 * Real.sqrt 3 * r)]\n    exact h\u2086\n  \n  have h_main : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n    constructor\n    \u00b7 -- Prove the forward direction: s \u2265 3 * Real.sqrt 3 * r \u2192 s^3 \u2265 27 * (s - a) * (s - b) * (s - c)\n      intro h\n      exact h_imp_forward h\n    \u00b7 -- Prove the backward direction: s^3 \u2265 27 * (s - a) * (s - b) * (s - c) \u2192 s \u2265 3 * Real.sqrt 3 * r\n      intro h\n      exact h_imp_backward h\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly and completely captures all logical and mathematical meaning from the natural language. The variable declarations properly represent triangle sides with appropriate positivity and triangle inequality constraints. The semi-perimeter definition is exactly translated. The inradius is properly declared with necessary positivity constraint. The key relationship r\u00b2s = (s-a)(s-b)(s-c) is precisely formalized. The main equivalence statement between the two inequalities is accurately captured using the biconditional operator. All additional constraints in the Lean code are mathematically consistent and necessary for a well-formed theorem about triangle geometry."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Setting $x = s-a$, $y = s-b$, $z = s-c$,", "statement": "Definition:\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_1 (a b c s : \u211d) :\n  let x := s - a\n  let y := s - b  \n  let z := s - c\n  x + y + z = s := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean parameter declaration (a b c s : \u211d) correctly captures that s, a, b, c are given values, with the additional type specification that they are real numbers", "The Lean let statement 'let x := s - a' perfectly matches the mathematical definition x = s-a", "The Lean let statement 'let y := s - b' perfectly matches the mathematical definition y = s-b", "The Lean let statement 'let z := s - c' perfectly matches the mathematical definition z = s-c", "The Lean formalization introduces a proposition 'x + y + z = s' that is not present in the natural language statement. The natural language only defines the variables but makes no claim about their sum"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean parameter declaration (a b c s : \u211d) correctly captures that s, a, b, c are given values, with the additional type specification that they are real numbers', \"The Lean let statement 'let x := s - a' perfectly matches the mathematical definition x = s-a\", \"The Lean let statement 'let y := s - b' perfectly matches the mathematical definition y = s-b\", \"The Lean let statement 'let z := s - c' perfectly matches the mathematical definition z = s-c\", \"The Lean formalization introduces a proposition 'x + y + z = s' that is not present in the natural language statement. The natural language only defines the variables but makes no claim about their sum\"]"}, "type": "definition"}, "l3": {"id": "l3", "natural_language": "we have $x+y+z = s$", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1].\nTherefore, we conclude:\n\u2022 $x+y+z = s$ [l3].", "dependencies": ["tc_1", "l1", "l2", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s) :\n  let x := s - a\n  let y := s - b  \n  let z := s - c\n  x + y + z = s := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s) :\n  let x := s - a\n  let y := s - b  \n  let z := s - c\n  x + y + z = s := by\n  have h_sum : a + b + c = 2 * s := by\n    have h\u2081 : s = (a + b + c) / 2 := hs\n    have h\u2082 : a + b + c = 2 * s := by\n      linarith\n    exact h\u2082\n  \n  have h_main : (s - a) + (s - b) + (s - c) = s := by\n    have h\u2081 : (s - a) + (s - b) + (s - c) = 3 * s - (a + b + c) := by\n      ring\n    rw [h\u2081]\n    have h\u2082 : a + b + c = 2 * s := h_sum\n    rw [h\u2082]\n    <;> ring\n    <;> linarith\n  \n  dsimp at def_1 \u22a2\n  <;>\n  (try ring_nf at def_1 \u22a2) <;>\n  (try linarith) <;>\n  (try nlinarith) <;>\n  (try nlinarith [ha, hb, hc, triangle_ineq.1, triangle_ineq.2.1, triangle_ineq.2.2]) <;>\n  (try simp_all) <;>\n  (try nlinarith) <;>\n  (try linarith) <;>\n  (try nlinarith [ha, hb, hc, triangle_ineq.1, triangle_ineq.2.1, triangle_ineq.2.2])\n  <;>\n  (try\n    {\n      nlinarith [ha, hb, hc, triangle_ineq.1, triangle_ineq.2.1, triangle_ineq.2.2]\n    })\n  <;>\n  (try\n    {\n      linarith [ha, hb, hc, triangle_ineq.1, triangle_ineq.2.1, triangle_ineq.2.2]\n    })\n  <;>\n  (try\n    {\n      nlinarith [ha, hb, hc, triangle_ineq.1, triangle_ineq.2.1, triangle_ineq.2.2]\n    })", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all the mathematical relationships and logical structure from the natural language. While there are some redundant assumptions (tc_1 and l1 are identical) and extra mathematical context (Heron's formula, area relationships), these do not contradict the natural language and actually strengthen the mathematical foundation. The core semantic meaning - the triangle setup, semi-perimeter definition, inradius relationship, the key equivalence, variable definitions, and the conclusion - are all faithfully represented. The additional constraints and mathematical relationships in Lean are consistent with standard triangle geometry."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "and by AM\u2013GM, $(x+y+z)^3 \\ge 27xyz$,", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1];\n\u2022 $x+y+z = s$ [l3].\nTherefore, we conclude:\n\u2022 $(x+y+z)^3 \\ge 27xyz$ [l4].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s) :\n  let x := s - a\n  let y := s - b  \n  let z := s - c\n  (x + y + z)^3 \u2265 27 * x * y * z := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : r > 0)\n  (area : \u211d) (ha_pos : area > 0)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s) :\n  let x := s - a\n  let y := s - b  \n  let z := s - c\n  (x + y + z)^3 \u2265 27 * x * y * z := by\n  dsimp only at *\n  have h_x_pos : s - a > 0 := by\n    have h\u2081 : b + c > a := by linarith [triangle_ineq.2.1]\n    have h\u2082 : s - a = (b + c - a) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> linarith\n    rw [h\u2082]\n    linarith\n  \n  have h_y_pos : s - b > 0 := by\n    have h\u2081 : a + c > b := by linarith [triangle_ineq.2.2]\n    have h\u2082 : s - b = (a + c - b) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> linarith\n    rw [h\u2082]\n    linarith\n  \n  have h_z_pos : s - c > 0 := by\n    have h\u2081 : a + b > c := by linarith [triangle_ineq.1]\n    have h\u2082 : s - c = (a + b - c) / 2 := by\n      rw [hs]\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> linarith\n    rw [h\u2082]\n    linarith\n  \n  have h_main : ( (s - a) + (s - b) + (s - c) ) ^ 3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n    have h\u2081 : 0 \u2264 (s - a) := by linarith\n    have h\u2082 : 0 \u2264 (s - b) := by linarith\n    have h\u2083 : 0 \u2264 (s - c) := by linarith\n    -- Use nlinarith to prove the inequality based on non-negativity and AM-GM\n    nlinarith [sq_nonneg ((s - a) - (s - b)), sq_nonneg ((s - b) - (s - c)), sq_nonneg ((s - c) - (s - a)),\n      mul_nonneg h\u2081 h\u2082, mul_nonneg h\u2082 h\u2083, mul_nonneg h\u2083 h\u2081,\n      sq_nonneg ((s - a) + (s - b) + (s - c)),\n      sq_nonneg ((s - a) + (s - b) - 2 * (s - c)),\n      sq_nonneg ((s - a) + (s - c) - 2 * (s - b)),\n      sq_nonneg ((s - b) + (s - c) - 2 * (s - a))]\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The triangle setup with sides a,b,c, semi-perimeter s, and inradius r is correctly formalized with appropriate positivity and triangle inequality constraints.", "The fundamental relation r\u00b2s = (s-a)(s-b)(s-c) is correctly captured, though it appears redundantly as both tc_1 and l1.", "The equivalence between s \u2265 3\u221a3r and s\u00b3 \u2265 27(s-a)(s-b)(s-c) is perfectly formalized using the biconditional (\u2194).", "The variable substitutions x = s-a, y = s-b, z = s-c are correctly defined in the conclusion.", "The relation x+y+z = s is correctly stated, though it appears redundantly in both def_1 and l3.", "The final conclusion (x+y+z)\u00b3 \u2265 27xyz perfectly matches the natural language statement."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "giving $s^3 \\ge 27(s-a)(s-b)(s-c)$", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1];\n\u2022 $x+y+z = s$ [l3];\n\u2022 $(x+y+z)^3 \\ge 27xyz$ [l4].\nTherefore, we conclude:\n\u2022 $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l5].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c s r : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (hs : s = (a + b + c) / 2)\n  (hr : 0 < r)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z) :\n  s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c s r : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (hs : s = (a + b + c) / 2)\n  (hr : 0 < r)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z) :\n  s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n  have h_sum : (s - a) + (s - b) + (s - c) = s := by\n    have h\u2081 : a + b + c = 2 * s := by\n      rw [hs]\n      ring\n    have h\u2082 : (s - a) + (s - b) + (s - c) = 3 * s - (a + b + c) := by ring\n    rw [h\u2082]\n    linarith\n  \n  have h_main : s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n    have h\u2085 : ((s - a) + (s - b) + (s - c)) ^ 3 \u2265 27 * (s - a) * (s - b) * (s - c) := by\n      dsimp only at l4\n      simpa [add_assoc, add_comm, add_left_comm] using l4\n    have h\u2086 : ((s - a) + (s - b) + (s - c)) ^ 3 = s ^ 3 := by\n      rw [h_sum]\n      <;> ring\n    rw [h\u2086] at h\u2085\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures the essential mathematical content correctly, but there are structural differences from the natural language. Specifically: (1) tc_1 in natural language states 'r is the inradius' but in Lean it's formalized as the same formula as l1, and (2) def_1 and l3 are treated as separate assumptions in Lean when they represent the same mathematical relationship. The core logic and mathematical meaning are preserved, but the organization differs from the natural language presentation."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures the essential mathematical content correctly, but there are structural differences from the natural language. Specifically: (1) tc_1 in natural language states 'r is the inradius' but in Lean it's formalized as the same formula as l1, and (2) def_1 and l3 are treated as separate assumptions in Lean when they represent the same mathematical relationship. The core logic and mathematical meaning are preserved, but the organization differs from the natural language presentation.\"]"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "giving $s^3 \\ge 27(s-a)(s-b)(s-c) = 27 r^2 s$,", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1];\n\u2022 $x+y+z = s$ [l3];\n\u2022 $(x+y+z)^3 \\ge 27xyz$ [l4];\n\u2022 $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l5].\nTherefore, we conclude:\n\u2022 $s^3 \\ge 27 r^2 s$ [l6].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : 0 < r)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c)) :\n  s \u2265 3 * Real.sqrt 3 * r := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l6\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : 0 < r)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c)) :\n  s \u2265 3 * Real.sqrt 3 * r := by\n  have h_main : s \u2265 3 * Real.sqrt 3 * r := by\n    have h\u2081 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := l5\n    have h\u2082 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c) := l2\n    -- Use the backward direction of the equivalence in h\u2082 to deduce s \u2265 3 * Real.sqrt 3 * r from h\u2081\n    have h\u2083 : s \u2265 3 * Real.sqrt 3 * r := by\n      exact (h\u2082.mpr h\u2081)\n    exact h\u2083\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Triangle setup with sides a,b,c, semi-perimeter s, and inradius r is correctly formalized with appropriate positivity constraints and triangle inequalities.", "The formula r\u00b2s = (s-a)(s-b)(s-c) is correctly stated as both tc_1 and l1 hypotheses.", "The equivalence between s \u2265 3\u221a3r and s\u00b3 \u2265 27(s-a)(s-b)(s-c) is properly formalized as hypothesis l2.", "Variable definitions x=s-a, y=s-b, z=s-c are correctly captured in the let expressions within def_1.", "The sum property x+y+z = s is properly formalized as hypothesis l3.", "The AM-GM inequality (x+y+z)\u00b3 \u2265 27xyz is correctly stated as hypothesis l4.", "The derived inequality s\u00b3 \u2265 27(s-a)(s-b)(s-c) is properly included as hypothesis l5.", "Major inconsistency: The theorem conclusion proves 's \u2265 3 * Real.sqrt 3 * r' but the natural language concludes 's\u00b3 \u2265 27r\u00b2s' (which would be 's^3 \u2265 27 * r^2 * s' in Lean). These are different mathematical statements."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Triangle setup with sides a,b,c, semi-perimeter s, and inradius r is correctly formalized with appropriate positivity constraints and triangle inequalities.', 'The formula r\u00b2s = (s-a)(s-b)(s-c) is correctly stated as both tc_1 and l1 hypotheses.', 'The equivalence between s \u2265 3\u221a3r and s\u00b3 \u2265 27(s-a)(s-b)(s-c) is properly formalized as hypothesis l2.', 'Variable definitions x=s-a, y=s-b, z=s-c are correctly captured in the let expressions within def_1.', 'The sum property x+y+z = s is properly formalized as hypothesis l3.', 'The AM-GM inequality (x+y+z)\u00b3 \u2265 27xyz is correctly stated as hypothesis l4.', 'The derived inequality s\u00b3 \u2265 27(s-a)(s-b)(s-c) is properly included as hypothesis l5.', \"Major inconsistency: The theorem conclusion proves 's \u2265 3 * Real.sqrt 3 * r' but the natural language concludes 's\u00b3 \u2265 27r\u00b2s' (which would be 's^3 \u2265 27 * r^2 * s' in Lean). These are different mathematical statements.\"]"}, "solved_negation": null, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "hence $s^2 \\ge 27 r^2$", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1];\n\u2022 $x+y+z = s$ [l3];\n\u2022 $(x+y+z)^3 \\ge 27xyz$ [l4];\n\u2022 $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l5];\n\u2022 $s^3 \\ge 27 r^2 s$ [l6].\nTherefore, we conclude:\n\u2022 $s^2 \\ge 27 r^2$ [l7].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : 0 < r)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (l6 : s \u2265 3 * Real.sqrt 3 * r) :\n  s^2 \u2265 27 * r^2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l7\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (s : \u211d) (hs : s = (a + b + c) / 2)\n  (r : \u211d) (hr : 0 < r)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (l6 : s \u2265 3 * Real.sqrt 3 * r) :\n  s^2 \u2265 27 * r^2 := by\n  have h_s_pos : 0 < s := by\n    have h\u2081 : 0 < a + b + c := by linarith\n    have h\u2082 : s = (a + b + c) / 2 := hs\n    rw [h\u2082]\n    linarith\n  \n  have h_3sqrt3r_pos : 0 < 3 * Real.sqrt 3 * r := by\n    have h\u2081 : 0 < Real.sqrt 3 := Real.sqrt_pos.mpr (by norm_num)\n    have h\u2082 : 0 < 3 * Real.sqrt 3 := by positivity\n    have h\u2083 : 0 < 3 * Real.sqrt 3 * r := by positivity\n    exact h\u2083\n  \n  have h_main : s^2 \u2265 27 * r^2 := by\n    have h\u2084 : (3 * Real.sqrt 3 * r) ^ 2 = 27 * r ^ 2 := by\n      have h\u2084\u2081 : (3 * Real.sqrt 3 * r) ^ 2 = 3 ^ 2 * (Real.sqrt 3) ^ 2 * r ^ 2 := by\n        ring_nf\n        <;> field_simp [pow_two]\n        <;> ring_nf\n      rw [h\u2084\u2081]\n      have h\u2084\u2082 : (Real.sqrt 3) ^ 2 = 3 := by norm_num [Real.sqrt_eq_iff_sq_eq]\n      rw [h\u2084\u2082]\n      <;> ring_nf\n      <;> norm_num\n      <;> linarith\n    \n    have h\u2085 : (3 * Real.sqrt 3 * r : \u211d) \u2264 s := by\n      have h\u2085\u2081 : s \u2265 3 * Real.sqrt 3 * r := l6\n      linarith\n    \n    have h\u2086 : 0 \u2264 (3 * Real.sqrt 3 * r : \u211d) := by\n      have h\u2086\u2081 : 0 < 3 * Real.sqrt 3 * r := h_3sqrt3r_pos\n      linarith\n    \n    have h\u2087 : (3 * Real.sqrt 3 * r : \u211d) ^ 2 \u2264 s ^ 2 := by\n      have h\u2087\u2081 : 0 \u2264 (3 * Real.sqrt 3 * r : \u211d) := h\u2086\n      have h\u2087\u2082 : (3 * Real.sqrt 3 * r : \u211d) \u2264 s := h\u2085\n      have h\u2087\u2083 : 0 \u2264 s := by linarith\n      nlinarith [sq_nonneg (s - 3 * Real.sqrt 3 * r)]\n    \n    have h\u2088 : 27 * r ^ 2 \u2264 s ^ 2 := by\n      calc\n        27 * r ^ 2 = (3 * Real.sqrt 3 * r) ^ 2 := by\n          rw [h\u2084]\n          <;> ring_nf\n          <;> norm_num\n          <;> linarith\n        _ \u2264 s ^ 2 := h\u2087\n    \n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization captures all the essential mathematical content from the natural language, but there is a discrepancy in statement l6. The natural language presents l6 as 's\u00b3 \u2265 27r\u00b2s' while the Lean formalization has l6 as 's \u2265 3\u221a3r'. The Lean version is actually more logically consistent as it represents the assumption needed to derive the final conclusion s\u00b2 \u2265 27r\u00b2. The formalization also includes additional geometric context (triangle inequalities, area relationships) that strengthens the mathematical foundation. There is some redundancy with tc_1 and l1 being identical, but this doesn't affect correctness. Overall, the semantic meaning is preserved with only this structural difference in the presentation of l6."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: [\"The Lean formalization captures all the essential mathematical content from the natural language, but there is a discrepancy in statement l6. The natural language presents l6 as 's\u00b3 \u2265 27r\u00b2s' while the Lean formalization has l6 as 's \u2265 3\u221a3r'. The Lean version is actually more logically consistent as it represents the assumption needed to derive the final conclusion s\u00b2 \u2265 27r\u00b2. The formalization also includes additional geometric context (triangle inequalities, area relationships) that strengthens the mathematical foundation. There is some redundancy with tc_1 and l1 being identical, but this doesn't affect correctness. Overall, the semantic meaning is preserved with only this structural difference in the presentation of l6.\"]"}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "and $s \\ge 3\\sqrt{3}\\,r$.", "statement": "We assume:\n\u2022 $a, b, c$ are the sides of a triangle, $s = (a+b+c)/2$ is the semi-perimeter, and $r$ is the inradius [tc_1];\n\u2022 $r^2 s = (s-a)(s-b)(s-c)$ [l1];\n\u2022 The inequality $s \\ge 3\\sqrt{3}r$ is equivalent to $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l2];\n\u2022 Let $x = s-a$, $y = s-b$, $z = s-c$ [def_1];\n\u2022 $x+y+z = s$ [l3];\n\u2022 $(x+y+z)^3 \\ge 27xyz$ [l4];\n\u2022 $s^3 \\ge 27(s-a)(s-b)(s-c)$ [l5];\n\u2022 $s^3 \\ge 27 r^2 s$ [l6];\n\u2022 $s^2 \\ge 27 r^2$ [l7].\nTherefore, we conclude:\n\u2022 $s \\ge 3\\sqrt{3}r$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "def_1", "l3", "l4", "l5", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a b c s r : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (hs : s = (a + b + c) / 2)\n  (hr : 0 < r)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (l6 : s \u2265 3 * Real.sqrt 3 * r)\n  (l7 : s^2 \u2265 27 * r^2) :\n  s \u2265 3 * Real.sqrt 3 * r := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a b c s r : \u211d) \n  (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (hs : s = (a + b + c) / 2)\n  (hr : 0 < r)\n  (triangle_ineq : a + b > c \u2227 b + c > a \u2227 c + a > b)\n  (area : \u211d) (ha_pos : 0 < area)\n  (heron : area = Real.sqrt (s * (s - a) * (s - b) * (s - c)))\n  (inradius : area = r * s)\n  (tc_1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l1 : r^2 * s = (s - a) * (s - b) * (s - c))\n  (l2 : s \u2265 3 * Real.sqrt 3 * r \u2194 s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (def_1 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l3 : let x := s - a; let y := s - b; let z := s - c; x + y + z = s)\n  (l4 : let x := s - a; let y := s - b; let z := s - c; (x + y + z)^3 \u2265 27 * x * y * z)\n  (l5 : s^3 \u2265 27 * (s - a) * (s - b) * (s - c))\n  (l6 : s \u2265 3 * Real.sqrt 3 * r)\n  (l7 : s^2 \u2265 27 * r^2) :\n  s \u2265 3 * Real.sqrt 3 * r := by\n  have h_main : s \u2265 3 * Real.sqrt 3 * r := by\n    -- Use the given hypothesis l6 directly to conclude the proof\n    exact l6\n  -- The main hypothesis h_main already gives the desired result\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization contains a critical logical error: the conclusion 's \u2265 3 * Real.sqrt 3 * r' appears as both a hypothesis (l6) and the theorem goal. This makes the proof trivial and contradicts the natural language, which presents this as a conclusion to be derived through a chain of reasoning. The natural language describes a mathematical derivation, but the Lean code assumes the result as a premise, fundamentally changing the logical structure of the argument."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization contains a critical logical error: the conclusion 's \u2265 3 * Real.sqrt 3 * r' appears as both a hypothesis (l6) and the theorem goal. This makes the proof trivial and contradicts the natural language, which presents this as a conclusion to be derived through a chain of reasoning. The natural language describes a mathematical derivation, but the Lean code assumes the result as a premise, fundamentally changing the logical structure of the argument.\"]"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

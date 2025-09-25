@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be a sequence such that $a_n = \frac{1}{n(n+1)}$ for all $n \in \mathbb{N}$. Let the series be $\sum_{n=1}^{\infty} a_n$. The sum of this series is $1$.
+
+Proof: The term $a_n$ can be expressed using partial fraction decomposition. We can write $\frac{1}{n(n+1)} = \frac{A}{n} + \frac{B}{n+1}$. To find $A$ and $B$, we set $1 = A(n+1) + B(n)$. By setting $n=0$, we find $1 = A(1) + B(0)$, so $A=1$. By setting $n=-1$, we find $1 = A(0) + B(-1)$, so $1 = -B$, which means $B=-1$. Therefore, $a_n = \frac{1}{n} - \frac{1}{n+1}$. The partial sum of the series is $S_N = \sum_{n=1}^N a_n = \sum_{n=1}^N (\frac{1}{n} - \frac{1}{n+1})$. This is a telescoping sum. Expanding the sum, we get $S_N = (\frac{1}{1} - \frac{1}{2}) + (\frac{1}{2} - \frac{1}{3}) + (\frac{1}{3} - \frac{1}{4}) + \dots + (\frac{1}{N} - \frac{1}{N+1})$. The intermediate terms cancel out, leaving $S_N = 1 - \frac{1}{N+1}$. The sum of the series is the limit of the partial sums as $N$ approaches infinity. Thus, $\sum_{n=1}^{\infty} a_n = \lim_{N 	o \infty} S_N = \lim_{N 	o \infty} (1 - \frac{1}{N+1})$. Since $\lim_{N 	o \infty} \frac{1}{N+1} = 0$, the sum of the series is $1 - 0 = 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$.", "statement": "Premise:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration of 'a' as a function from naturals to reals perfectly captures the concept of a sequence", "The Lean formalization correctly captures the formula, with an additional constraint n \u2265 1 that is mathematically reasonable since the formula would be problematic for n = 0. This extra constraint is logically consistent and doesn't contradict the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "We can write $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1].\nTherefore, we conclude:\n\u2022 There exist constants A and B such that for $n \\in \\mathbb{N}$, $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (a : \u2115 \u2192 \u211d)\n  (h : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1))) :\n  \u2203 A B : \u211d, \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1\n  (a : \u2115 \u2192 \u211d)\n  (h : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1))) :\n  \u2203 A B : \u211d, \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1) := by\n  have h_main : \u2203 (A B : \u211d), \u2200 (n : \u2115), n \u2265 1 \u2192 (1 : \u211d) / (n * (n + 1)) = A / n + B / (n + 1) := by\n    use 1, -1\n    intro n hn\n    have h\u2081 : (n : \u211d) \u2265 1 := by exact_mod_cast hn\n    have h\u2082 : (n : \u211d) + 1 \u2260 0 := by linarith\n    have h\u2083 : (n : \u211d) \u2260 0 := by linarith\n    field_simp [h\u2083, h\u2082]\n    <;> ring_nf\n    <;> field_simp [h\u2083, h\u2082]\n    <;> ring_nf\n    <;> norm_num\n    <;> nlinarith\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical content and logical structure of the natural language statement. The addition of the constraint 'n \u2265 1' is a reasonable and mathematically sound enhancement that prevents division by zero issues, without contradicting the original meaning. The sequence definition, existential quantification over constants A and B, and the partial fraction equality are all properly represented. The theorem structure appropriately reflects the assumption-conclusion relationship stated in natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "To find $A$ and $B$, we set $1 = A(n+1) + B(n)$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 There exist constants A and B such that for $n \\in \\mathbb{N}$, $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$ [l1].\nTherefore, we conclude:\n\u2022 $1 = A(n+1) + B(n)$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d) (A B : \u211d)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)) := by sorry\n\ntheorem l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1) := by sorry\n\ntheorem l2 : A = 1 \u2227 B = -1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 : A = 1 \u2227 B = -1 := by\n  have h1 : (2 : \u211d) * A + B = 1 := by\n    have h\u2081 := l1 1 (by norm_num)\n    norm_num at h\u2081 \u22a2\n    <;>\n    (try ring_nf at h\u2081 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith) <;>\n    (try\n      {\n        field_simp at h\u2081 \u22a2\n        <;> ring_nf at h\u2081 \u22a2 <;> nlinarith\n      })\n    <;>\n    (try\n      {\n        norm_num at h\u2081 \u22a2\n        <;> linarith\n      })\n  \n  have h2 : (3 : \u211d) * A + 2 * B = 1 := by\n    have h\u2082 := l1 2 (by norm_num)\n    norm_num at h\u2082 \u22a2\n    <;>\n    (try ring_nf at h\u2082 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith) <;>\n    (try\n      {\n        field_simp at h\u2082 \u22a2\n        <;> ring_nf at h\u2082 \u22a2 <;> nlinarith\n      })\n    <;>\n    (try\n      {\n        norm_num at h\u2082 \u22a2\n        <;> linarith\n      })\n  \n  have h3 : A = 1 := by\n    have h\u2083 : A = 1 := by\n      have h\u2084 : (2 : \u211d) * A + B = 1 := h1\n      have h\u2085 : (3 : \u211d) * A + 2 * B = 1 := h2\n      -- Use linear arithmetic to solve for A\n      linarith\n    exact h\u2083\n  \n  have h4 : B = -1 := by\n    have h\u2084 : (2 : \u211d) * A + B = 1 := h1\n    have h\u2085 : A = 1 := h3\n    rw [h\u2085] at h\u2084\n    -- Substitute A = 1 into the equation 2 * A + B = 1 to find B\n    linarith\n  \n  exact \u27e8h3, h4\u27e9", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 6, "column": 15, "endLine": 6, "endColumn": 17, "data": "unknown identifier 'l1'"}, {"line": 25, "column": 15, "endLine": 25, "endColumn": 17, "data": "unknown identifier 'l1'"}, {"line": 48, "column": 6, "endLine": 48, "endColumn": 14, "data": "linarith failed to find a contradiction\ncase h1.h\nA : \u2115\nB : \u2124\nh1 : 2 * \u2191A + \u2191B = 1\nh2 : 3 * \u2191A + 2 * \u2191B = 1\nh\u2084 : 2 * \u2191A + \u2191B = 1\nh\u2085 : 3 * \u2191A + 2 * \u2191B = 1\na\u271d : A < 1\n\u22a2 False failed"}, {"line": 56, "column": 4, "endLine": 56, "endColumn": 12, "data": "linarith failed to find a contradiction\ncase h1.h\nA : \u2115\nB : \u2124\nh1 : 2 * \u2191A + \u2191B = 1\nh2 : 3 * \u2191A + 2 * \u2191B = 1\nh3 : A = 1\nh\u2084 : 2 * \u21911 + \u2191B = 1\nh\u2085 : A = 1\na\u271d : B < -1\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization adds the constraint n \u2265 1 which is mathematically reasonable to avoid division by zero, but this constraint is not explicitly mentioned in the natural language definition.", "Similar to tc_1, the Lean formalization adds the constraint n \u2265 1 which makes mathematical sense but is not stated in the natural language premise.", "The natural language states '1 = A(n+1) + B(n)' as a general relationship, but the Lean formalization directly provides the specific values 'A = 1 \u2227 B = -1'. This misses the intermediate algebraic relationship and jumps to the final solution, representing a different logical step in the proof process.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization adds the constraint n \u2265 1 which is mathematically reasonable to avoid division by zero, but this constraint is not explicitly mentioned in the natural language definition.', 'Similar to tc_1, the Lean formalization adds the constraint n \u2265 1 which makes mathematical sense but is not stated in the natural language premise.', \"The natural language states '1 = A(n+1) + B(n)' as a general relationship, but the Lean formalization directly provides the specific values 'A = 1 \u2227 B = -1'. This misses the intermediate algebraic relationship and jumps to the final solution, representing a different logical step in the proof process.\"]"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "By setting $n=0$, we find $1 = A(1) + B(0)$, so $A=1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 There exist constants A and B such that for $n \\in \\mathbb{N}$, $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$ [l1];\n\u2022 $1 = A(n+1) + B(n)$ [l2].\nTherefore, we conclude:\n\u2022 $A=1$ [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n) :\n  A = 1 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n) :\n  A = 1 := by\n  have h1 : A = 1 := by\n    have h2 := l2 1 (by norm_num)\n    have h3 := l2 2 (by norm_num)\n    have h4 := l1 1 (by norm_num)\n    have h5 := l1 2 (by norm_num)\n    norm_num at h2 h3 h4 h5 \u22a2\n    <;>\n    (try ring_nf at h2 h3 h4 h5 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith) <;>\n    (try\n      {\n        have h6 := l2 3 (by norm_num)\n        norm_num at h6 \u22a2\n        <;> linarith\n      }) <;>\n    (try\n      {\n        have h6 := l1 3 (by norm_num)\n        norm_num at h6 \u22a2\n        <;> linarith\n      })\n    <;>\n    (try\n      {\n        nlinarith\n      })\n    <;>\n    (try\n      {\n        linarith\n      })\n  exact h1", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical content from the natural language. The addition of the constraint 'n \u2265 1' throughout is mathematically sound and prevents division by zero issues, while not contradicting any statements in the natural language. All key components - the sequence definition, partial fraction decomposition, coefficient equation, and conclusion - are properly represented with consistent mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "By setting $n=-1$, we find $1 = A(0) + B(-1)$, so $1 = -B$, which means $B=-1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 There exist constants A and B such that for $n \\in \\mathbb{N}$, $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$ [l1];\n\u2022 $1 = A(n+1) + B(n)$ [l2];\n\u2022 $A=1$ [l3].\nTherefore, we conclude:\n\u2022 $B=-1$ [l4].", "dependencies": ["tc_1", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (A B : \u211d)\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n)\n  (l3 : A = 1) :\n  B = -1 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (A B : \u211d)\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n)\n  (l3 : A = 1) :\n  B = -1 := by\n  have h\u2081 : B = -1 := by\n    have h\u2082 := l2 1\n    have h\u2083 := l2 2\n    have h\u2084 := l2 3\n    have h\u2085 := l1 1\n    have h\u2086 := l1 2\n    have h\u2087 := l1 3\n    norm_num [l3] at h\u2082 h\u2083 h\u2084 h\u2085 h\u2086 h\u2087 \u22a2\n    <;>\n    (try ring_nf at h\u2082 h\u2083 h\u2084 h\u2085 h\u2086 h\u2087 \u22a2) <;>\n    (try norm_num at h\u2082 h\u2083 h\u2084 h\u2085 h\u2086 h\u2087 \u22a2) <;>\n    (try linarith) <;>\n    (try nlinarith)\n  exact h\u2081", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.8, "semantic_feedback": ["The sequence definition tc_1 is not explicitly formalized in Lean, though it's implicitly contained within l1. Additionally, the natural language uses \u2115 (which typically includes 0) while Lean adds the constraint n \u2265 1 to avoid division by zero, which is a reasonable mathematical refinement.", "The partial fraction decomposition l1 is perfectly captured. The constraint n \u2265 1 in Lean is a logical addition to handle the domain restriction for division.", "The coefficient equation l2 matches perfectly. The universal quantification and constraint are appropriately maintained.", "The assumption A = 1 is captured exactly as stated.", "The conclusion B = -1 is formalized exactly as the theorem's goal."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Therefore, $a_n = \\frac{1}{n} - \\frac{1}{n+1}$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 There exist constants A and B such that for $n \\in \\mathbb{N}$, $\\frac{1}{n(n+1)} = \\frac{A}{n} + \\frac{B}{n+1}$ [l1];\n\u2022 $1 = A(n+1) + B(n)$ [l2];\n\u2022 $A=1$ [l3];\n\u2022 $B=-1$ [l4].\nTherefore, we conclude:\n\u2022 $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l5].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1) := by sorry\n\ntheorem l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n := by sorry\n\ntheorem l3 : A = 1 := by sorry\n\ntheorem l4 : B = -1 := by sorry\n\ntheorem l5\n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n)\n  (l3 : A = 1)\n  (l4 : B = -1) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a : \u2115 \u2192 \u211d)\n  (A B : \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = A / n + B / (n + 1))\n  (l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = A * (n + 1) + B * n)\n  (l3 : A = 1)\n  (l4 : B = -1) :\n  \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by\n  intro n hn\n  have h\u2081 : a n = 1 / (n * (n + 1)) := by\n    apply tc_1\n    <;> assumption\n  have h\u2082 : (1 : \u211d) / (n * (n + 1)) = (1 : \u211d) / n - (1 : \u211d) / (n + 1) := by\n    have h\u2083 : (n : \u211d) \u2265 1 := by\n      norm_cast\n    have h\u2084 : (n : \u211d) + 1 \u2260 0 := by linarith\n    have h\u2085 : (n : \u211d) \u2260 0 := by linarith\n    have h\u2086 : (n : \u211d) * ((n : \u211d) + 1) \u2260 0 := by positivity\n    field_simp [h\u2085, h\u2084, h\u2086]\n    <;> ring_nf\n    <;> field_simp [h\u2085, h\u2084, h\u2086]\n    <;> ring_nf\n    <;> nlinarith\n  rw [h\u2081]\n  have h\u2083 : (1 : \u211d) / (n * (n + 1)) = (1 : \u211d) / n - (1 : \u211d) / (n + 1) := by\n    exact h\u2082\n  rw [h\u2083]\n  <;> simp [l3, l4] at *\n  <;> norm_num at *\n  <;> field_simp [l3, l4] at *\n  <;> ring_nf at *\n  <;> norm_num at *\n  <;> linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition correctly captures the mathematical content, with the added constraint n \u2265 1 being mathematically appropriate to avoid division by zero.", "The partial fraction decomposition is correctly formalized with appropriate domain constraints.", "The coefficient equation is perfectly captured in Lean syntax.", "While A = 1 is correctly stated, the natural language suggests this should be derived rather than asserted as an independent theorem.", "While B = -1 is correctly stated, the natural language suggests this should be derived rather than asserted as an independent theorem.", "The final conclusion correctly captures all the logical dependencies and mathematical content from the natural language.", "Wrong dependencies in Lean4 tactics!"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The sequence definition correctly captures the mathematical content, with the added constraint n \u2265 1 being mathematically appropriate to avoid division by zero.', 'The partial fraction decomposition is correctly formalized with appropriate domain constraints.', 'The coefficient equation is perfectly captured in Lean syntax.', 'While A = 1 is correctly stated, the natural language suggests this should be derived rather than asserted as an independent theorem.', 'While B = -1 is correctly stated, the natural language suggests this should be derived rather than asserted as an independent theorem.', 'The final conclusion correctly captures all the logical dependencies and mathematical content from the natural language.']"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "The partial sum of the series is $S_N = \\sum_{n=1}^N a_n$.", "statement": "Definition:\n\u2022 The N-th partial sum of the series is $S_N = \\sum_{n=1}^N a_n$ [def_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d) (N : \u2115)\n\ntheorem def_1 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by sorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the series terms $a_n$ as function `a n`", "The Lean formalization correctly represents 'first N terms' using `Finset.Icc 1 N` which sums from 1 to N", "The Lean formalization correctly captures the definition of the N-th partial sum. While it uses existential quantification rather than direct definition, the mathematical meaning is equivalent"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "definition"}, "l6": {"id": "l6", "natural_language": "$S_N = \\sum_{n=1}^N a_n = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l5];\n\u2022 The N-th partial sum of the series is $S_N = \\sum_{n=1}^N a_n$ [def_1].\nTherefore, we conclude:\n\u2022 $S_N = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$ [l6].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)) := by sorry\n\ntheorem l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by sorry\n\ntheorem def_1 (N : \u2115) : \n  \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by sorry\n\ntheorem l6 (N : \u2115) :\n  let S_N := \u2211 n in Finset.Icc 1 N, a n\n  S_N = \u2211 n in Finset.Icc 1 N, (1 / n - 1 / (n + 1)) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = (1 : \u211d) / ((n : \u211d) * ((n : \u211d) + 1)) := by\n  intro n hn\n  have h\u2081 : a n = (1 : \u211d) / ((n : \u211d) * ((n : \u211d) + 1)) := by\n    have h\u2082 : n \u2265 1 := hn\n    sorry\n  exact h\u2081\n\ntheorem l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = (1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1) := by\n  intro n hn\n  have h\u2081 : a n = (1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1) := by\n    have h\u2082 : n \u2265 1 := hn\n    sorry\n  exact h\u2081\n\ntheorem def_1 (N : \u2115) : \n  \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by\n  refine' \u27e8\u2211 n in Finset.Icc 1 N, a n, _\u27e9\n  <;> simp\n\ntheorem l6 (N : \u2115) :\n  let S_N := \u2211 n in Finset.Icc 1 N, a n\n  S_N = \u2211 n in Finset.Icc 1 N, ((1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1)) := by\n  dsimp\n  have h\u2081 : \u2200 (n : \u2115), n \u2208 Finset.Icc 1 N \u2192 a n = (1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1) := by\n    intro n hn\n    have h\u2082 : n \u2265 1 := by\n      simp [Finset.mem_Icc] at hn\n      linarith\n    have h\u2083 : a n = (1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1) := by\n      -- Use the given lemma l5 to get the desired equality\n      have h\u2084 := l5 n h\u2082\n      exact h\u2084\n    exact h\u2083\n  calc\n    \u2211 n in Finset.Icc 1 N, a n = \u2211 n in Finset.Icc 1 N, ((1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1)) := by\n      apply Finset.sum_congr rfl\n      intro n hn\n      rw [h\u2081 n hn]\n    _ = \u2211 n in Finset.Icc 1 N, ((1 : \u211d) / (n : \u211d) - (1 : \u211d) / ((n : \u211d) + 1)) := by rfl", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 36, "column": 22, "endLine": 36, "endColumn": 24, "data": "application type mismatch\n  l5 (\u2191n) h\u2082\nargument\n  h\u2082\nhas type\n  n \u2265 1 : Prop\nbut is expected to have type\n  \u2115 : Type"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition is correctly formalized. The natural language mentions 'for all n \u2208 \u2115' while Lean adds 'n \u2265 1' constraint, which is mathematically appropriate since division by zero should be avoided and is a reasonable additional constraint.", "The alternative form of the sequence term is perfectly captured. The constraint 'n \u2265 1' is again a reasonable mathematical addition.", "The partial sum definition has a structural difference. The natural language defines S_N as equal to the sum, while Lean uses existential quantification (\u2203 S_N). The mathematical meaning is similar but the logical structure differs - one is a direct definition, the other asserts existence.", "The conclusion is perfectly formalized. The let-binding for S_N followed by the equality statement correctly captures the natural language conclusion.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.75 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)) := by\n  intro n hn\n  have h\u2081 : a n = 1 / (n * (n + 1)) := by sorry\n  exact h\u2081\n\ntheorem l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by\n  intro n hn\n  have h\u2081 : a n = 1 / n - 1 / (n + 1) := by sorry\n  exact h\u2081\n\ntheorem def_1 (N : \u2115) : \n  \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by\n  refine' \u27e8\u2211 n in Finset.Icc 1 N, a n, _\u27e9\n  <;> rfl\n\ntheorem l6 (N : \u2115) :\n  let S_N := \u2211 n in Finset.Icc 1 N, a n\n  S_N = \u2211 n in Finset.Icc 1 N, (1 / n - 1 / (n + 1)) := by\n  dsimp\n  have h\u2081 : \u2200 n \u2208 Finset.Icc 1 N, a n = (1 : \u211d) / n - (1 : \u211d) / (n + 1) := by\n    intro n hn\n    have h\u2082 : n \u2265 1 := by\n      simp [Finset.mem_Icc] at hn\n      linarith\n    have h\u2083 : a n = 1 / n - 1 / (n + 1) := l5 n h\u2082\n    -- Convert the statement to use (1 : \u211d) for clarity\n    have h\u2084 : a n = (1 : \u211d) / n - (1 : \u211d) / (n + 1) := by\n      norm_cast at h\u2083 \u22a2\n      <;> simp_all [div_eq_mul_inv]\n      <;> ring_nf at *\n      <;> simp_all [Nat.cast_add_one_ne_zero]\n      <;> field_simp at *\n      <;> ring_nf at *\n      <;> linarith\n    exact h\u2084\n  calc\n    \u2211 n in Finset.Icc 1 N, a n = \u2211 n in Finset.Icc 1 N, ((1 : \u211d) / n - (1 : \u211d) / (n + 1)) := by\n      apply Finset.sum_congr rfl\n      intro n hn\n      rw [h\u2081 n hn]\n    _ = \u2211 n in Finset.Icc 1 N, (1 / n - 1 / (n + 1)) := by\n      simp [div_eq_mul_inv]\n      <;> norm_cast\n      <;> simp_all [Finset.sum_congr]\n      <;> field_simp\n      <;> ring_nf\n      <;> simp_all [Nat.cast_add_one_ne_zero]\n      <;> norm_num\n      <;> linarith\n\n-- Attempt to disprove `l6` by proving its negation (but it is actually true)\nexample (a : \u2115 \u2192 \u211d) (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1))) (l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1)) : \u00ac (\u2200 (N : \u2115), (\u2211 n in Finset.Icc 1 N, a n) = \u2211 n in Finset.Icc 1 N, (1 / (n : \u211d) - 1 / ((n : \u211d) + 1))) := by\n  intro h\n  have h\u2081 := h 1\n  have h\u2082 := h 0\n  have h\u2083 := tc_1 1 (by norm_num)\n  have h\u2084 := l5 1 (by norm_num)\n  have h\u2085 := tc_1 2 (by norm_num)\n  have h\u2086 := l5 2 (by norm_num)\n  norm_num [Finset.sum_Icc_succ_top] at h\u2081 h\u2082 h\u2083 h\u2084 h\u2085 h\u2086 \u22a2\n  <;>\n  (try contradiction) <;>\n  (try linarith) <;>\n  (try norm_num at h\u2083 h\u2084 h\u2085 h\u2086 \u22a2) <;>\n  (try simp_all [div_eq_mul_inv]) <;>\n  (try field_simp at h\u2083 h\u2084 h\u2085 h\u2086 \u22a2) <;>\n  (try ring_nf at h\u2083 h\u2084 h\u2085 h\u2086 \u22a2) <;>\n  (try nlinarith)\n  <;>\n  (try {\n    have h\u2087 := tc_1 3 (by norm_num)\n    have h\u2088 := l5 3 (by norm_num)\n    norm_num at h\u2087 h\u2088 \u22a2\n    <;>\n    linarith\n  })"}, "type": "lemma"}, "l7": {"id": "l7", "natural_language": "Expanding the sum, we get $S_N = (\\frac{1}{1} - \\frac{1}{2}) + (\\frac{1}{2} - \\frac{1}{3}) + (\\frac{1}{3} - \\frac{1}{4}) + \\dots + (\\frac{1}{N} - \\frac{1}{N+1})$. The intermediate terms cancel out, leaving $S_N = 1 - \\frac{1}{N+1}$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 $a_n = \\frac{1}{n} - \\frac{1}{n+1}$ [l5];\n\u2022 The N-th partial sum of the series is $S_N = \\sum_{n=1}^N a_n$ [def_1];\n\u2022 $S_N = \\sum_{n=1}^N (\\frac{1}{n} - \\frac{1}{n+1})$ [l6].\nTherefore, we conclude:\n\u2022 $S_N = 1 - \\frac{1}{N+1}$ [l7].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d) (N : \u2115)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)) := by sorry\n\ntheorem l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by sorry\n\ntheorem def_1 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by sorry\n\ntheorem l6 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n \u2227 \n  S_N = \u2211 n in Finset.Icc 1 N, (1 / n - 1 / (n + 1)) := by sorry\n\ntheorem l1 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = 1 / n - 1 / (n + 1) := by sorry\n\ntheorem l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = (n + 1) - n := by sorry\n\ntheorem l3 : \u2200 n : \u2115, n \u2265 1 \u2192 1 / (n * (n + 1)) = 1 / n - 1 / (n + 1) := by sorry\n\ntheorem l4 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = (n + 1) - n := by sorry\n\ntheorem l7 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n \u2227 S_N = 1 - 1 / (N + 1) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d) (N : \u2115)\n\ntheorem tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)) := by\n  intro n hn\n  have h : a n = 1 / (n * (n + 1)) := by sorry\n  exact h\n\ntheorem l5 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / n - 1 / (n + 1) := by\n  intro n hn\n  have h : a n = 1 / n - 1 / (n + 1) := by sorry\n  exact h\n\ntheorem def_1 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n := by\n  refine' \u27e8\u2211 n in Finset.Icc 1 N, a n, _\u27e9\n  <;> simp\n\ntheorem l6 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n \u2227 \n  S_N = \u2211 n in Finset.Icc 1 N, (1 / (n : \u211d) - 1 / ((n : \u211d) + 1)) := by\n  have h : \u2211 n in Finset.Icc 1 N, a n = \u2211 n in Finset.Icc 1 N, (1 / (n : \u211d) - 1 / ((n : \u211d) + 1)) := by sorry\n  refine' \u27e8\u2211 n in Finset.Icc 1 N, a n, by simp, _\u27e9\n  rw [h]\n\ntheorem l1 : \u2200 n : \u2115, n \u2265 1 \u2192 (1 : \u211d) / (n * (n + 1)) = 1 / (n : \u211d) - 1 / ((n : \u211d) + 1) := by\n  intro n hn\n  have h\u2081 : (n : \u211d) \u2265 1 := by exact_mod_cast hn\n  have h\u2082 : (n : \u211d) + 1 \u2260 0 := by linarith\n  have h\u2083 : (n : \u211d) \u2260 0 := by positivity\n  have h\u2084 : (n : \u211d) * (n + 1) \u2260 0 := by positivity\n  field_simp [h\u2083, h\u2082, h\u2084]\n  <;> ring_nf\n  <;> field_simp [h\u2083, h\u2082, h\u2084]\n  <;> ring_nf\n  <;> norm_cast\n  <;> nlinarith\n\ntheorem l2 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = (n + 1) - n := by\n  intro n hn\n  have h : 1 = (n + 1) - n := by\n    simp [Nat.add_sub_cancel]\n    <;>\n    (try omega) <;>\n    (try norm_num) <;>\n    (try linarith)\n  exact h\n\ntheorem l3 : \u2200 n : \u2115, n \u2265 1 \u2192 (1 : \u211d) / (n * (n + 1)) = 1 / (n : \u211d) - 1 / ((n : \u211d) + 1) := by\n  intro n hn\n  exact l1 n hn\n\ntheorem l4 : \u2200 n : \u2115, n \u2265 1 \u2192 1 = (n + 1) - n := by\n  intro n hn\n  exact l2 n hn\n\ntheorem l7 : \u2203 S_N : \u211d, S_N = \u2211 n in Finset.Icc 1 N, a n \u2227 S_N = 1 - 1 / ((N : \u211d) + 1) := by\n  have h : \u2211 n in Finset.Icc 1 N, a n = 1 - 1 / ((N : \u211d) + 1) := by sorry\n  refine' \u27e8\u2211 n in Finset.Icc 1 N, a n, by simp, _\u27e9\n  rw [h]", "lean_pass": true, "lean_verify": false, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["tc_1 correctly formalizes the sequence definition with an appropriate constraint n \u2265 1 to avoid division by zero", "l5 accurately represents the alternative form of the sequence term with the same reasonable constraint", "def_1 properly captures the partial sum definition using Lean's finite set notation, with existential quantification being a valid formalization approach", "l6 correctly combines both sum representations using conjunction, fully capturing the natural language statement", "l7 accurately formalizes the final conclusion while maintaining the logical connection to the sum definition", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem lean_workbook_217 {\u03b1 : Type} [Nonempty \u03b1] (R : \u03b1 \u2192 \u03b1 \u2192 Prop) :\n  \u2200 a b : \u03b1, \u2203 x y : \u03b1, R a x \u2227 R b y \u2227 R x y := by\n  have h_main : \u2200 (a b : \u03b1), \u2203 (x y : \u03b1), R a x \u2227 R b y \u2227 R x y := by\n    intro a b\n    -- Since \u03b1 is nonempty, we can pick an element c : \u03b1\n    have h\u2081 : Nonempty \u03b1 := inferInstance\n    -- However, we cannot proceed further without additional assumptions on R\n    -- The statement is false as given, so we cannot provide a proof\n    -- We use classical logic to derive a contradiction if necessary\n    classical\n      by_cases h\u2082 : \u2203 (x : \u03b1), R a x\n      \u00b7 -- Case: There exists an x such that R a x\n        obtain \u27e8x, hx\u27e9 := h\u2082\n        by_cases h\u2083 : \u2203 (y : \u03b1), R b y\n        \u00b7 -- Subcase: There exists a y such that R b y\n          obtain \u27e8y, hy\u27e9 := h\u2083\n          -- We cannot guarantee R x y without additional assumptions\n          -- We use classical logic to choose arbitrary elements\n          have h\u2084 : \u2203 (c : \u03b1), True := by\n            obtain \u27e8c\u27e9 := h\u2081\n            exact \u27e8c, by trivial\u27e9\n          obtain \u27e8c, _\u27e9 := h\u2084\n          -- Use arbitrary elements to satisfy the existential\n          refine' \u27e8x, y, hx, hy, _\u27e9\n          -- We cannot prove R x y here, so we use classical.choice to pick an arbitrary element\n          -- This is a placeholder to satisfy the proof structure, but it is not a valid proof\n          exfalso\n          have h\u2085 : False := by\n            -- Attempt to derive a contradiction\n            -- This is not actually possible, so we use classical.choice to get an element\n            -- and then try to find a contradiction\n            by_contra h\u2086\n            -- Use classical.choice to get an element\n            have h\u2087 : \u2203 (z : \u03b1), True := by\n              obtain \u27e8z\u27e9 := h\u2081\n              exact \u27e8z, by trivial\u27e9\n            obtain \u27e8z, _\u27e9 := h\u2087\n            -- We cannot find a contradiction, so we are stuck\n            -- This is a placeholder for the actual contradiction derivation\n            trivial\n          exact h\u2085.elim\n        \u00b7 -- Subcase: There does not exist a y such that R b y\n          exfalso\n          -- This case leads to a contradiction because we cannot find y such that R b y\n          have h\u2083 : \u00ac\u2203 (y : \u03b1), R b y := h\u2083\n          have h\u2084 : \u2203 (c : \u03b1), True := by\n            obtain \u27e8c\u27e9 := h\u2081\n            exact \u27e8c, by trivial\u27e9\n          obtain \u27e8c, _\u27e9 := h\u2084\n          -- Attempt to derive a contradiction\n          -- This is not actually possible, so we use classical.choice to get an element\n          -- and then try to find a contradiction\n          have h\u2085 : False := by\n            by_contra h\u2086\n            -- Use classical.choice to get an element\n            have h\u2087 : \u2203 (z : \u03b1), True := by\n              obtain \u27e8z\u27e9 := h\u2081\n              exact \u27e8z, by trivial\u27e9\n            obtain \u27e8z, _\u27e9 := h\u2087\n            -- We cannot find a contradiction, so we are stuck\n            -- This is a placeholder for the actual contradiction derivation\n            trivial\n          exact h\u2085\n      \u00b7 -- Case: There does not exist an x such that R a x\n        exfalso\n        -- This case leads to a contradiction because we cannot find x such that R a x\n        have h\u2082 : \u00ac\u2203 (x : \u03b1), R a x := h\u2082\n        have h\u2083 : \u2203 (c : \u03b1), True := by\n          obtain \u27e8c\u27e9 := h\u2081\n          exact \u27e8c, by trivial\u27e9\n        obtain \u27e8c, _\u27e9 := h\u2083\n        -- Attempt to derive a contradiction\n        -- This is not actually possible, so we use classical.choice to get an element\n        -- and then try to find a contradiction\n        have h\u2084 : False := by\n          by_contra h\u2085\n          -- Use classical.choice to get an element\n          have h\u2086 : \u2203 (z : \u03b1), True := by\n            obtain \u27e8z\u27e9 := h\u2081\n            exact \u27e8z, by trivial\u27e9\n          obtain \u27e8z, _\u27e9 := h\u2086\n          -- We cannot find a contradiction, so we are stuck\n          -- This is a placeholder for the actual contradiction derivation\n          trivial\n        exact h\u2084\n  exact h_main"}, "type": "lemma"}, "def_2": {"id": "def_2", "natural_language": "The sum of the series is the limit of the partial sums as $N$ approaches infinity.", "statement": "Definition:\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N$ [def_2].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1", "l6", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem def_2 : \n  \u2211' n : \u2115, (1 : \u211d) / ((n + 1) * (n + 2)) = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language defines $S_N$ as partial sums in general, but the Lean theorem doesn't mention partial sums at all - it's about a specific series evaluation", "The natural language refers to general terms $a_n$ of any series, but the Lean theorem has a specific formula $(1 : \u211d) / ((n + 1) * (n + 2))$ for the terms", "The natural language states that the limit exists as a condition for the definition, but the Lean theorem doesn't address limit existence - it just states a specific series equals 1", "The natural language gives a general definition $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N$, but the Lean theorem states a specific numerical result $\\sum' n : \u2115, (1 : \u211d) / ((n + 1) * (n + 2)) = 1$"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The natural language defines $S_N$ as partial sums in general, but the Lean theorem doesn't mention partial sums at all - it's about a specific series evaluation\", 'The natural language refers to general terms $a_n$ of any series, but the Lean theorem has a specific formula $(1 : \u211d) / ((n + 1) * (n + 2))$ for the terms', \"The natural language states that the limit exists as a condition for the definition, but the Lean theorem doesn't address limit existence - it just states a specific series equals 1\", \"The natural language gives a general definition $\\\\sum_{n=1}^{\\\\infty} a_n = \\\\lim_{N \\\\to \\\\infty} S_N$, but the Lean theorem states a specific numerical result $\\\\sum' n : \u2115, (1 : \u211d) / ((n + 1) * (n + 2)) = 1$\"]"}, "type": "definition"}, "l8": {"id": "l8", "natural_language": "Thus, $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 $S_N = 1 - \\frac{1}{N+1}$ [l7];\n\u2022 The sum of the series is $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} S_N$ [def_2].\nTherefore, we conclude:\n\u2022 $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$ [l8].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1", "l6", "l7", "def_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l7 : \u2200 N : \u2115, (\u2211 n in Finset.Icc 1 N, a n) = 1 - 1 / (N + 1))\n  (def_2 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1)) :\n  \u2211' n : \u2115, a (n + 1) = \u2211' N : \u2115, (1 - 1 / (N + 1)) := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l8 \n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l7 : \u2200 N : \u2115, (\u2211 n in Finset.Icc 1 N, a n) = 1 - 1 / (N + 1))\n  (def_2 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1)) :\n  \u2211' n : \u2115, a (n + 1) = \u2211' N : \u2115, (1 - 1 / (N + 1)) := by\n  have h\u2081 : False := by\n    have h\u2082 := l7 0\n    have h\u2083 := l7 1\n    have h\u2084 := l7 2\n    have h\u2085 := l7 3\n    norm_num [Finset.sum_Icc_succ_top] at h\u2082 h\u2083 h\u2084 h\u2085\n    <;>\n    (try contradiction) <;>\n    (try\n      {\n        have h\u2086 := tc_1 1\n        have h\u2087 := tc_1 2\n        have h\u2088 := tc_1 3\n        norm_num at h\u2086 h\u2087 h\u2088 \u22a2\n        <;>\n        (try simp_all [Finset.sum_Icc_succ_top]) <;>\n        (try norm_num at * <;> linarith)\n      }) <;>\n    (try\n      {\n        simp_all [Finset.sum_Icc_succ_top]\n        <;>\n        norm_num at * <;>\n        (try linarith)\n      }) <;>\n    (try\n      {\n        field_simp at *\n        <;>\n        ring_nf at *\n        <;>\n        norm_cast at *\n        <;>\n        simp_all [Finset.sum_Icc_succ_top]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n    <;>\n    (try\n      {\n        simp_all [Finset.sum_Icc_succ_top]\n        <;>\n        norm_num at *\n        <;>\n        linarith\n      })\n  \n  have h\u2082 : \u2211' n : \u2115, a (n + 1) = \u2211' N : \u2115, (1 - 1 / (N + 1)) := by\n    exfalso\n    exact h\u2081\n  \n  exact h\u2082", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 10, "column": 21, "endLine": 57, "endColumn": 8, "data": "unsolved goals\nN : \u211d\na : \u2115 \u2192 \u211d\ntc_1 : \u2200 n \u2265 1, a n = 1 / (\u2191n * (\u2191n + 1))\nl7 : \u2200 (N : \u2115), \u2211 n \u2208 Finset.Icc 1 N, a n = 1 - 1 / (\u2191N + 1)\ndef_2 : \u2211' (n : \u2115), a (n + 1) = 1 - 1 / (N + 1)\nh\u2082 : True\nh\u2083 : a 1 = 1 / 2\nh\u2084 : a 1 + a 2 = 2 / 3\nh\u2085 : a 1 + a 2 + a 3 = 3 / 4\n\u22a2 False"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition tc_1 correctly captures the natural language with an appropriate additional constraint n \u2265 1.", "The partial sum formula l7 correctly interprets S_N as the finite sum from 1 to N.", "def_2 has a major inconsistency: the natural language defines the infinite series as the limit of partial sums, but the Lean formalization equates it to a specific expression with a free variable N instead of expressing a limit.", "The conclusion l8 has a major inconsistency: the natural language states the series equals a limit as N approaches infinity, but the Lean formalization incorrectly represents this as an infinite series over N, which is mathematically nonsensical.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The sequence definition tc_1 correctly captures the natural language with an appropriate additional constraint n \u2265 1.', 'The partial sum formula l7 correctly interprets S_N as the finite sum from 1 to N.', 'def_2 has a major inconsistency: the natural language defines the infinite series as the limit of partial sums, but the Lean formalization equates it to a specific expression with a free variable N instead of expressing a limit.', 'The conclusion l8 has a major inconsistency: the natural language states the series equals a limit as N approaches infinity, but the Lean formalization incorrectly represents this as an infinite series over N, which is mathematically nonsensical.']"}, "solved_negation": null, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "Since $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$,", "statement": "We assume:\n\u2022 N is a natural number approaching infinity.\nTherefore, we conclude:\n\u2022 $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$ [l9].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1", "l6", "l7", "def_2", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 : \n  \u2200 \u03b5 > 0, \u2203 N\u2080 : \u2115, \u2200 N \u2265 N\u2080, |(1 : \u211d) / (N + 1)| < \u03b5 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l9 : \n  \u2200 \u03b5 > 0, \u2203 N\u2080 : \u2115, \u2200 N \u2265 N\u2080, |(1 : \u211d) / (N + 1)| < \u03b5 := by\n  intro \u03b5 h\u03b5\n  have h\u2081 : \u2203 (N\u2080 : \u2115), \u2200 (N : \u2115), N \u2265 N\u2080 \u2192 (1 : \u211d) / (N + 1 : \u211d) < \u03b5 := by\n    -- Use the Archimedean property to find N\u2080 such that 1/N\u2080 < \u03b5\n    have h\u2082 : \u2203 (N\u2080 : \u2115), (1 : \u211d) / (N\u2080 + 1 : \u211d) < \u03b5 := by\n      -- Since \u03b5 > 0, 1/\u03b5 is positive, and we can find a natural number n > 1/\u03b5\n      have h\u2083 : \u2203 (n : \u2115), (n : \u211d) > 1 / \u03b5 := by\n        obtain \u27e8n, hn\u27e9 := exists_nat_gt (1 / \u03b5)\n        refine' \u27e8n, _\u27e9\n        exact_mod_cast hn\n      obtain \u27e8n, hn\u27e9 := h\u2083\n      use n\n      have h\u2084 : (n : \u211d) > 1 / \u03b5 := hn\n      have h\u2085 : (1 : \u211d) / (n + 1 : \u211d) < \u03b5 := by\n        have h\u2086 : 0 < \u03b5 := by linarith\n        have h\u2087 : 0 < (n + 1 : \u211d) := by positivity\n        have h\u2088 : 0 < 1 / \u03b5 := by positivity\n        -- Use the fact that (n + 1 : \u211d) > 1 / \u03b5 to show that 1 / (n + 1 : \u211d) < \u03b5\n        calc\n          (1 : \u211d) / (n + 1 : \u211d) < (1 : \u211d) / (1 / \u03b5) := by\n            apply (div_lt_div_iff (by positivity) (by positivity)).mpr\n            <;> nlinarith\n          _ = \u03b5 := by\n            field_simp\n            <;> ring_nf\n            <;> field_simp [h\u2086.ne']\n            <;> linarith\n      simpa [div_lt_iff] using h\u2085\n    obtain \u27e8N\u2080, hN\u2080\u27e9 := h\u2082\n    use N\u2080 + 1\n    intro N hN\n    have h\u2083 : (N : \u211d) \u2265 (N\u2080 + 1 : \u211d) := by exact_mod_cast hN\n    have h\u2084 : (1 : \u211d) / (N + 1 : \u211d) < \u03b5 := by\n      have h\u2085 : (N : \u211d) \u2265 (N\u2080 : \u211d) + 1 := by\n        have h\u2086 : (N : \u211d) \u2265 (N\u2080 + 1 : \u211d) := by exact_mod_cast hN\n        linarith\n      have h\u2086 : (1 : \u211d) / (N + 1 : \u211d) \u2264 (1 : \u211d) / (N\u2080 + 1 + 1 : \u211d) := by\n        have h\u2087 : (N : \u211d) + 1 \u2265 (N\u2080 + 1 : \u211d) + 1 := by linarith\n        have h\u2088 : 0 < (N : \u211d) + 1 := by positivity\n        have h\u2089 : 0 < (N\u2080 + 1 : \u211d) + 1 := by positivity\n        -- Use the fact that the function 1/x is decreasing for positive x\n        have h\u2081\u2080 : (1 : \u211d) / (N + 1 : \u211d) \u2264 (1 : \u211d) / ((N\u2080 + 1 : \u211d) + 1) := by\n          apply (div_le_div_iff (by positivity) (by positivity)).mpr\n          nlinarith\n        simpa [add_assoc] using h\u2081\u2080\n      have h\u2087 : (1 : \u211d) / (N\u2080 + 1 + 1 : \u211d) < \u03b5 := by\n        have h\u2088 : (1 : \u211d) / (N\u2080 + 1 : \u211d) < \u03b5 := hN\u2080\n        have h\u2089 : (1 : \u211d) / (N\u2080 + 1 + 1 : \u211d) < (1 : \u211d) / (N\u2080 + 1 : \u211d) := by\n          apply (div_lt_div_iff (by positivity) (by positivity)).mpr\n          <;> nlinarith\n        linarith\n      linarith\n    exact h\u2084\n  obtain \u27e8N\u2080, hN\u2080\u27e9 := h\u2081\n  use N\u2080\n  intro N hN\n  have h\u2082 : (1 : \u211d) / (N + 1 : \u211d) < \u03b5 := hN\u2080 N hN\n  have h\u2083 : 0 \u2264 (1 : \u211d) / (N + 1 : \u211d) := by positivity\n  have h\u2084 : |(1 : \u211d) / (N + 1 : \u211d)| = (1 : \u211d) / (N + 1 : \u211d) := by\n    rw [abs_of_nonneg h\u2083]\n  rw [h\u2084]\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization perfectly captures the mathematical meaning of the natural language statement. While the natural language uses limit notation, the Lean code provides the equivalent epsilon-delta definition, which is the standard formal way to express sequence limits in mathematical logic. The statement that lim(N\u2192\u221e) 1/(N+1) = 0 is mathematically equivalent to the epsilon-delta formulation provided in Lean. The additional type annotations and explicit quantifiers are appropriate formal details that don't change the mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "the sum of the series is $1 - 0 = 1$.", "statement": "We assume:\n\u2022 $(a_n)$ is a sequence such that $a_n = \\frac{1}{n(n+1)}$ for all $n \\in \\mathbb{N}$ [tc_1];\n\u2022 $\\sum_{n=1}^{\\infty} a_n = \\lim_{N \\to \\infty} (1 - \\frac{1}{N+1})$ [l8];\n\u2022 $\\lim_{N \\to \\infty} \\frac{1}{N+1} = 0$ [l9].\nTherefore, we conclude:\n\u2022 $\\sum_{n=1}^{\\infty} a_n = 1$ [ts_1].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4", "l5", "def_1", "l6", "l7", "def_2", "l8", "l9"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l8 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1))\n  (l9 : \u2200 \u03b5 > 0, \u2203 N\u2080 : \u2115, \u2200 N \u2265 N\u2080, |(1 : \u211d) / (N + 1)| < \u03b5) :\n  \u2211' n : \u2115, a (n + 1) = 1 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : \u2200 n : \u2115, n \u2265 1 \u2192 a n = 1 / (n * (n + 1)))\n  (l8 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1))\n  (l9 : \u2200 \u03b5 > 0, \u2203 N\u2080 : \u2115, \u2200 N \u2265 N\u2080, |(1 : \u211d) / (N + 1)| < \u03b5) :\n  \u2211' n : \u2115, a (n + 1) = 1 := by\n  have h\u2081 : \u2211' n : \u2115, a (n + 1) = 1 := by\n    have h\u2082 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1 : \u211d) := by\n      norm_cast at l8 \u22a2\n      <;> simp_all [Nat.cast_add_one_ne_zero]\n      <;> field_simp at *\n      <;> ring_nf at *\n      <;> norm_num at *\n      <;> linarith\n    have h\u2083 : 1 - (1 : \u211d) / (N + 1 : \u211d) = 1 - (1 : \u211d) / (N + 1 : \u211d) := rfl\n    have h\u2084 : \u2211' n : \u2115, a (n + 1) = 1 := by\n      have h\u2085 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) - 1 / (N + 1 : \u211d)) Filter.atTop (nhds 1) := by\n        have h\u2086 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) / (N + 1 : \u211d)) Filter.atTop (nhds 0) := by\n          have h\u2087 : Filter.Tendsto (fun N : \u2115 => (N : \u211d) + 1) Filter.atTop Filter.atTop := by\n            apply Filter.tendsto_atTop_atTop.mpr\n            intro b\n            use \u2308(b : \u211d)\u2309\u208a\n            intro N hN\n            have h\u2088 : (\u2308(b : \u211d)\u2309\u208a : \u211d) \u2265 b := Nat.le_ceil _\n            have h\u2089 : (N : \u211d) \u2265 \u2308(b : \u211d)\u2309\u208a := by exact_mod_cast hN\n            have h\u2081\u2080 : (N : \u211d) + 1 \u2265 b + 1 := by linarith\n            linarith\n          have h\u2088 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) / (N + 1 : \u211d)) Filter.atTop (nhds 0) := by\n            have h\u2089 : Filter.Tendsto (fun N : \u2115 => (N : \u211d) + 1) Filter.atTop Filter.atTop := h\u2087\n            have h\u2081\u2080 : Filter.Tendsto (fun x : \u211d => (1 : \u211d) / x) (Filter.atTop) (nhds 0) := by\n              simpa using tendsto_inv_atTop_zero.comp (tendsto_id)\n            have h\u2081\u2081 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) / (N + 1 : \u211d)) Filter.atTop (nhds 0) := by\n              have h\u2081\u2082 : (fun N : \u2115 => (1 : \u211d) / (N + 1 : \u211d)) = (fun x : \u211d => (1 : \u211d) / x) \u2218 (fun N : \u2115 => (N : \u211d) + 1) := by\n                funext N\n                simp [div_eq_mul_inv]\n                <;> ring_nf\n                <;> field_simp\n                <;> ring_nf\n              rw [h\u2081\u2082]\n              exact h\u2081\u2080.comp h\u2089\n            exact h\u2081\u2081\n          exact h\u2088\n        have h\u2089 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) - 1 / (N + 1 : \u211d)) Filter.atTop (nhds (1 - 0)) := by\n          have h\u2081\u2080 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) : \u2115 \u2192 \u211d) Filter.atTop (nhds (1 : \u211d)) := tendsto_const_nhds\n          have h\u2081\u2081 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) / (N + 1 : \u211d)) Filter.atTop (nhds 0) := h\u2086\n          have h\u2081\u2082 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) - 1 / (N + 1 : \u211d)) Filter.atTop (nhds (1 - 0)) := h\u2081\u2080.sub h\u2081\u2081\n          convert h\u2081\u2082 using 1 <;> simp [sub_zero]\n        convert h\u2089 using 1 <;> simp [sub_zero]\n      have h\u2081\u2080 : Filter.Tendsto (fun N : \u2115 => \u2211' n : \u2115, a (n + 1)) Filter.atTop (nhds (\u2211' n : \u2115, a (n + 1))) := by\n        apply tendsto_const_nhds\n      have h\u2081\u2081 : Filter.Tendsto (fun N : \u2115 => (1 : \u211d) - 1 / (N + 1 : \u211d)) Filter.atTop (nhds 1) := h\u2085\n      have h\u2081\u2082 : \u2211' n : \u2115, a (n + 1) = 1 := by\n        apply tendsto_nhds_unique (h\u2081\u2080) (h\u2081\u2081.congr' _)\n        filter_upwards [Filter.eventually_ge_atTop 0] with N hN\n        have h\u2081\u2083 : \u2211' n : \u2115, a (n + 1) = 1 - 1 / (N + 1 : \u211d) := by\n          norm_cast at l8 \u22a2\n          <;> simp_all [Nat.cast_add_one_ne_zero]\n          <;> field_simp at *\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;> linarith\n        rw [h\u2081\u2083]\n        <;> simp [hN]\n      exact h\u2081\u2082\n    exact h\u2084\n  exact h\u2081", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 64, "column": 14, "endLine": 64, "endColumn": 22, "data": "linarith failed to find a contradiction\ncase h1.h\nN\u271d : \u211d\na : \u2115 \u2192 \u211d\nN : \u2115\nh\u2085 : Tendsto (fun N => \u2191N * (1 + \u2191N)\u207b\u00b9) atTop (\ud835\udcdd 1)\ntc_1 : \u2200 (n : \u2115), 1 \u2264 n \u2192 a n = (\u2191n)\u207b\u00b9 * (\u2191n + 1)\u207b\u00b9\nl9 : \u2200 (\u03b5 : \u211d), 0 < \u03b5 \u2192 \u2203 N\u2080, \u2200 (N : \u2115), N\u2080 \u2264 N \u2192 |(\u2191N + 1)\u207b\u00b9| < \u03b5\nh\u2082 : \u2211' (n : \u2115), (\u2191n + 1)\u207b\u00b9 * (\u2191n + 1 + 1)\u207b\u00b9 = 1 - (1 + N\u271d)\u207b\u00b9\na\u271d : N\u271d < \u2191N\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The sequence definition adds a reasonable constraint n \u2265 1 not explicitly stated in natural language, but captures the essential meaning.", "The sum formula has major issues: it lacks the limit operation from the natural language, uses undefined variable N, and has indexing inconsistencies with the premise.", "The limit statement correctly formalizes the natural language using the standard epsilon-delta definition of limits.", "The conclusion uses different indexing (n+1 vs n starting from 1) compared to natural language, but the mathematical intent is preserved.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The sequence definition adds a reasonable constraint n \u2265 1 not explicitly stated in natural language, but captures the essential meaning.', 'The sum formula has major issues: it lacks the limit operation from the natural language, uses undefined variable N, and has indexing inconsistencies with the premise.', 'The limit statement correctly formalizes the natural language using the standard epsilon-delta definition of limits.', 'The conclusion uses different indexing (n+1 vs n starting from 1) compared to natural language, but the mathematical intent is preserved.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_2", "label": "def_2", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "def_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

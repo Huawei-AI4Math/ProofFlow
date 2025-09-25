@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $f(z) = u(x,y) + iv(x,y)$ be an analytic function defined on the entire complex plane, where $z = x + iy$. If the real part of $f$ is given by $u(x, y) = x^2 - y^2 + 3x - y$ and $f(0) = 0$, then the imaginary part is $v(x, y) = 2xy + x + 3y$.
+
+Proof: Since $f(z)$ is analytic, its components $u$ and $v$ satisfy the Cauchy-Riemann equations. From the first equation, $\frac{\partial u}{\partial x} = \frac{\partial v}{\partial y}$, and the given $u(x,y)$, we find $\frac{\partial v}{\partial y} = 2x + 3$. Integrating this with respect to $y$ yields $v(x,y) = 2xy + 3y + g(x)$, where $g(x)$ is a function of $x$. We then use the second Cauchy-Riemann equation, $\frac{\partial u}{\partial y} = -\frac{\partial v}{\partial x}$. Computing the partial derivatives gives $\frac{\partial u}{\partial y} = -2y - 1$ and $\frac{\partial v}{\partial x} = 2y + g'(x)$, which implies $-2y-1 = -(2y+g'(x))$. This simplifies to $g'(x) = 1$, so $g(x) = x + C$. The condition $f(0) = 0$ implies $v(0,0)=0$. Substituting this into the full expression $v(x, y) = 2xy + 3y + x + C$ determines the constant to be $C=0$. Therefore, the imaginary part is $v(x, y) = 2xy + x + 3y$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $f(z) = u(x,y) + iv(x,y)$ be an analytic function defined on the entire complex plane, where $z = x + iy$.", "statement": "Premise:\n\u2022 f(z) = u(x,y) + iv(x,y) is an analytic function on \u2102 [tc_1]", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im)) :\n  -- This would be the conclusion about the imaginary part v\n  True := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'f : \u2102 \u2192 \u2102' correctly captures that f is a function on the complex numbers as stated in the natural language.", "The Lean declarations 'u v : \u211d \u00d7 \u211d \u2192 \u211d' correctly capture that u and v are real-valued functions of two real variables (x,y), matching the natural language notation u(x,y) and v(x,y).", "The Lean condition 'hf_analytic : Differentiable \u2102 f' correctly formalizes that f is analytic on \u2102. In complex analysis, differentiable and analytic are equivalent concepts.", "The Lean condition 'hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im)' perfectly captures the form f(z) = u(x,y) + iv(x,y) where z.re corresponds to x, z.im corresponds to y, and I represents the imaginary unit i."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "the real part of $f$ is given by $u(x, y) = x^2 - y^2 + 3x - y$", "statement": "Premise:\n\u2022 u(x, y) = x\u00b2 - y\u00b2 + 3x - y [tc_2]", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (u : \u211d \u00d7 \u211d \u2192 \u211d)\n(tc_2 : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the function definition. The explicit universal quantification and type declarations are additional details that enhance precision without changing the mathematical meaning."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "$f(0) = 0$", "statement": "Premise:\n\u2022 f(0) = 0 [tc_3]", "dependencies": ["tc_1", "tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_3 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hf_zero : f 0 = 0)\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hv : \u2200 x y : \u211d, v (x, y) = 2*x*y + x + 3*y) :\n  -- The imaginary part v satisfies the Cauchy-Riemann equations\n  (\u2200 x y : \u211d, (deriv (fun x => u (x, y)) x = deriv (fun y => v (x, y)) y) \u2227\n              (deriv (fun y => u (x, y)) y = -(deriv (fun x => v (x, y)) x))) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The condition f(0) = 0 is perfectly captured in the Lean formalization as (hf_zero : f 0 = 0). The Lean version contains additional conditions not mentioned in the natural language, but this is acceptable as extra logically consistent details.", "The natural language explicitly states there are no new conclusions derived, but the Lean formalization has a substantial conclusion about the Cauchy-Riemann equations. This introduces a contradicting logical component that fundamentally changes the meaning of the statement."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The condition f(0) = 0 is perfectly captured in the Lean formalization as (hf_zero : f 0 = 0). The Lean version contains additional conditions not mentioned in the natural language, but this is acceptable as extra logically consistent details.', 'The natural language explicitly states there are no new conclusions derived, but the Lean formalization has a substantial conclusion about the Cauchy-Riemann equations. This introduces a contradicting logical component that fundamentally changes the meaning of the statement.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Since $f(z)$ is analytic, its components $u$ and $v$ satisfy the Cauchy-Riemann equations. From the first equation, $\\frac{\\partial u}{\\partial x} = \\frac{\\partial v}{\\partial y}$, and the given $u(x,y)$, we find $\\frac{\\partial v}{\\partial y} = 2x + 3$.", "statement": "We assume:\n\u2022 f(z) = u(x,y) + iv(x,y) is an analytic function on \u2102 [tc_1]\n\u2022 u(x, y) = x\u00b2 - y\u00b2 + 3x - y [tc_2]\nTherefore, we conclude:\n\u2022 \u2202v/\u2202y = 2x + 3 [l1]", "dependencies": ["tc_1", "tc_2", "tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hc_reim : \u2200 x y : \u211d, \n    deriv (fun x => u (x, y)) x = deriv (fun y => v (x, y)) y \u2227\n    deriv (fun y => u (x, y)) y = -(deriv (fun x => v (x, y)) x)) :\n  \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2*x + 3 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hc_reim : \u2200 x y : \u211d, \n    deriv (fun x => u (x, y)) x = deriv (fun y => v (x, y)) y \u2227\n    deriv (fun y => u (x, y)) y = -(deriv (fun x => v (x, y)) x)) :\n  \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2*x + 3 := by\n  have h_deriv_u_x : \u2200 (x y : \u211d), deriv (fun x : \u211d => u (x, y)) x = 2*x + 3 := by\n    intro x y\n    have h\u2081 : (fun x : \u211d => u (x, y)) = (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x - y) := by\n      funext x\n      rw [hu]\n      <;> ring\n    rw [h\u2081]\n    -- Compute the derivative of the polynomial function\n    have h\u2082 : deriv (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x - y) x = 2 * x + 3 := by\n      -- Use the fact that the derivative of a polynomial is the sum of the derivatives of its terms\n      have h\u2083 : HasDerivAt (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x - y) (2 * x + 3) x := by\n        -- Compute the derivative term by term\n        have h\u2084 : HasDerivAt (fun x : \u211d => x ^ 2) (2 * x) x := by\n          simpa using (hasDerivAt_pow 2 x)\n        have h\u2085 : HasDerivAt (fun x : \u211d => (y : \u211d) ^ 2) 0 x := by\n          simpa using hasDerivAt_const x ((y : \u211d) ^ 2)\n        have h\u2086 : HasDerivAt (fun x : \u211d => (3 : \u211d) * x) 3 x := by\n          simpa using (hasDerivAt_id x).const_mul (3 : \u211d)\n        have h\u2087 : HasDerivAt (fun x : \u211d => (y : \u211d)) 0 x := by\n          simpa using hasDerivAt_const x (y : \u211d)\n        -- Combine the derivatives using the chain rule and arithmetic operations\n        have h\u2088 : HasDerivAt (fun x : \u211d => x ^ 2 - y ^ 2) (2 * x - 0) x := by\n          convert h\u2084.sub h\u2085 using 1 <;> ring\n        have h\u2089 : HasDerivAt (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x) (2 * x - 0 + 3) x := by\n          convert h\u2088.add h\u2086 using 1 <;> ring\n        have h\u2081\u2080 : HasDerivAt (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x - y) (2 * x - 0 + 3 - 0) x := by\n          convert h\u2089.sub h\u2087 using 1 <;> ring\n        convert h\u2081\u2080 using 1 <;> ring\n      -- The derivative is unique, so we can conclude the result\n      have h\u2081\u2081 : deriv (fun x : \u211d => x ^ 2 - y ^ 2 + 3 * x - y) x = 2 * x + 3 := by\n        apply HasDerivAt.deriv\n        exact h\u2083\n      exact h\u2081\u2081\n    -- The result follows from the computation above\n    rw [h\u2082]\n  \n  have h_main : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2*x + 3 := by\n    intro x y\n    have h\u2081 : deriv (fun x : \u211d => u (x, y)) x = deriv (fun y => v (x, y)) y := (hc_reim x y).1\n    have h\u2082 : deriv (fun x : \u211d => u (x, y)) x = 2*x + 3 := h_deriv_u_x x y\n    linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The analyticity condition is correctly represented through the Cauchy-Riemann equations in hc_reim, which is the standard mathematical way to express analyticity for functions of the form f(z) = u(x,y) + iv(x,y)", "The definition of u(x,y) is exactly captured in the hypothesis hu with identical mathematical expression", "The conclusion about the partial derivative \u2202v/\u2202y is correctly formalized using Lean's deriv function, and the mathematical derivation from Cauchy-Riemann equations is sound"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Integrating this with respect to $y$ yields $v(x,y) = 2xy + 3y + g(x)$, where $g(x)$ is a function of $x$.", "statement": "We assume:\n\u2022 \u2202v/\u2202y = 2x + 3 [l1]\nTherefore, we conclude:\n\u2022 v(x,y) = 2xy + 3y + g(x) for some function g(x) [l2]", "dependencies": ["tc_1", "tc_2", "tc_3", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 g : \u211d \u2192 \u211d, \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 g : \u211d \u2192 \u211d, \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x := by\n  have h_main : \u2203 (g : \u211d \u2192 \u211d), \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x := by\n    sorry\n  sorry", "lean_pass": true, "lean_verify": false, "error_msg": [], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": ["The partial derivative \u2202v/\u2202y is correctly represented using deriv with appropriate function composition", "The integration result with arbitrary function g(x) is properly expressed using existential quantification", "The logical flow from premise to conclusion is accurately maintained in the Lean formalization", "Type declarations and explicit quantifiers enhance precision without contradicting the natural language meaning", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 g : \u211d \u2192 \u211d, \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x := by\n  have h_main : \u2203 (g : \u211d \u2192 \u211d), \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x := by\n    use fun x => v (x, 0)\n    intro x y\n    have h2 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n    have h3 : deriv (fun y : \u211d => (2 * x + 3 : \u211d) * y) y = (2 * x + 3 : \u211d) := by\n      have h4 : HasDerivAt (fun y : \u211d => (2 * x + 3 : \u211d) * y) (2 * x + 3) y := by\n        simpa using (hasDerivAt_id y).const_mul (2 * x + 3)\n      have h5 : deriv (fun y : \u211d => (2 * x + 3 : \u211d) * y) y = (2 * x + 3 : \u211d) := by\n        apply HasDerivAt.deriv\n        exact h4\n      exact h5\n    -- Define the difference function h(y) = v(x, y) - (2x + 3)y\n    have h6 : deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := by\n      have h7 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n      have h8 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n        have h9 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n        have h10 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n          -- Use the fact that the derivative exists to get the hasDerivAt\n          have h11 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n          have h12 : HasDerivAt (fun y : \u211d => v (x, y)) (deriv (fun y : \u211d => v (x, y)) y) y := by\n            apply DifferentiableAt.hasDerivAt\n            have h13 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n              have h14 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n              -- Since the derivative exists, the function is differentiable at y\n              have h15 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n                apply differentiableAt_of_deriv_ne_zero\n                intro h16\n                rw [h14] at h16\n                norm_num at h16\n                <;> linarith\n              exact h15\n            exact h13\n          convert h12 using 1\n          <;> simp [h11]\n        exact h10\n      have h10 : HasDerivAt (fun y : \u211d => (2 * x + 3 : \u211d) * y) (2 * x + 3) y := by\n        simpa using (hasDerivAt_id y).const_mul (2 * x + 3)\n      have h11 : HasDerivAt (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) (2 * x + 3 - (2 * x + 3)) y := by\n        apply HasDerivAt.sub h8 h10\n      have h12 : deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 2 * x + 3 - (2 * x + 3) := by\n        apply HasDerivAt.deriv\n        convert h11 using 1 <;> ring_nf <;> simp_all\n      rw [h12]\n      <;> ring_nf\n      <;> simp_all\n    -- Show that h(y) is differentiable everywhere and its derivative is 0\n    have h7 : \u2200 y : \u211d, deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := by\n      intro y\n      have h8 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n      have h9 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n        have h10 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n        have h11 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n          have h12 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n          have h13 : HasDerivAt (fun y : \u211d => v (x, y)) (deriv (fun y : \u211d => v (x, y)) y) y := by\n            apply DifferentiableAt.hasDerivAt\n            have h14 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n              have h15 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n              have h16 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n                apply differentiableAt_of_deriv_ne_zero\n                intro h17\n                rw [h15] at h17\n                norm_num at h17\n                <;> linarith\n              exact h16\n            exact h14\n          convert h13 using 1\n          <;> simp [h12]\n        exact h11\n      have h10 : HasDerivAt (fun y : \u211d => (2 * x + 3 : \u211d) * y) (2 * x + 3) y := by\n        simpa using (hasDerivAt_id y).const_mul (2 * x + 3)\n      have h11 : HasDerivAt (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) (2 * x + 3 - (2 * x + 3)) y := by\n        apply HasDerivAt.sub h9 h10\n      have h12 : deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 2 * x + 3 - (2 * x + 3) := by\n        apply HasDerivAt.deriv\n        convert h11 using 1 <;> ring_nf <;> simp_all\n      rw [h12]\n      <;> ring_nf\n      <;> simp_all\n    -- Show that h(y) is constant\n    have h8 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 := by\n      have h9 : \u2200 y : \u211d, deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7\n      -- Use the fact that if the derivative is zero everywhere, the function is constant\n      have h10 : \u2200 (y : \u211d), deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7\n      have h11 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 := by\n        -- Use the fact that if the derivative is zero everywhere, the function is constant\n        have h12 : \u2200 (y : \u211d), deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7\n        -- Define the constant function g(y) = h(0)\n        have h13 : \u2200 (y : \u211d), deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7\n        -- Use the fact that if two functions have the same derivative and agree at a point, they are equal\n        have h14 : \u2200 (y : \u211d), deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7\n        -- Prove that h(y) is constant by comparing it to the constant function h(0)\n        have h15 : Differentiable \u211d (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) := by\n          -- Prove that h(y) is differentiable everywhere\n          have h16 : \u2200 (y : \u211d), DifferentiableAt \u211d (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y := by\n            intro y\n            have h17 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n            have h18 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n              have h19 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n              have h20 : HasDerivAt (fun y : \u211d => v (x, y)) (2 * x + 3) y := by\n                have h21 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n                have h22 : HasDerivAt (fun y : \u211d => v (x, y)) (deriv (fun y : \u211d => v (x, y)) y) y := by\n                  apply DifferentiableAt.hasDerivAt\n                  have h23 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n                    have h24 : deriv (fun y : \u211d => v (x, y)) y = 2 * x + 3 := l1 x y\n                    have h25 : DifferentiableAt \u211d (fun y : \u211d => v (x, y)) y := by\n                      apply differentiableAt_of_deriv_ne_zero\n                      intro h26\n                      rw [h24] at h26\n                      norm_num at h26\n                      <;> linarith\n                    exact h25\n                  exact h23\n                convert h22 using 1\n                <;> simp [h21]\n              exact h20\n            have h21 : HasDerivAt (fun y : \u211d => (2 * x + 3 : \u211d) * y) (2 * x + 3) y := by\n              simpa using (hasDerivAt_id y).const_mul (2 * x + 3)\n            have h22 : HasDerivAt (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) (2 * x + 3 - (2 * x + 3)) y := by\n              apply HasDerivAt.sub h18 h21\n            have h23 : DifferentiableAt \u211d (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y := by\n              apply HasDerivAt.differentiableAt\n              exact h22\n            exact h23\n          exact fun y => h16 y\n        have h17 : Differentiable \u211d (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) := by\n          apply differentiable_const\n        have h18 : \u2200 y : \u211d, deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = deriv (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y := by\n          intro y\n          have h19 : deriv (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = 0 := h7 y\n          have h20 : deriv (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y = 0 := by\n            simp\n            <;>\n            (try simp_all)\n            <;>\n            (try ring_nf)\n            <;>\n            (try norm_num)\n          linarith\n        have h19 : \u2203 y\u2080 : \u211d, (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y\u2080 = (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y\u2080 := by\n          refine' \u27e80, _\u27e9\n          simp\n          <;>\n          (try simp_all)\n          <;>\n          (try ring_nf)\n          <;>\n          (try norm_num)\n        have h20 : \u2200 y : \u211d, (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y := by\n          apply eqOn_univ_of_deriv_eq_zero\n          <;> simp_all [h15, h17, h18, h19]\n          <;>\n          (try simp_all)\n          <;>\n          (try ring_nf)\n          <;>\n          (try norm_num)\n          <;>\n          (try aesop)\n        have h21 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y := h20 y\n        have h22 : (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by simp\n        have h23 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by\n          calc\n            (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) y := h21\n            _ = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by simp\n        have h24 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by\n          calc\n            (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 = (fun y : \u211d => (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d)) 0 := by\n              have h25 := h20 0\n              exact h25\n            _ = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by simp\n        have h25 : (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 := by\n          calc\n            (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) y = (v (x, 0) - (2 * x + 3 : \u211d) * 0 : \u211d) := by\n              exact h23\n            _ = (fun y : \u211d => v (x, y) - (2 * x + 3 : \u211d) * y) 0 := by\n              have h26 := h24\n              simp at h26 \u22a2\n              <;>\n              (try simp_all)\n              <;>\n              (try ring_nf at *)\n              <;>\n              (try norm_num at *)\n              <;>\n              (try linarith)\n        exact h25\n      exact h11\n    -- Use the fact that the difference is constant to find g(x)\n    have h9 : v (x, y) - (2 * x + 3) * y = v (x, 0) - (2 * x + 3) * 0 := by\n      have h10 := h8\n      simp only [sub_zero] at h10 \u22a2\n      <;>\n      (try ring_nf at h10 \u22a2) <;>\n      (try simp_all) <;>\n      (try linarith)\n      <;>\n      (try nlinarith)\n    have h10 : v (x, y) = 2 * x * y + 3 * y + v (x, 0) := by\n      have h11 : v (x, y) - (2 * x + 3) * y = v (x, 0) := by\n        have h12 := h9\n        ring_nf at h12 \u22a2\n        <;> linarith\n      have h13 : v (x, y) = (2 * x + 3) * y + v (x, 0) := by linarith\n      have h14 : (2 * x + 3) * y = 2 * x * y + 3 * y := by ring\n      rw [h14] at h13\n      linarith\n    simpa [Prod.mk.injEq] using h10\n  exact h_main"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "We then use the second Cauchy-Riemann equation, $\\frac{\\partial u}{\\partial y} = -\\frac{\\partial v}{\\partial x}$. Computing the partial derivatives gives $\\frac{\\partial u}{\\partial y} = -2y - 1$ and $\\frac{\\partial v}{\\partial x} = 2y + g'(x)$, which implies $-2y-1 = -(2y+g'(x))$. This simplifies to $g'(x) = 1$, so $g(x) = x + C$.", "statement": "We assume:\n\u2022 f(z) = u(x,y) + iv(x,y) is an analytic function on \u2102 [tc_1]\n\u2022 u(x, y) = x\u00b2 - y\u00b2 + 3x - y [tc_2]\n\u2022 v(x,y) = 2xy + 3y + g(x) for some function g(x) [l2]\nTherefore, we conclude:\n\u2022 g(x) = x + C for some constant C [l3]", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hv : \u2200 x y : \u211d, v (x, y) = 2*x*y + 3*y + g x)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hv : \u2200 x y : \u211d, v (x, y) = 2*x*y + 3*y + g x)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C := by\n  have h_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0) := by\n    intro x\n    have h\u2081 := hv x 0\n    have h\u2082 : v (x, 0) = 2 * x * (0 : \u211d) + 3 * (0 : \u211d) + g x := by simpa using h\u2081\n    have h\u2083 : v (x, 0) = g x := by linarith\n    linarith\n  \n  have h_g_diff : Differentiable \u211d g := by\n    have h2 : Differentiable \u211d g := by\n      have h3 : Differentiable \u211d (fun x : \u211d => v (x, (0 : \u211d))) := by\n        -- Show that the function (x : \u211d) \u21a6 v(x, 0) is differentiable\n        have h4 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (v p.1 p.2 : \u211d)) := by\n          -- Use the fact that f is complex differentiable to show that v is smooth\n          have h5 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (u p.1 p.2 : \u211d)) := by\n            -- Show that u is differentiable\n            have h6 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (u p.1 p.2 : \u211d)) := by\n              -- Use the fact that f is complex differentiable to show that u is differentiable\n              have h7 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).re) := by\n                -- Show that the real part of f is differentiable\n                have h8 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I))) := by\n                  -- Show that the function p \u21a6 f(p.1 + p.2 * I) is differentiable\n                  have h9 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (p.1 + p.2 * Complex.I)) := by\n                    apply Differentiable.prod\n                    \u00b7 exact differentiable_id\n                    \u00b7 apply Differentiable.mul\n                      \u00b7 exact differentiable_const _\n                      \u00b7 exact differentiable_id\n                  have h10 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I))) := by\n                    apply Differentiable.comp (hf_analytic.differentiableAt)\n                    exact h9\n                  exact h10\n                -- The real part of a differentiable function is differentiable\n                have h11 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).re) := by\n                  apply Differentiable.re\n                  exact h8\n                exact h11\n              -- The real part of f(p.1 + p.2 * I) is u(p.1, p.2)\n              have h12 : (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).re) = (fun p : \u211d \u00d7 \u211d => (u p.1 p.2 : \u211d)) := by\n                funext \u27e8x, y\u27e9\n                have h13 := hf_form (x + y * Complex.I)\n                simp [Complex.ext_iff, Complex.I_mul_I] at h13 \u22a2\n                <;>\n                (try norm_num at h13 \u22a2) <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h13 \u22a2) <;>\n                (try norm_num at h13 \u22a2) <;>\n                (try linarith) <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h13 \u22a2) <;>\n                (try norm_num at h13 \u22a2) <;>\n                (try linarith)\n                <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h13 \u22a2) <;>\n                (try norm_num at h13 \u22a2) <;>\n                (try linarith)\n              rw [h12] at h7\n              exact h7\n            exact h6\n          have h14 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (v p.1 p.2 : \u211d)) := by\n            -- Show that v is differentiable\n            have h15 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (v p.1 p.2 : \u211d)) := by\n              -- Use the fact that f is complex differentiable to show that v is differentiable\n              have h16 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).im) := by\n                -- Show that the imaginary part of f is differentiable\n                have h17 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I))) := by\n                  -- Show that the function p \u21a6 f(p.1 + p.2 * I) is differentiable\n                  have h18 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (p.1 + p.2 * Complex.I)) := by\n                    apply Differentiable.prod\n                    \u00b7 exact differentiable_id\n                    \u00b7 apply Differentiable.mul\n                      \u00b7 exact differentiable_const _\n                      \u00b7 exact differentiable_id\n                  have h19 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I))) := by\n                    apply Differentiable.comp (hf_analytic.differentiableAt)\n                    exact h18\n                  exact h19\n                -- The imaginary part of a differentiable function is differentiable\n                have h20 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).im) := by\n                  apply Differentiable.im\n                  exact h17\n                exact h20\n              -- The imaginary part of f(p.1 + p.2 * I) is v(p.1, p.2)\n              have h21 : (fun p : \u211d \u00d7 \u211d => (f (p.1 + p.2 * Complex.I)).im) = (fun p : \u211d \u00d7 \u211d => (v p.1 p.2 : \u211d)) := by\n                funext \u27e8x, y\u27e9\n                have h22 := hf_form (x + y * Complex.I)\n                simp [Complex.ext_iff, Complex.I_mul_I] at h22 \u22a2\n                <;>\n                (try norm_num at h22 \u22a2) <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h22 \u22a2) <;>\n                (try norm_num at h22 \u22a2) <;>\n                (try linarith) <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h22 \u22a2) <;>\n                (try norm_num at h22 \u22a2) <;>\n                (try linarith)\n                <;>\n                (try simp_all [Complex.ext_iff, Complex.I_mul_I]) <;>\n                (try ring_nf at h22 \u22a2) <;>\n                (try norm_num at h22 \u22a2) <;>\n                (try linarith)\n              rw [h21] at h16\n              exact h16\n            exact h15\n          -- The function (x, y) \u21a6 v(x, y) is differentiable\n          exact h14\n        -- The function (x : \u211d) \u21a6 v(x, 0) is differentiable\n        have h23 : Differentiable \u211d (fun x : \u211d => v (x, (0 : \u211d))) := by\n          have h24 : Differentiable \u211d (fun x : \u211d => (x, (0 : \u211d))) := by\n            apply Differentiable.prod\n            \u00b7 exact differentiable_id\n            \u00b7 exact differentiable_const _\n          have h25 : Differentiable \u211d (fun p : \u211d \u00d7 \u211d => (v p.1 p.2 : \u211d)) := h4\n          have h26 : Differentiable \u211d (fun x : \u211d => v (x, (0 : \u211d))) := by\n            apply Differentiable.comp h25 h24\n          exact h26\n        exact h23\n      -- Since g(x) = v(x, 0) and v(x, 0) is differentiable, g is differentiable\n      have h27 : (fun x : \u211d => g x) = (fun x : \u211d => v (x, (0 : \u211d))) := by\n        funext x\n        rw [h_g_eq_v x]\n      rw [h27]\n      exact h3\n    exact h2\n  \n  have h_g_deriv : \u2200 (x : \u211d), deriv g x = 1 := by\n    have h\u2082 : \u2200 (x : \u211d), deriv g x = 1 := by\n      intro x\n      have h\u2083 : deriv g x = 1 := by\n        have h\u2084 : deriv g x = 1 := by\n          have h\u2085 : deriv (fun x : \u211d => v (x, (0 : \u211d))) x = 1 := by\n            -- Prove that the derivative of v(x, 0) is 1 using the given condition l1 and properties of v\n            have h\u2086 : deriv (fun y : \u211d => v (x, y)) (0 : \u211d) = 2 * x + 3 := l1 x 0\n            have h\u2087 : deriv (fun x : \u211d => v (x, (0 : \u211d))) x = 1 := by\n              -- Use the fact that v(x, 0) = g(x) and g is differentiable to find the derivative of v(x, 0)\n              have h\u2088 : deriv (fun x : \u211d => v (x, (0 : \u211d))) x = 1 := by\n                -- Use the given condition l1 and properties of v to find the derivative\n                have h\u2089 : HasDerivAt (fun x : \u211d => v (x, (0 : \u211d))) (1 : \u211d) x := by\n                  have h\u2081\u2080 : HasDerivAt g (1 : \u211d) x := by\n                    -- Prove that g'(x) = 1 using the given condition l1 and properties of g\n                    have h\u2081\u2081 : deriv g x = 1 := by\n                      -- Use the given condition l1 and properties of g to find g'(x)\n                      have h\u2081\u2082 : deriv g x = 1 := by\n                        -- Use the given condition l1 and properties of g to find g'(x)\n                        sorry\n                      exact h\u2081\u2082\n                    have h\u2081\u2083 : HasDerivAt g (deriv g x) x := by\n                      apply DifferentiableAt.hasDerivAt\n                      exact h_g_diff.differentiableAt\n                    convert h\u2081\u2083 using 1 <;> simp [h\u2081\u2081]\n                  have h\u2081\u2084 : (fun x : \u211d => v (x, (0 : \u211d))) = (fun x : \u211d => g x) := by\n                    funext x\n                    rw [h_g_eq_v x]\n                  rw [h\u2081\u2084]\n                  exact h\u2081\u2080\n                have h\u2081\u2085 : deriv (fun x : \u211d => v (x, (0 : \u211d))) x = 1 := by\n                  apply HasDerivAt.deriv\n                  exact h\u2089\n                exact h\u2081\u2085\n              exact h\u2088\n            exact h\u2087\n          -- Use the fact that g(x) = v(x, 0) to find g'(x)\n          have h\u2088 : deriv (fun x : \u211d => v (x, (0 : \u211d))) x = deriv g x := by\n            have h\u2089 : (fun x : \u211d => v (x, (0 : \u211d))) = (fun x : \u211d => g x) := by\n              funext x\n              rw [h_g_eq_v x]\n            rw [h\u2089]\n          rw [h\u2088] at h\u2085\n          linarith\n        exact h\u2084\n      exact h\u2083\n    exact h\u2082\n  \n  have h_final : \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C := by\n    use g 0 - 0\n    intro x\n    have h\u2081 : g x = x + (g 0 - 0) := by\n      have h\u2082 : \u2200 x : \u211d, deriv g x = 1 := h_g_deriv\n      have h\u2083 : \u2200 x : \u211d, g x = x + (g 0 - 0) := by\n        intro x\n        have h\u2084 : deriv (fun x : \u211d => g x - x) = fun x => (0 : \u211d) := by\n          funext x\n          have h\u2085 : deriv (fun x : \u211d => g x - x) x = deriv g x - 1 := by\n            -- Differentiate g(x) - x\n            have h\u2086 : HasDerivAt (fun x : \u211d => g x - x) (deriv g x - 1) x := by\n              -- Use the fact that g is differentiable and the derivative of x is 1\n              have h\u2087 : HasDerivAt g (deriv g x) x := by\n                apply DifferentiableAt.hasDerivAt\n                exact h_g_diff.differentiableAt\n              have h\u2088 : HasDerivAt (fun x : \u211d => (x : \u211d)) 1 x := by\n                simpa using (hasDerivAt_id x)\n              have h\u2089 : HasDerivAt (fun x : \u211d => g x - x) (deriv g x - 1) x := by\n                convert h\u2087.sub h\u2088 using 1 <;> ring\n              exact h\u2089\n            have h\u2081\u2080 : deriv (fun x : \u211d => g x - x) x = deriv g x - 1 := by\n              apply HasDerivAt.deriv\n              exact h\u2086\n            exact h\u2081\u2080\n          rw [h\u2085]\n          have h\u2081\u2081 : deriv g x = 1 := h\u2082 x\n          rw [h\u2081\u2081]\n          <;> norm_num\n        have h\u2086 : (fun x : \u211d => g x - x) = (fun x : \u211d => (g 0 - 0 : \u211d)) := by\n          -- Since the derivative of g(x) - x is 0, it must be constant\n          have h\u2087 : deriv (fun x : \u211d => g x - x) = fun x => (0 : \u211d) := h\u2084\n          have h\u2088 : (fun x : \u211d => g x - x) = (fun x : \u211d => (g 0 - 0 : \u211d)) := by\n            apply funext\n            intro x\n            have h\u2089 : deriv (fun x : \u211d => g x - x) x = 0 := by\n              rw [h\u2087]\n              <;> simp\n            have h\u2081\u2080 : (fun x : \u211d => g x - x) x = (g 0 - 0 : \u211d) := by\n              -- Use the fact that the derivative is 0 to conclude that the function is constant\n              have h\u2081\u2081 : IsConst (fun x : \u211d => g x - x) := by\n                -- Use the fact that the derivative is 0 to conclude that the function is constant\n                refine' isConst_of_deriv_eq_zero (differentiableAt_id.sub (h_g_diff.differentiableAt)) _\n                intro x\n                have h\u2081\u2082 : deriv (fun x : \u211d => g x - x) x = 0 := by\n                  rw [h\u2084]\n                  <;> simp\n                simpa using h\u2081\u2082\n              -- Use the fact that the function is constant to conclude that g(x) - x = g(0) - 0\n              have h\u2081\u2083 : (fun x : \u211d => g x - x) x = (fun x : \u211d => g x - x) 0 := by\n                apply h\u2081\u2081\n              have h\u2081\u2084 : (fun x : \u211d => g x - x) 0 = (g 0 - 0 : \u211d) := by\n                simp\n              linarith\n            exact h\u2081\u2080\n          exact h\u2088\n        have h\u2087 : (fun x : \u211d => g x - x) x = (g 0 - 0 : \u211d) := by\n          rw [h\u2086]\n          <;> simp\n        have h\u2088 : g x - x = (g 0 - 0 : \u211d) := by\n          simpa using h\u2087\n        linarith\n      have h\u2089 : g x = x + (g 0 - 0) := h\u2083 x\n      exact h\u2089\n    linarith\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 25, "column": 56, "endLine": 25, "endColumn": 59, "data": "application type mismatch\n  v p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 27, "column": 58, "endLine": 27, "endColumn": 61, "data": "application type mismatch\n  u p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 29, "column": 60, "endLine": 29, "endColumn": 63, "data": "application type mismatch\n  u p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 36, "column": 20, "endLine": 36, "endColumn": 45, "data": "tactic 'apply' failed, failed to unify\n  Differentiable ?\ud835\udd5c fun x => (?f\u2081 x, ?f\u2082 x)\nwith\n  Differentiable \u211d fun p => \u2191p.1 + \u2191p.2 * Complex.I\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u00d7 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nhf_analytic : Differentiable \u2102 f\nhf_form : \u2200 (z : \u2102), f z = \u2191(u (z.re, z.im)) + I * \u2191(v (z.re, z.im))\nhu : \u2200 (x y : \u211d), u (x, y) = x ^ 2 - y ^ 2 + 3 * x - y\nhv : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x\nl1 : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2 * x + 3\nh_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0)\n\u22a2 Differentiable \u211d fun p => \u2191p.1 + \u2191p.2 * Complex.I"}, {"line": 42, "column": 46, "endLine": 42, "endColumn": 76, "data": "application type mismatch\n  Differentiable.comp (Differentiable.differentiableAt hf_analytic)\nargument\n  Differentiable.differentiableAt hf_analytic\nhas type\n  DifferentiableAt \u2102 f ?m.8678 : Prop\nbut is expected to have type\n  Differentiable ?m.8642 ?m.8654 : Prop"}, {"line": 47, "column": 24, "endLine": 47, "endColumn": 41, "data": "unknown constant 'Differentiable.re'"}, {"line": 48, "column": 18, "endLine": 48, "endColumn": 26, "data": "no goals to be solved"}, {"line": 51, "column": 98, "endLine": 51, "endColumn": 101, "data": "application type mismatch\n  u p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 51, "column": 115, "endLine": 69, "endColumn": 30, "data": "unsolved goals\ncase h\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u00d7 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nhf_analytic : Differentiable \u2102 f\nhf_form : \u2200 (z : \u2102), f z = \u2191(u (z.re, z.im)) + I * \u2191(v (z.re, z.im))\nhu : \u2200 (x y : \u211d), u (x, y) = x ^ 2 - y ^ 2 + 3 * x - y\nhv : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x\nl1 : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2 * x + 3\nh_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0)\nh7 : Differentiable \u211d fun p => (f (\u2191p.1 + \u2191p.2 * Complex.I)).re\nx y : \u211d\nh13 : (f (\u2191x + \u2191y * Complex.I)).re = u (x, y) + I.re * v (x, y) \u2227 (f (\u2191x + \u2191y * Complex.I)).im = v (x, y) * I.im\n\u22a2 (f (\u2191x + \u2191y * Complex.I)).re = sorry"}, {"line": 73, "column": 59, "endLine": 73, "endColumn": 62, "data": "application type mismatch\n  v p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 75, "column": 61, "endLine": 75, "endColumn": 64, "data": "application type mismatch\n  v p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 82, "column": 20, "endLine": 82, "endColumn": 45, "data": "tactic 'apply' failed, failed to unify\n  Differentiable ?\ud835\udd5c fun x => (?f\u2081 x, ?f\u2082 x)\nwith\n  Differentiable \u211d fun p => \u2191p.1 + \u2191p.2 * Complex.I\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u00d7 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nhf_analytic : Differentiable \u2102 f\nhf_form : \u2200 (z : \u2102), f z = \u2191(u (z.re, z.im)) + I * \u2191(v (z.re, z.im))\nhu : \u2200 (x y : \u211d), u (x, y) = x ^ 2 - y ^ 2 + 3 * x - y\nhv : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x\nl1 : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2 * x + 3\nh_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0)\nh5 : Differentiable \u211d fun p => sorry\n\u22a2 Differentiable \u211d fun p => \u2191p.1 + \u2191p.2 * Complex.I"}, {"line": 88, "column": 46, "endLine": 88, "endColumn": 76, "data": "application type mismatch\n  Differentiable.comp (Differentiable.differentiableAt hf_analytic)\nargument\n  Differentiable.differentiableAt hf_analytic\nhas type\n  DifferentiableAt \u2102 f ?m.28554 : Prop\nbut is expected to have type\n  Differentiable ?m.28518 ?m.28530 : Prop"}, {"line": 93, "column": 24, "endLine": 93, "endColumn": 41, "data": "unknown constant 'Differentiable.im'"}, {"line": 94, "column": 18, "endLine": 94, "endColumn": 27, "data": "no goals to be solved"}, {"line": 97, "column": 98, "endLine": 97, "endColumn": 101, "data": "application type mismatch\n  v p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 97, "column": 115, "endLine": 115, "endColumn": 30, "data": "unsolved goals\ncase h\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u00d7 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nhf_analytic : Differentiable \u2102 f\nhf_form : \u2200 (z : \u2102), f z = \u2191(u (z.re, z.im)) + I * \u2191(v (z.re, z.im))\nhu : \u2200 (x y : \u211d), u (x, y) = x ^ 2 - y ^ 2 + 3 * x - y\nhv : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x\nl1 : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2 * x + 3\nh_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0)\nh5 : Differentiable \u211d fun p => sorry\nh16 : Differentiable \u211d fun p => (f (\u2191p.1 + \u2191p.2 * Complex.I)).im\nx y : \u211d\nh22 : (f (\u2191x + \u2191y * Complex.I)).re = u (x, y) + I.re * v (x, y) \u2227 (f (\u2191x + \u2191y * Complex.I)).im = v (x, y) * I.im\n\u22a2 (f (\u2191x + \u2191y * Complex.I)).im = sorry"}, {"line": 127, "column": 59, "endLine": 127, "endColumn": 62, "data": "application type mismatch\n  v p.1\nargument\n  p.1\nhas type\n  \u211d : Type\nbut is expected to have type\n  \u211d \u00d7 \u211d : Type"}, {"line": 136, "column": 10, "endLine": 136, "endColumn": 13, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  fun x => g x\nI : \u2102\nf : \u2102 \u2192 \u2102\nu v : \u211d \u00d7 \u211d \u2192 \u211d\ng : \u211d \u2192 \u211d\nhf_analytic : Differentiable \u2102 f\nhf_form : \u2200 (z : \u2102), f z = \u2191(u (z.re, z.im)) + I * \u2191(v (z.re, z.im))\nhu : \u2200 (x y : \u211d), u (x, y) = x ^ 2 - y ^ 2 + 3 * x - y\nhv : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + 3 * y + g x\nl1 : \u2200 (x y : \u211d), deriv (fun y => v (x, y)) y = 2 * x + 3\nh_g_eq_v : \u2200 (x : \u211d), g x = v (x, 0)\nh3 : Differentiable \u211d fun x => v (x, 0)\nh27 : (fun x => g x) = fun x => v (x, 0)\n\u22a2 Differentiable \u211d g"}, {"line": 228, "column": 25, "endLine": 228, "endColumn": 32, "data": "unknown identifier 'IsConst'"}, {"line": 230, "column": 24, "endLine": 230, "endColumn": 48, "data": "unknown identifier 'isConst_of_deriv_eq_zero'"}, {"line": 231, "column": 16, "endLine": 231, "endColumn": 23, "data": "no goals to be solved"}], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": ["The analyticity condition and function form are correctly captured with appropriate Lean syntax", "The definition of u(x,y) is perfectly translated with correct mathematical operators", "The definition of v(x,y) including the unknown function g(x) is accurately represented", "The conclusion about g(x) being linear is correctly formalized using existential quantification", "The additional Cauchy-Riemann equation is a mathematically consistent detail that supports the analyticity requirement, representing implicit mathematical knowledge", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hv : \u2200 x y : \u211d, v (x, y) = 2*x*y + 3*y + g x)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3) :\n  \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C := by\n  have h_g_deriv : \u2200 (x : \u211d), deriv g x = 1 := by\n    intro x\n    have h\u2082 : deriv g x = 1 := by\n      -- Show that the derivative of g at x is 1\n      have h\u2083 : deriv g x = 1 := by\n        -- Use the fact that g(x) = v(x, 0) and the Cauchy-Riemann equations\n        have h\u2084 : deriv (fun x => v (x, (0 : \u211d))) x = 1 := by\n          -- Compute the derivative of v(x, 0) with respect to x\n          have h\u2085 : deriv (fun x => v (x, (0 : \u211d))) x = 1 := by\n            -- Use the fact that the derivative of v with respect to x at y=0 is 1\n            have h\u2086 : deriv (fun x => v (x, (0 : \u211d))) x = deriv (fun x => 2 * x * (0 : \u211d) + 3 * (0 : \u211d) + g x) x := by\n              congr\n              ext x\n              rw [hv]\n              <;> ring_nf\n              <;> simp [Prod.mk.injEq]\n              <;> ring_nf\n            rw [h\u2086]\n            -- The derivative of (fun x => 2 * x * (0 : \u211d) + 3 * (0 : \u211d) + g x) is the derivative of g\n            have h\u2087 : deriv (fun x => (2 : \u211d) * x * (0 : \u211d) + 3 * (0 : \u211d) + g x) x = deriv g x := by\n              -- Simplify the expression\n              have h\u2088 : (fun x => (2 : \u211d) * x * (0 : \u211d) + 3 * (0 : \u211d) + g x) = (fun x => g x) := by\n                funext x\n                ring_nf\n              rw [h\u2088]\n            rw [h\u2087]\n            -- Use the fact that the derivative of g is 1\n            have h\u2089 : deriv g x = 1 := by\n              -- This is what we are trying to prove, so we need to find another way\n              -- Instead, we can use the fact that the derivative of v with respect to x is 2y + 1\n              -- and set y = 0 to get the derivative of g\n              have h\u2081\u2080 : deriv (fun x => v (x, (0 : \u211d))) x = 1 := by\n                -- Use the fact that the derivative of v with respect to x is 2y + 1\n                have h\u2081\u2081 : deriv (fun x => v (x, (0 : \u211d))) x = 1 := by\n                  -- This is a placeholder for the actual proof\n                  -- We need to use the fact that f is complex differentiable to deduce the derivative of v\n                  -- with respect to x\n                  -- For now, we assume that the derivative is 1 based on the given conditions\n                  have h\u2081\u2082 : deriv (fun x => v (x, (0 : \u211d))) x = 1 := by\n                    -- This is a placeholder for the actual proof\n                    -- We need to use the fact that f is complex differentiable to deduce the derivative of v\n                    -- with respect to x\n                    -- For now, we assume that the derivative is 1 based on the given conditions\n                    sorry\n                  exact h\u2081\u2082\n                exact h\u2081\u2081\n              -- Since deriv (fun x => v (x, (0 : \u211d))) x = 1, and deriv (fun x => v (x, (0 : \u211d))) x = deriv g x,\n              -- we have deriv g x = 1\n              have h\u2081\u2082 : deriv g x = 1 := by\n                -- This is a placeholder for the actual proof\n                -- We need to use the fact that f is complex differentiable to deduce the derivative of g\n                -- For now, we assume that the derivative is 1 based on the given conditions\n                sorry\n              exact h\u2081\u2082\n            rw [h\u2089]\n          exact h\u2085\n        -- Since deriv (fun x => v (x, (0 : \u211d))) x = 1 and deriv (fun x => v (x, (0 : \u211d))) x = deriv g x,\n        -- we have deriv g x = 1\n        have h\u2085 : deriv g x = 1 := by\n          have h\u2086 : deriv (fun x => v (x, (0 : \u211d))) x = deriv g x := by\n            -- Prove that the derivative of v(x, 0) is the same as the derivative of g(x)\n            have h\u2087 : (fun x => v (x, (0 : \u211d))) = (fun x => g x) := by\n              funext x\n              have h\u2088 := hv x 0\n              simp at h\u2088 \u22a2\n              <;> linarith\n            rw [h\u2087]\n          rw [h\u2086] at h\u2084\n          exact h\u2084\n        exact h\u2085\n      exact h\u2083\n    exact h\u2082\n  \n  have h_main : \u2203 (C : \u211d), \u2200 (x : \u211d), g x = x + C := by\n    use g 0 - 0\n    intro x\n    have h\u2081 : deriv g = fun x => (1 : \u211d) := by\n      funext x\n      rw [h_g_deriv x]\n    have h\u2082 : g x = x + (g 0 - 0) := by\n      have h\u2083 : \u2200 x : \u211d, g x = x + (g 0 - 0) := by\n        intro x\n        have h\u2084 : deriv g = fun x => (1 : \u211d) := by\n          funext x\n          rw [h_g_deriv x]\n        have h\u2085 : \u2200 x : \u211d, deriv g x = 1 := by\n          intro x\n          have h\u2086 := congr_fun h\u2084 x\n          simp at h\u2086 \u22a2\n          <;> linarith\n        -- Use the fact that the derivative of g is 1 to show that g(x) = x + C\n        have h\u2086 : g x = x + (g 0 - 0) := by\n          -- Use the mean value theorem to show that g(x) - g(0) = x - 0\n          have h\u2087 : ContinuousOn g (Set.Icc 0 x) := by\n            -- Show that g is continuous on [0, x]\n            have h\u2088 : Differentiable \u211d g := by\n              -- Show that g is differentiable\n              intro x\n              have h\u2089 : deriv g x = 1 := h\u2085 x\n              have h\u2081\u2080 : DifferentiableAt \u211d g x := by\n                apply differentiableAt_of_deriv_ne_zero\n                intro h\u2081\u2081\n                have h\u2081\u2082 : deriv g x = 0 := by simpa using h\u2081\u2081\n                linarith\n              exact h\u2081\u2080\n            exact h\u2088.continuous.continuousOn\n          have h\u2089 : DifferentiableOn \u211d g (Set.Ioo 0 x) := by\n            -- Show that g is differentiable on (0, x)\n            have h\u2081\u2080 : Differentiable \u211d g := by\n              -- Show that g is differentiable\n              intro x\n              have h\u2081\u2081 : deriv g x = 1 := h\u2085 x\n              have h\u2081\u2082 : DifferentiableAt \u211d g x := by\n                apply differentiableAt_of_deriv_ne_zero\n                intro h\u2081\u2083\n                have h\u2081\u2084 : deriv g x = 0 := by simpa using h\u2081\u2083\n                linarith\n              exact h\u2081\u2082\n            exact h\u2081\u2080.differentiableOn\n          -- Use the mean value theorem to show that g(x) - g(0) = x - 0\n          by_cases h\u2081\u2080 : x = 0\n          \u00b7 -- Case: x = 0\n            simp_all\n          \u00b7 -- Case: x \u2260 0\n            have h\u2081\u2081 : x > 0 \u2228 x < 0 := by\n              cases' lt_or_gt_of_ne h\u2081\u2080 with h\u2081\u2082 h\u2081\u2082\n              \u00b7 exact Or.inr h\u2081\u2082\n              \u00b7 exact Or.inl h\u2081\u2082\n            cases' h\u2081\u2081 with h\u2081\u2082 h\u2081\u2082\n            \u00b7 -- Subcase: x > 0\n              have h\u2081\u2083 : \u2203 c \u2208 Set.Ioo 0 x, deriv g c = (g x - g 0) / (x - 0) := by\n                -- Apply the mean value theorem\n                have h\u2081\u2084 : ContinuousOn g (Set.Icc 0 x) := h\u2087\n                have h\u2081\u2085 : DifferentiableOn \u211d g (Set.Ioo 0 x) := h\u2089\n                have h\u2081\u2086 : \u2203 c \u2208 Set.Ioo 0 x, deriv g c = (g x - g 0) / (x - 0) := by\n                  apply exists_deriv_eq_slope g\n                  <;> simp_all [h\u2081\u2082]\n                  <;> linarith\n                exact h\u2081\u2086\n              obtain \u27e8c, hc, hc'\u27e9 := h\u2081\u2083\n              have h\u2081\u2087 : deriv g c = 1 := h\u2085 c\n              have h\u2081\u2088 : (g x - g 0) / (x - 0) = 1 := by\n                linarith\n              have h\u2081\u2089 : x - 0 \u2260 0 := by linarith\n              have h\u2082\u2080 : g x - g 0 = x - 0 := by\n                field_simp [h\u2081\u2089] at h\u2081\u2088\n                <;> linarith\n              linarith\n            \u00b7 -- Subcase: x < 0\n              have h\u2081\u2083 : \u2203 c \u2208 Set.Ioo x 0, deriv g c = (g 0 - g x) / (0 - x) := by\n                -- Apply the mean value theorem\n                have h\u2081\u2084 : ContinuousOn g (Set.Icc x 0) := by\n                  -- Show that g is continuous on [x, 0]\n                  have h\u2081\u2085 : Differentiable \u211d g := by\n                    -- Show that g is differentiable\n                    intro x\n                    have h\u2081\u2086 : deriv g x = 1 := h\u2085 x\n                    have h\u2081\u2087 : DifferentiableAt \u211d g x := by\n                      apply differentiableAt_of_deriv_ne_zero\n                      intro h\u2081\u2088\n                      have h\u2081\u2089 : deriv g x = 0 := by simpa using h\u2081\u2088\n                      linarith\n                    exact h\u2081\u2087\n                  exact h\u2081\u2085.continuous.continuousOn\n                have h\u2081\u2085 : DifferentiableOn \u211d g (Set.Ioo x 0) := by\n                  -- Show that g is differentiable on (x, 0)\n                  have h\u2081\u2086 : Differentiable \u211d g := by\n                    -- Show that g is differentiable\n                    intro x\n                    have h\u2081\u2087 : deriv g x = 1 := h\u2085 x\n                    have h\u2081\u2088 : DifferentiableAt \u211d g x := by\n                      apply differentiableAt_of_deriv_ne_zero\n                      intro h\u2081\u2089\n                      have h\u2082\u2080 : deriv g x = 0 := by simpa using h\u2081\u2089\n                      linarith\n                    exact h\u2081\u2088\n                  exact h\u2081\u2086.differentiableOn\n                have h\u2081\u2086 : \u2203 c \u2208 Set.Ioo x 0, deriv g c = (g 0 - g x) / (0 - x) := by\n                  apply exists_deriv_eq_slope g\n                  <;> simp_all [h\u2081\u2082]\n                  <;> linarith\n                exact h\u2081\u2086\n              obtain \u27e8c, hc, hc'\u27e9 := h\u2081\u2083\n              have h\u2081\u2087 : deriv g c = 1 := h\u2085 c\n              have h\u2081\u2088 : (g 0 - g x) / (0 - x) = 1 := by\n                linarith\n              have h\u2081\u2089 : 0 - x \u2260 0 := by linarith\n              have h\u2082\u2080 : g 0 - g x = 0 - x := by\n                field_simp [h\u2081\u2089] at h\u2081\u2088\n                <;> linarith\n              have h\u2082\u2081 : g x = x + (g 0 - 0) := by linarith\n              linarith\n        exact h\u2086\n      exact h\u2083 x\n    linarith\n  \n  exact h_main"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "The condition $f(0) = 0$ implies $v(0,0)=0$. Substituting this into the full expression $v(x, y) = 2xy + 3y + x + C$ determines the constant to be $C=0$.", "statement": "We assume:\n\u2022 f(0) = 0 [tc_3]\n\u2022 v(x,y) = 2xy + 3y + g(x) for some function g(x) [l2]\n\u2022 g(x) = x + C for some constant C [l3]\nTherefore, we conclude:\n\u2022 C = 0 [l4]", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hf_zero : f 0 = 0)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3)\n  (l2 : \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x)\n  (l3 : \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C) :\n  \u2203 C : \u211d, (\u2200 x : \u211d, g x = x + C) \u2227 C = 0 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\nhave h_main : \u2203 (C : \u211d), (\u2200 (x : \u211d), g x = x + C) \u2227 C = 0 := by\n  obtain \u27e8C, hC\u27e9 := l3\n  have h_v_zero : v (0, 0) = (C : \u211d) := by sorry\n  have h_I_re_mul_C : I.re * C = 0 := by sorry\n  have h_I_im_mul_C : I.im * C = 0 := by sorry\n  have h_C_zero : C = 0 := by sorry\n  refine' \u27e8C, _\u27e9\n  constructor\n  \u00b7 exact hC\n  \u00b7 exact h_C_zero", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 4, "column": 0, "endLine": 4, "endColumn": 4, "data": "unexpected token 'have'; expected command"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all the key assumptions and conclusion from the natural language. The assumption f(0) = 0 is present as hf_zero, the equation v(x,y) = 2xy + 3y + g(x) is captured in l2, the assumption g(x) = x + C is in l3, and the conclusion C = 0 is properly stated in the theorem. The additional mathematical context (differentiability, function form, derivative conditions) provides supporting structure without contradicting the natural language statements.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hf_zero : f 0 = 0)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3)\n  (l2 : \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x)\n  (l3 : \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C) :\n  \u2203 C : \u211d, (\u2200 x : \u211d, g x = x + C) \u2227 C = 0 := by\n  obtain \u27e8C', hC'\u27e9 := l3\n  have h_g0 : g 0 = C' := by\n    have h\u2081 : g 0 = (0 : \u211d) + C' := by\n      have h\u2082 := hC' 0\n      linarith\n    linarith\n  \n  have h_v00 : v (0, 0) = C' := by\n    have h\u2081 : v (0, 0) = 2 * (0 : \u211d) * (0 : \u211d) + 3 * (0 : \u211d) + g 0 := by\n      have h\u2082 := l2 0 0\n      norm_num at h\u2082 \u22a2\n      <;> linarith\n    rw [h\u2081]\n    have h\u2082 : g 0 = C' := h_g0\n    linarith\n  \n  have h_u00 : u (0, 0) = 0 := by\n    have h\u2081 : u (0, 0) = (0 : \u211d) ^ 2 - (0 : \u211d) ^ 2 + 3 * (0 : \u211d) - (0 : \u211d) := by\n      have h\u2082 := hu 0 0\n      norm_num at h\u2082 \u22a2\n      <;> linarith\n    rw [h\u2081]\n    <;> norm_num\n  \n  have h_f0 : f 0 = Complex.I * C' := by\n    have h\u2081 : f 0 = u (0, 0) + Complex.I * v (0, 0) := by\n      have h\u2082 := hf_form 0\n      norm_num [Complex.ext_iff] at h\u2082 \u22a2\n      <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;> ring_nf at *\n      <;> norm_num at *\n      <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n      <;> linarith\n    rw [h\u2081]\n    have h\u2082 : u (0, 0) = 0 := h_u00\n    have h\u2083 : v (0, 0) = C' := h_v00\n    rw [h\u2082, h\u2083]\n    <;> simp [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n    <;> ring_nf\n    <;> simp_all [Complex.ext_iff, Complex.I_mul_I]\n    <;> norm_num\n    <;> linarith\n  \n  have h_C'_zero : C' = 0 := by\n    have h\u2081 : f 0 = Complex.I * C' := h_f0\n    have h\u2082 : f 0 = 0 := hf_zero\n    have h\u2083 : Complex.I * C' = (0 : \u2102) := by\n      rw [h\u2081] at h\u2082\n      exact h\u2082\n    -- Simplify the complex number equation to find C'\n    have h\u2084 : C' = 0 := by\n      -- Compare the imaginary parts of both sides\n      simp [Complex.ext_iff, Complex.I_mul_I] at h\u2083\n      <;>\n      (try norm_num at h\u2083) <;>\n      (try linarith) <;>\n      (try nlinarith) <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          -- Directly compare the imaginary parts to get C' = 0\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n      <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Complex.I_mul_I]\n          <;>\n          norm_num at *\n          <;>\n          linarith\n        })\n    exact h\u2084\n  \n  have h_main : \u2203 (C : \u211d), (\u2200 (x : \u211d), g x = x + C) \u2227 C = 0 := by\n    refine' \u27e8C', _\u27e9\n    constructor\n    \u00b7 -- Prove that for all x, g x = x + C'\n      intro x\n      have h\u2081 := hC' x\n      linarith\n    \u00b7 -- Prove that C' = 0\n      linarith\n  \n  exact h_main"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, the imaginary part is $v(x, y) = 2xy + x + 3y$.", "statement": "We assume:\n\u2022 v(x,y) = 2xy + 3y + g(x) for some function g(x) [l2]\n\u2022 g(x) = x + C for some constant C [l3]\n\u2022 C = 0 [l4]\nTherefore, we conclude:\n\u2022 v(x, y) = 2xy + x + 3y [ts_1]", "dependencies": ["tc_1", "tc_2", "tc_3", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hf_zero : f 0 = 0)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3)\n  (l2 : \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x)\n  (l3 : \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C)\n  (l4 : \u2200 x : \u211d, g x = x) :\n  \u2200 x y : \u211d, v (x, y) = 2 * x * y + x + 3 * y := by sorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u2102 \u2192 \u2102)\n  (u v : \u211d \u00d7 \u211d \u2192 \u211d)\n  (g : \u211d \u2192 \u211d)\n  (hf_analytic : Differentiable \u2102 f)\n  (hf_form : \u2200 z : \u2102, f z = u (z.re, z.im) + I * v (z.re, z.im))\n  (hu : \u2200 x y : \u211d, u (x, y) = x^2 - y^2 + 3*x - y)\n  (hf_zero : f 0 = 0)\n  (l1 : \u2200 x y : \u211d, deriv (fun y => v (x, y)) y = 2 * x + 3)\n  (l2 : \u2200 x y : \u211d, v (x, y) = 2 * x * y + 3 * y + g x)\n  (l3 : \u2203 C : \u211d, \u2200 x : \u211d, g x = x + C)\n  (l4 : \u2200 x : \u211d, g x = x) :\n  \u2200 x y : \u211d, v (x, y) = 2 * x * y + x + 3 * y := by\n  have h_main : \u2200 (x y : \u211d), v (x, y) = 2 * x * y + x + 3 * y := by\n    intro x y\n    have h5 : v (x, y) = 2 * x * y + 3 * y + g x := by\n      have h5\u2081 := l2 x y\n      exact h5\u2081\n    have h6 : g x = x := by\n      have h6\u2081 := l4 x\n      exact h6\u2081\n    rw [h5, h6]\n    <;> ring_nf\n    <;> linarith\n  \n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The l2 hypothesis correctly formalizes the assumption v(x,y) = 2xy + 3y + g(x)", "The l3 hypothesis properly captures the existential statement about g(x) = x + C for some constant C", "The l4 hypothesis effectively represents C = 0 by directly stating g(x) = x", "The conclusion ts_1 exactly matches the derived formula v(x,y) = 2xy + x + 3y. The additional context about complex functions and other hypotheses provides extra mathematical structure but doesn't interfere with the core logical reasoning being formalized"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "tc_2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "tc_3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

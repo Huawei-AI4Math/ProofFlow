@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $z$ be a complex number. If $z^2 - 2z + 2 = 0$ and $\operatorname{Im}(z) > 0$, then $z^8 = 16$.
+
+Proof: Given the equation $z^2 - 2z + 2 = 0$, we use the quadratic formula to find the roots as $z = \frac{-(-2) \pm \sqrt{(-2)^2 - 4(1)(2)}}{2(1)} = 1 \pm i$. The condition $\operatorname{Im}(z) > 0$ requires us to choose the root with a positive imaginary part, so $z = 1+i$. To compute the power, we convert $z$ to its polar form. The modulus is $|z| = \sqrt{1^2+1^2} = \sqrt{2}$ and the argument is $\operatorname{Arg}(z) = \arctan(1/1) = \pi/4$, so $z = \sqrt{2}e^{i\pi/4}$. Finally, we compute $z^8$ using the polar form: $z^8 = (\sqrt{2}e^{i\pi/4})^8 = (\sqrt{2})^8 (e^{i\pi/4})^8 = 16 e^{i2\pi} = 16$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "z^2 - 2z + 2 = 0", "statement": "Premise:\n\u2022 z is a complex number and z\u00b2 - 2z + 2 = 0 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (z : \u2102)\n(tc_1 : z^2 - 2*z + 2 = 0)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean declaration 'z : \u2102' directly corresponds to 'z is a complex number' - perfect semantic match", "The Lean condition 'z^2 - 2*z + 2 = 0' exactly matches the mathematical equation 'z\u00b2 - 2z + 2 = 0' - the tc_1 label doesn't affect the mathematical meaning"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Im(z) > 0", "statement": "Premise:\n\u2022 z is a complex number and its imaginary part is positive: Im(z) > 0 [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_2 (z : \u2102) (h : 0 < z.im) (h_eq : z^2 - 2*z + 2 = 0) :\n  z^8 = 16 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization correctly declares z as a complex number with (z : \u2102), which perfectly matches the natural language condition", "The Lean condition (h : 0 < z.im) correctly captures Im(z) > 0, where z.im represents the imaginary part of z", "The natural language conclusion states 'The imaginary part of z is positive' which is just restating the given condition Im(z) > 0. However, the Lean theorem concludes z^8 = 16, which is completely different. Additionally, the Lean theorem introduces an extra condition z^2 - 2*z + 2 = 0 that is not mentioned anywhere in the natural language statement. This represents a major logical inconsistency between what the natural language describes and what the Lean theorem actually proves"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization correctly declares z as a complex number with (z : \u2102), which perfectly matches the natural language condition', 'The Lean condition (h : 0 < z.im) correctly captures Im(z) > 0, where z.im represents the imaginary part of z', \"The natural language conclusion states 'The imaginary part of z is positive' which is just restating the given condition Im(z) > 0. However, the Lean theorem concludes z^8 = 16, which is completely different. Additionally, the Lean theorem introduces an extra condition z^2 - 2*z + 2 = 0 that is not mentioned anywhere in the natural language statement. This represents a major logical inconsistency between what the natural language describes and what the Lean theorem actually proves\"]"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "Given the equation $z^2 - 2z + 2 = 0$, we use the quadratic formula to find the roots as $z = \\frac{-(-2) \\pm \\sqrt{(-2)^2 - 4(1)(2)}}{2(1)} = 1 \\pm i$.", "statement": "We assume:\n\u2022 For a complex number y, y\u00b2 - 2y + 2 = 0 [tc_1]\nTherefore, we conclude:\n\u2022 The roots are y = 1 + i or y = 1 - i [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) (h : z^2 - 2*z + 2 = 0) : \n  z = 1 + I \u2228 z = 1 - I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) (h : z^2 - 2*z + 2 = 0) : \n  z = 1 + I \u2228 z = 1 - I := by\n  have h\u2081 : z.re = 1 := by\n    have h\u2082 := h\n    simp [Complex.ext_iff, pow_two, Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re,\n      Complex.add_im, Complex.sub_re, Complex.sub_im] at h\u2082 \u22a2\n    ring_nf at h\u2082 \u22a2\n    nlinarith [sq_nonneg (z.re - 1), sq_nonneg (z.im), sq_nonneg (z.re + 1), sq_nonneg (z.im - 1),\n      sq_nonneg (z.im + 1)]\n  \n  have h\u2082 : z.im = 1 \u2228 z.im = -1 := by\n    have h\u2083 := h\n    simp [Complex.ext_iff, pow_two, Complex.ext_iff, Complex.mul_re, Complex.mul_im, Complex.add_re,\n      Complex.add_im, Complex.sub_re, Complex.sub_im] at h\u2083 \u22a2\n    ring_nf at h\u2083 \u22a2\n    have h\u2084 : z.re = 1 := h\u2081\n    subst_vars\n    have h\u2085 : z.im = 1 \u2228 z.im = -1 := by\n      apply or_iff_not_imp_left.mpr\n      intro h\u2086\n      apply eq_of_sub_eq_zero\n      apply mul_left_cancel\u2080 (sub_ne_zero.mpr h\u2086)\n      nlinarith [sq_nonneg (z.im - 1), sq_nonneg (z.im + 1)]\n    exact h\u2085\n  \n  have h\u2083 : z = 1 + I \u2228 z = 1 - I := by\n    have h\u2084 : z.re = 1 := h\u2081\n    cases h\u2082 with\n    | inl h\u2082 =>\n      -- Case: z.im = 1\n      have h\u2085 : z.im = 1 := h\u2082\n      have h\u2086 : z = 1 + I := by\n        apply Complex.ext <;> simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf at * <;> norm_num at * <;> linarith)\n      exact Or.inl h\u2086\n    | inr h\u2082 =>\n      -- Case: z.im = -1\n      have h\u2085 : z.im = -1 := h\u2082\n      have h\u2086 : z = 1 - I := by\n        apply Complex.ext <;> simp_all [Complex.ext_iff, Complex.I_re, Complex.I_im]\n        <;>\n        (try norm_num) <;>\n        (try ring_nf at * <;> norm_num at * <;> linarith)\n      exact Or.inr h\u2086\n  \n  exact h\u2083", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 35, "column": 29, "endLine": 39, "endColumn": 57, "data": "unsolved goals\ncase a\nI z : \u2102\nh : (z ^ 2).re = 0 \u2227 (z ^ 2).im - 2 = 0\nh\u2084 : z.re = 1\nh\u2085 : z.im = 1\n\u22a2 I.re = 0\n\ncase a\nI z : \u2102\nh : (z ^ 2).re = 0 \u2227 (z ^ 2).im - 2 = 0\nh\u2084 : z.re = 1\nh\u2085 : z.im = 1\n\u22a2 1 = I.im"}, {"line": 44, "column": 29, "endLine": 48, "endColumn": 57, "data": "unsolved goals\ncase a\nI z : \u2102\nh : (z ^ 2).re = 0 \u2227 (z ^ 2).im + 2 = 0\nh\u2084 : z.re = 1\nh\u2085 : z.im = -1\n\u22a2 1 = 1 - I.re\n\ncase a\nI z : \u2102\nh : (z ^ 2).re = 0 \u2227 (z ^ 2).im + 2 = 0\nh\u2084 : z.re = 1\nh\u2085 : z.im = -1\n\u22a2 1 = I.im"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The variable name differs between natural language (y) and Lean (z), but the mathematical content is identical - both represent a complex number satisfying the quadratic equation y\u00b2 - 2y + 2 = 0.", "The conclusion perfectly captures the natural language statement. Both express that the solutions are 1 + i or 1 - i, with Lean using 'I' for the imaginary unit and '\u2228' for the logical 'or'.", "The logical structure is perfectly preserved - the Lean theorem correctly formalizes the implication from the assumption (quadratic equation) to the conclusion (the two specific roots).", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=0.67 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (z : \u2102) (h : z^2 - 2*z + 2 = 0) : \n  z = 1 + I \u2228 z = 1 - I := by\n  have h_factor : (z - (1 + I)) * (z - (1 - I)) = z^2 - 2*z + 2 := by\n    calc\n      (z - (1 + I)) * (z - (1 - I)) = (z - (1 + I)) * (z - (1 - I)) := rfl\n      _ = z^2 - 2*z + 2 := by\n        have h\u2081 : (z - (1 + I)) * (z - (1 - I)) = z^2 - 2*z + 2 := by\n          apply Complex.ext <;> simp [Complex.ext_iff, pow_two, Complex.mul_re, Complex.mul_im, Complex.add_re, Complex.add_im, Complex.sub_re, Complex.sub_im, Complex.I_re, Complex.I_im]\n          <;> ring_nf at *\n          <;> norm_num at *\n          <;>\n          (try constructor <;> ring_nf <;> norm_num <;>\n            simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I] <;>\n            nlinarith)\n          <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n              <;> norm_num\n              <;>\n              (try ring_nf at * <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I] <;> norm_num)\n              <;>\n              (try linarith)\n            })\n        rw [h\u2081]\n  \n  have h_zero : (z - (1 + I)) * (z - (1 - I)) = 0 := by\n    rw [h_factor] at *\n    exact h\n  \n  have h_main : z - (1 + I) = 0 \u2228 z - (1 - I) = 0 := by\n    have h\u2081 : (z - (1 + I)) * (z - (1 - I)) = 0 := h_zero\n    have h\u2082 : z - (1 + I) = 0 \u2228 z - (1 - I) = 0 := by\n      -- Use the fact that if the product of two complex numbers is zero, then at least one of them must be zero.\n      simpa [sub_eq_zero] using eq_zero_or_eq_zero_of_mul_eq_zero h\u2081\n    exact h\u2082\n  \n  have h_final : z = 1 + I \u2228 z = 1 - I := by\n    cases h_main with\n    | inl h_main =>\n      -- Case: z - (1 + I) = 0\n      have h\u2081 : z = 1 + I := by\n        -- Solve for z using the equation z - (1 + I) = 0\n        have h\u2082 : z - (1 + I) = 0 := h_main\n        have h\u2083 : z = 1 + I := by\n          -- Add (1 + I) to both sides to isolate z\n          rw [sub_eq_zero] at h\u2082\n          exact h\u2082\n        exact h\u2083\n      -- Conclude that z = 1 + I\n      exact Or.inl h\u2081\n    | inr h_main =>\n      -- Case: z - (1 - I) = 0\n      have h\u2081 : z = 1 - I := by\n        -- Solve for z using the equation z - (1 - I) = 0\n        have h\u2082 : z - (1 - I) = 0 := h_main\n        have h\u2083 : z = 1 - I := by\n          -- Add (1 - I) to both sides to isolate z\n          rw [sub_eq_zero] at h\u2082\n          exact h\u2082\n        exact h\u2083\n      -- Conclude that z = 1 - I\n      exact Or.inr h\u2081\n  \n  exact h_final"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "The condition $\\operatorname{Im}(z) > 0$ requires us to choose the root with a positive imaginary part, so $z = 1+i$.", "statement": "We assume:\n\u2022 z is a complex number and z\u00b2 - 2z + 2 = 0 [tc_1]\n\u2022 The imaginary part of z is positive: Im(z) > 0 [tc_2]\n\u2022 The roots of the equation y\u00b2 - 2y + 2 = 0 are y = 1 + i or y = 1 - i [l1]\nTherefore, we conclude:\n\u2022 z = 1 + i [l2].", "dependencies": ["tc_1", "tc_2", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (z : \u2102) \n  (tc_1 : z^2 - 2*z + 2 = 0)\n  (tc_2 : 0 < z.im)\n  (l1 : \u2200 w : \u2102, w^2 - 2*w + 2 = 0 \u2192 w = 1 + I \u2228 w = 1 - I) :\n  z = 1 + I := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (z : \u2102) \n  (tc_1 : z^2 - 2*z + 2 = 0)\n  (tc_2 : 0 < z.im)\n  (l1 : \u2200 w : \u2102, w^2 - 2*w + 2 = 0 \u2192 w = 1 + I \u2228 w = 1 - I) :\n  z = 1 + I := by\n  have h_cases : z = 1 + I \u2228 z = 1 - I := by\n    have h : z = 1 + I \u2228 z = 1 - I := l1 z tc_1\n    exact h\n  \n  have h_main : z = 1 + I := by\n    cases h_cases with\n    | inl h =>\n      -- Case: z = 1 + I\n      exact h\n    | inr h =>\n      -- Case: z = 1 - I\n      have h\u2081 : z.im = -1 := by\n        rw [h]\n        simp [Complex.ext_iff, pow_two, Complex.ext_iff, Complex.I_mul_I]\n        <;> norm_num\n        <;>\n        simp_all [Complex.ext_iff, pow_two, Complex.ext_iff, Complex.I_mul_I]\n        <;>\n        norm_num\n        <;>\n        linarith\n      -- Since z.im = -1, this contradicts tc_2 : 0 < z.im\n      have h\u2082 : 0 < z.im := tc_2\n      have h\u2083 : z.im = -1 := h\u2081\n      linarith\n  \n  exact h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 30, "column": 8, "endLine": 30, "endColumn": 16, "data": "linarith failed to find a contradiction\ncase h1.h\nI z : \u2102\ntc_1 :\n  (1 - I.re) * (1 - I.re) - I.im * I.im - 2 * (1 - I.re) + 2 = 0 \u2227\n    -((1 - I.re) * I.im) + -(I.im * (1 - I.re)) + 2 * I.im = 0\ntc_2 : I.im < 0\nl1 :\n  \u2200 (w : \u2102),\n    w.re * w.re - w.im * w.im - 2 * w.re + 2 = 0 \u2192\n      w.re * w.im + w.im * w.re - 2 * w.im = 0 \u2192 w.re = 1 + I.re \u2227 w.im = I.im \u2228 w.re = 1 - I.re \u2227 w.im = -I.im\nh : z.re = 1 - I.re \u2227 z.im = -I.im\na\u271d : I.im < 1\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Complex number type declaration correctly captures the variable specification", "Quadratic equation constraint is mathematically identical to the natural language", "Imaginary part positivity condition is correctly formalized using Lean's complex number notation", "Universal quantification properly captures the statement about all roots of the equation", "Conclusion is mathematically equivalent, with I being Lean's standard notation for the imaginary unit", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (z : \u2102) \n  (tc_1 : z^2 - 2*z + 2 = 0)\n  (tc_2 : 0 < z.im)\n  (l1 : \u2200 w : \u2102, w^2 - 2*w + 2 = 0 \u2192 w = 1 + I \u2228 w = 1 - I) :\n  z = 1 + I := by\n  have h_z_cases : z = 1 + I \u2228 z = 1 - I := by\n    have h : z = 1 + I \u2228 z = 1 - I := by\n      have h\u2082 : z^2 - 2*z + 2 = 0 := tc_1\n      have h\u2083 : z = 1 + I \u2228 z = 1 - I := l1 z h\u2082\n      exact h\u2083\n    exact h\n  \n  have h_z_not_neg : z \u2260 1 - I := by\n    intro h\n    have h\u2081 : z = 1 - I := h\n    have h\u2082 : 0 < z.im := tc_2\n    simp_all [Complex.ext_iff]\n    <;> norm_num at *\n    <;> linarith\n  \n  have h_final : z = 1 + I := by\n    cases h_z_cases with\n    | inl h =>\n      exact h\n    | inr h =>\n      exfalso\n      apply h_z_not_neg\n      exact h\n  \n  exact h_final"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The modulus is $|z| = \\sqrt{1^2+1^2} = \\sqrt{2}$", "statement": "We assume:\n\u2022 z = 1 + i [l2]\nTherefore, we conclude:\n\u2022 The modulus of z is |z| = \u221a2 [l3].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (z : \u2102) \n  (l2 : z = 1 + I) :\n  Complex.abs z = Real.sqrt 2 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3 \n  (z : \u2102) \n  (l2 : z = 1 + Complex.I) :\n  Complex.abs z = Real.sqrt 2 := by\n  have h1 : Complex.abs z = Complex.abs (1 + Complex.I) := by\n    rw [l2]\n    <;>\n    simp [Complex.abs, Complex.normSq]\n    <;>\n    ring_nf\n    <;>\n    norm_num\n  \n  have h2 : Complex.abs (1 + Complex.I) = Real.sqrt 2 := by\n    simp [Complex.abs, Complex.normSq, Real.sqrt_eq_iff_sq_eq]\n    <;> ring_nf\n    <;> norm_num\n    <;>\n    linarith [Real.sqrt_nonneg 2]\n  \n  have h3 : Complex.abs z = Real.sqrt 2 := by\n    rw [h1, h2]\n  \n  apply h3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The premise z = 1 + i is accurately represented as z = 1 + I, and the conclusion about the modulus being \u221a2 is properly formalized using Complex.abs and Real.sqrt. The notational differences (i vs I, |z| vs Complex.abs z) are standard Lean conventions that preserve the exact mathematical meaning. The logical structure of assumption leading to conclusion is perfectly maintained."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "the argument is $\\operatorname{Arg}(z) = \\arctan(1/1) = \\pi/4$", "statement": "We assume:\n\u2022 z = 1 + i [l2]\nTherefore, we conclude:\n\u2022 The principal argument of z is Arg(z) = \u03c0/4 [l4].", "dependencies": ["l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (z : \u2102)\n  (l2 : z = 1 + I) :\n  Complex.arg z = Real.pi/4 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4\n  (z : \u2102)\n  (l2 : z = 1 + I) :\n  Complex.arg z = Real.pi/4 := by\n  have h_re : z.re = 1 := by\n    rw [l2]\n    simp [Complex.ext_iff, Complex.I_re, Complex.I_im]\n    <;> norm_num\n  \n  have h_im : z.im = 1 := by\n    rw [l2]\n    simp [Complex.ext_iff, Complex.I_re, Complex.I_im]\n    <;> norm_num\n  \n  have h_pos : 0 < z.re := by\n    rw [h_re]\n    <;> norm_num\n  \n  have h_arg : Complex.arg z = Real.arctan (z.im / z.re) := by\n    have h\u2081 : z.re > 0 := by linarith\n    have h\u2082 : Complex.arg z = Real.arctan (z.im / z.re) := by\n      rw [Complex.arg_eq_arctan2]\n      <;> simp_all [Complex.ext_iff, Complex.arg, Real.arctan2_eq_arctan_div]\n      <;>\n      (try norm_num) <;>\n      (try linarith) <;>\n      (try field_simp) <;>\n      (try ring_nf) <;>\n      (try simp_all [Complex.ext_iff, Complex.arg, Real.arctan2_eq_arctan_div]) <;>\n      (try norm_num) <;>\n      (try linarith)\n      <;>\n      simp_all [Complex.ext_iff, Complex.arg, Real.arctan2_eq_arctan_div]\n      <;>\n      norm_num\n      <;>\n      linarith\n    exact h\u2082\n  \n  have h_arctan : Real.arctan (z.im / z.re) = Real.pi / 4 := by\n    have h\u2081 : z.im / z.re = (1 : \u211d) := by\n      rw [h_im, h_re]\n      <;> norm_num\n    rw [h\u2081]\n    have h\u2082 : Real.arctan (1 : \u211d) = Real.pi / 4 := by\n      -- Use the known value of arctan(1)\n      have h\u2083 : Real.tan (Real.pi / 4) = 1 := by norm_num\n      have h\u2084 : Real.arctan 1 = Real.pi / 4 := by\n        -- Use the property of arctan and tan being inverses\n        rw [\u2190 h\u2083, Real.arctan_tan] <;> linarith [Real.pi_pos]\n      rw [h\u2084]\n    rw [h\u2082]\n  \n  have h_final : Complex.arg z = Real.pi / 4 := by\n    rw [h_arg]\n    rw [h_arctan]\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 8, "column": 26, "endLine": 11, "endColumn": 16, "data": "unsolved goals\nI z : \u2102\nl2 : z = 1 + I\n\u22a2 I.re = 0"}, {"line": 13, "column": 26, "endLine": 16, "endColumn": 16, "data": "unsolved goals\nI z : \u2102\nl2 : z = 1 + I\nh_re : z.re = 1\n\u22a2 I.im = 1"}, {"line": 25, "column": 10, "endLine": 25, "endColumn": 32, "data": "unknown constant 'Complex.arg_eq_arctan2'"}, {"line": 25, "column": 10, "endLine": 25, "endColumn": 32, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.1574\nI z : \u2102\nl2 : z = 1 + I\nh_re : z.re = 1\nh_im : z.im = 1\nh_pos : 0 < z.re\nh\u2081 : z.re > 0\n\u22a2 z.arg = arctan (z.im / z.re)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all the logical and mathematical content from the natural language. The premise z = 1 + I corresponds exactly to z = 1 + i, and the conclusion Complex.arg z = Real.pi/4 correctly represents Arg(z) = \u03c0/4. The differences in notation (I vs i, Complex.arg vs Arg, Real.pi vs \u03c0) are standard library conventions and do not affect the semantic meaning. The explicit type declaration (z : \u2102) is an acceptable additional detail that enhances clarity without changing the logical content.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem neg_l4 : \u00ac (Complex.arg (1 + Complex.I) = Real.pi / 4) := by\n  intro h\n  have h\u2081 : Complex.arg (1 + Complex.I) = Real.pi / 4 := by\n    have h\u2082 : Complex.arg (1 + Complex.I) = Real.arctan 1 := by\n      simp [Complex.arg, Complex.ext_iff]\n      <;> norm_num <;>\n      (try\n        {\n          simp_all [Complex.ext_iff, Real.arctan_eq_arcsin]\n          <;> norm_num\n          <;> linarith [Real.pi_pos]\n        })\n      <;>\n      (try\n        {\n          field_simp [Real.arctan_eq_arcsin]\n          <;> ring_nf\n          <;> norm_num\n          <;> linarith [Real.pi_pos]\n        })\n    have h\u2083 : Real.arctan 1 = Real.pi / 4 := by\n      rw [Real.arctan_one]\n    rw [h\u2082, h\u2083]\n  \n  have h\u2082 : False := by\n    have h\u2083 : Complex.arg (1 + Complex.I) = Real.pi / 4 := h\u2081\n    have h\u2084 : \u00ac(Complex.arg (1 + Complex.I) = Real.pi / 4) := h\n    exact h\u2084 h\u2083\n  \n  exact h\u2082"}, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "so $z = \\sqrt{2}e^{i\\pi/4}$.", "statement": "We assume:\n\u2022 z is a complex number equal to 1 + i [l2]\n\u2022 The modulus of z is |z| = \u221a2 [l3]\n\u2022 The principal argument of z is Arg(z) = \u03c0/4 [l4]\nTherefore, we conclude:\n\u2022 z = \u221a2 * e^(i*\u03c0/4) [l5].", "dependencies": ["l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (z : \u2102) \n  (l2 : z = 1 + I)\n  (l3 : Complex.abs z = Real.sqrt 2)\n  (l4 : Complex.arg z = Real.pi/4) :\n  z = Real.sqrt 2 * Complex.exp (I * (Real.pi/4)) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (z : \u2102) \n  (l2 : z = 1 + I)\n  (l3 : Complex.abs z = Real.sqrt 2)\n  (l4 : Complex.arg z = Real.pi/4) :\n  z = Real.sqrt 2 * Complex.exp (I * (Real.pi/4)) := by\n  have h_main : (Real.sqrt 2 : \u2102) * Complex.exp (I * (Real.pi/4)) = 1 + I := by\n    have h\u2081 : Complex.exp (I * (Real.pi / 4)) = \u2191(Real.cos (Real.pi / 4)) + I * \u2191(Real.sin (Real.pi / 4)) := by\n      rw [Complex.ext_iff]\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.cos, Real.sin]\n      <;> ring_nf\n      <;> field_simp [Real.cos, Real.sin]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, Real.cos, Real.sin]\n      <;> norm_num\n      <;>\n      simp_all [Complex.ext_iff, Real.cos, Real.sin]\n      <;>\n      norm_num\n      <;>\n      linarith [Real.cos_le_one (Real.pi / 4), Real.sin_le_one (Real.pi / 4)]\n    rw [h\u2081]\n    have h\u2082 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num [Real.cos_pi_div_four]\n    have h\u2083 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num [Real.sin_pi_div_four]\n    rw [h\u2082, h\u2083]\n    simp [Complex.ext_iff, pow_two]\n    <;> ring_nf\n    <;> norm_num [Real.sqrt_eq_iff_sq_eq]\n    <;>\n    (try norm_num) <;>\n    (try ring_nf) <;>\n    (try field_simp [Real.sqrt_eq_iff_sq_eq]) <;>\n    (try norm_num) <;>\n    (try linarith [Real.sqrt_nonneg 2]) <;>\n    (try\n      {\n        nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      })\n    <;>\n    (try\n      {\n        simp_all [Complex.ext_iff, pow_two]\n        <;> ring_nf at *\n        <;> norm_num at *\n        <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show 0 \u2264 2 by norm_num)]\n      })\n  \n  have h_final : z = Real.sqrt 2 * Complex.exp (I * (Real.pi/4)) := by\n    rw [l2] at *\n    have h\u2085 : (1 + I : \u2102) = (Real.sqrt 2 : \u2102) * Complex.exp (I * (Real.pi / 4)) := by\n      rw [h_main]\n      <;>\n      simp [Complex.ext_iff, pow_two]\n      <;>\n      norm_num\n      <;>\n      linarith [Real.sqrt_nonneg 2]\n    rw [h\u2085]\n    <;>\n    simp [Complex.ext_iff, pow_two]\n    <;>\n    norm_num\n    <;>\n    linarith [Real.sqrt_nonneg 2]\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 24, "column": 6, "endLine": 24, "endColumn": 77, "data": "linarith failed to find a contradiction\nI z : \u2102\nl2 : z.re = 1 + I.re \u2227 z.im = I.im\nl3 : Complex.abs z = \u221a2\nl4 : z.arg = \u03c0 / 4\n\u22a2 False failed"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The variable declaration correctly captures z as a complex number using Lean's complex type \u2102.", "The definition l2 correctly translates '1 + i' to '1 + I' using Lean's imaginary unit notation.", "The modulus condition l3 accurately represents |z| = \u221a2 using Complex.abs and Real.sqrt.", "The argument condition l4 properly captures Arg(z) = \u03c0/4 using Complex.arg and Real.pi.", "The conclusion correctly expresses the polar form z = \u221a2 * e^(i*\u03c0/4) using appropriate Lean functions for square root, complex exponential, and the imaginary unit.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (z : \u2102) \n  (l2 : z = 1 + I)\n  (l3 : Complex.abs z = Real.sqrt 2)\n  (l4 : Complex.arg z = Real.pi/4) :\n  z = Real.sqrt 2 * Complex.exp (I * (Real.pi/4)) := by\n  rw [l2]\n  have h : (Real.sqrt 2 : \u2102) * Complex.exp (I * (Real.pi/4)) = 1 + I := by\n    have h\u2081 : Complex.exp (I * (Real.pi / 4)) = \u27e8Real.cos (Real.pi / 4), Real.sin (Real.pi / 4)\u27e9 := by\n      simp [Complex.ext_iff, Complex.exp_re, Complex.exp_im, Complex.ext_iff, pow_one]\n      <;> ring_nf\n      <;> simp [Real.cos_add, Real.sin_add, Real.cos_pi_div_two, Real.sin_pi_div_two]\n      <;> field_simp\n      <;> ring\n      <;> norm_num\n    rw [h\u2081]\n    have h\u2082 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num [Real.cos_pi_div_four]\n    have h\u2083 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num [Real.sin_pi_div_four]\n    simp [Complex.ext_iff, Complex.I_re, Complex.I_im, h\u2082, h\u2083]\n    <;> ring_nf\n    <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n    <;> ring_nf\n    <;> norm_num\n  \n  rw [h]"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Finally, we compute $z^8$ using the polar form: $z^8 = (\\sqrt{2}e^{i\\pi/4})^8 = (\\sqrt{2})^8 (e^{i\\pi/4})^8 = 16 e^{i2\\pi} = 16$.", "statement": "We assume:\n\u2022 z = \u221a2 * e^(i*\u03c0/4) [l5]\nTherefore, we conclude:\n\u2022 z\u2078 = 16 [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (l5 : z = Real.sqrt 2 * Complex.exp (I * (Real.pi / 4))) :\n  z^8 = 16 := by\n  sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (l5 : z = Real.sqrt 2 * Complex.exp (I * (Real.pi / 4))) :\n  z^8 = 16 := by\n  have h\u2081 : z ^ 8 = (Real.sqrt 2) ^ 8 * (Complex.exp (I * (Real.pi / 4))) ^ 8 := by\n    calc\n      z ^ 8 = (Real.sqrt 2 * Complex.exp (I * (Real.pi / 4))) ^ 8 := by rw [l5]\n      _ = (Real.sqrt 2 : \u2102) ^ 8 * (Complex.exp (I * (Real.pi / 4))) ^ 8 := by\n        -- Use the property (a * b)^n = a^n * b^n\n        rw [mul_pow]\n        <;> norm_cast\n      _ = (Real.sqrt 2 : \u211d) ^ 8 * (Complex.exp (I * (Real.pi / 4))) ^ 8 := by\n        -- Since (Real.sqrt 2 : \u2102) ^ 8 is the same as (Real.sqrt 2 : \u211d) ^ 8 cast to \u2102\n        norm_cast\n        <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n        <;> ring_nf\n        <;> norm_num\n        <;> field_simp [Real.sqrt_eq_iff_sq_eq]\n        <;> ring_nf\n        <;> norm_num\n  \n  have h\u2082 : (Real.sqrt 2 : \u211d) ^ 8 = 16 := by\n    have h\u2082\u2081 : (Real.sqrt 2 : \u211d) ^ 2 = 2 := by\n      rw [Real.sq_sqrt] <;> norm_num\n    have h\u2082\u2082 : (Real.sqrt 2 : \u211d) ^ 8 = 16 := by\n      calc\n        (Real.sqrt 2 : \u211d) ^ 8 = ((Real.sqrt 2 : \u211d) ^ 2) ^ 4 := by ring\n        _ = 2 ^ 4 := by rw [h\u2082\u2081]\n        _ = 16 := by norm_num\n    exact h\u2082\u2082\n  \n  have h\u2083 : (Complex.exp (I * (Real.pi / 4)) : \u2102) ^ 8 = Complex.exp (2 * Real.pi * I) := by\n    have h\u2083\u2081 : (Complex.exp (I * (Real.pi / 4)) : \u2102) ^ 8 = Complex.exp (8 * (I * (Real.pi / 4))) := by\n      rw [\u2190 Complex.exp_nat_mul]\n      <;> ring_nf\n      <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n      <;> norm_num\n    rw [h\u2083\u2081]\n    have h\u2083\u2082 : (8 : \u2102) * (I * (Real.pi / 4)) = 2 * Real.pi * I := by\n      ring_nf\n      <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n      <;> norm_num\n      <;> field_simp [Real.pi_pos.le]\n      <;> ring_nf\n      <;> norm_num\n      <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n      <;> norm_num\n      <;> linarith [Real.pi_pos]\n    rw [h\u2083\u2082]\n    <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n    <;> norm_num\n    <;> field_simp [Real.pi_pos.le]\n    <;> ring_nf\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n    <;> norm_num\n    <;> linarith [Real.pi_pos]\n  \n  have h\u2084 : Complex.exp (2 * Real.pi * I) = 1 := by\n    rw [Complex.exp_eq_one_iff]\n    -- We need to find an integer k such that 2 * Real.pi * I = 2 * Real.pi * I * k\n    use 1\n    <;> ring_nf\n    <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n    <;> norm_num\n    <;> field_simp [Real.pi_pos.le]\n    <;> ring_nf\n    <;> norm_num\n    <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n    <;> norm_num\n    <;> linarith [Real.pi_pos]\n  \n  have h\u2085 : z ^ 8 = 16 := by\n    calc\n      z ^ 8 = (Real.sqrt 2) ^ 8 * (Complex.exp (I * (Real.pi / 4))) ^ 8 := by rw [h\u2081]\n      _ = (16 : \u2102) * (Complex.exp (I * (Real.pi / 4))) ^ 8 := by\n        norm_cast at h\u2082 \u22a2\n        <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n        <;> norm_num\n        <;> ring_nf at *\n        <;> simp_all [Complex.ext_iff, pow_succ, mul_assoc]\n        <;> norm_num\n        <;> linarith\n      _ = (16 : \u2102) * Complex.exp (2 * Real.pi * I) := by\n        rw [h\u2083]\n        <;> simp [Complex.ext_iff, pow_succ, mul_assoc]\n        <;> norm_num\n      _ = (16 : \u2102) * 1 := by rw [h\u2084]\n      _ = (16 : \u2102) := by ring\n      _ = 16 := by norm_cast\n      _ = 16 := by rfl\n  \n  apply h\u2085", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 69, "column": 8, "endLine": 69, "endColumn": 35, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all components of the natural language statement. The assumption z = \u221a2 * e^(i*\u03c0/4) is properly formalized using Real.sqrt and Complex.exp, the conclusion z^8 = 16 is exactly preserved, and the logical structure from assumption to conclusion is maintained. The additional type information and explicit function names are appropriate mathematical formalizations that enhance precision without changing the semantic meaning.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1\n  (z : \u2102)\n  (l5 : z = Real.sqrt 2 * Complex.exp (I * (Real.pi / 4))) :\n  z^8 = 16 := by\n  have h\u2081 : z = 1 + Complex.I := by\n    rw [l5]\n    have h\u2082 : Complex.exp (Complex.I * (Real.pi / 4)) = \u2191(Real.cos (Real.pi / 4)) + Complex.I * \u2191(Real.sin (Real.pi / 4)) := by\n      rw [Complex.ext_iff]\n      simp [Complex.exp_re, Complex.exp_im, Complex.ext_iff, Real.cos, Real.sin]\n      <;> ring_nf <;> simp [Complex.ext_iff, Real.cos, Real.sin]\n      <;> norm_num\n      <;> field_simp [Real.cos_pi_div_four, Real.sin_pi_div_four]\n      <;> ring_nf\n      <;> norm_num\n      <;> linarith [Real.cos_le_one (Real.pi / 4), Real.sin_le_one (Real.pi / 4)]\n    have h\u2083 : Real.cos (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n    have h\u2084 : Real.sin (Real.pi / 4) = Real.sqrt 2 / 2 := by norm_num\n    calc\n      (Real.sqrt 2 : \u2102) * Complex.exp (Complex.I * (Real.pi / 4)) = (Real.sqrt 2 : \u2102) * (\u2191(Real.cos (Real.pi / 4)) + Complex.I * \u2191(Real.sin (Real.pi / 4))) := by rw [h\u2082]\n      _ = (Real.sqrt 2 : \u2102) * (\u2191(Real.sqrt 2 / 2) + Complex.I * \u2191(Real.sqrt 2 / 2)) := by\n        rw [h\u2083, h\u2084]\n        <;> simp [Complex.ext_iff, pow_two]\n        <;> norm_num\n        <;>\n        (try\n          {\n            field_simp [Real.sqrt_eq_iff_sq_eq]\n            <;> ring_nf\n            <;> norm_num\n            <;>\n            nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n          }) <;>\n        (try\n          {\n            nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n          }) <;>\n        (try\n          {\n            simp_all [Complex.ext_iff, pow_two]\n            <;> ring_nf\n            <;> norm_num\n            <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n          })\n      _ = (1 : \u2102) + Complex.I := by\n        simp [Complex.ext_iff, pow_two]\n        <;> ring_nf <;> norm_num [Real.sqrt_eq_iff_sq_eq, Real.sqrt_nonneg, Real.sq_sqrt] <;>\n          (try\n            {\n              field_simp [Real.sqrt_eq_iff_sq_eq]\n              <;> ring_nf\n              <;> norm_num\n              <;>\n              nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n            }) <;>\n          (try\n            {\n              nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n            }) <;>\n          (try\n            {\n              simp_all [Complex.ext_iff, pow_two]\n              <;> ring_nf\n              <;> norm_num\n              <;> nlinarith [Real.sqrt_nonneg 2, Real.sq_sqrt (show (0 : \u211d) \u2264 2 by norm_num)]\n            })\n  \n  have h\u2082 : z ^ 2 = 2 * Complex.I := by\n    rw [h\u2081]\n    simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;> norm_num <;>\n    ring_nf <;>\n    norm_num <;>\n    simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n    <;> norm_num <;>\n    linarith [Real.sqrt_nonneg 2]\n  \n  have h\u2083 : z ^ 4 = -4 := by\n    calc\n      z ^ 4 = (z ^ 2) ^ 2 := by ring_nf\n      _ = (2 * Complex.I) ^ 2 := by rw [h\u2082]\n      _ = 4 * (Complex.I ^ 2) := by\n        ring_nf\n        <;> simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n        <;> simp_all [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n      _ = 4 * (-1 : \u2102) := by\n        norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n      _ = -4 := by\n        norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> simp [Complex.ext_iff, pow_two, Complex.I_mul_I]\n        <;> norm_num\n  \n  have h\u2084 : z ^ 8 = 16 := by\n    calc\n      z ^ 8 = (z ^ 4) ^ 2 := by ring_nf\n      _ = (-4 : \u2102) ^ 2 := by rw [h\u2083]\n      _ = 16 := by norm_num [Complex.ext_iff, pow_two, Complex.I_mul_I]\n      _ = 16 := by rfl\n  \n  exact h\u2084"}, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#FFA500", "highlight": {"background": "#a3c2a8", "border": "#FFA500"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(a_n)$ be an arithmetic sequence where $a_2 = 7$ and $a_5 = 16$. Let $(b_n)$ be a geometric sequence where $b_2 = 12$ and $b_4 = 48$. Let $C_N = \sum_{n=1}^{N} \frac{1}{a_n \cdot b_n}$ be the partial sum of the series. Prove that for all integers $N \geq 1$, the inequality $C_N < \frac{1}{6}$ holds.
+
+Proof: First, we find the general formulas for the sequences $(a_n)$ and $(b_n)$. For the arithmetic sequence $(a_n)$, the general formula is $a_n = a_1 + (n-1)d$. Given $a_2=7$ and $a_5=16$, we can form a system of equations: $7=a_1+d$ and $16=a_1+4d$. Subtracting the first equation from the second gives $9=3d$, so $d=3$. Substituting $d=3$ into the first equation gives $7=a_1+3$, so $a_1=4$. Thus, the general formula for $a_n$ is $a_n=4+(n-1)3=3n+1$. For the geometric sequence $(b_n)$, the general formula is $b_n = b_1 \cdot r^{n-1}$. Given $b_2=12$ and $b_4=48$, we have $12=b_1 r$ and $48=b_1 r^3$. Dividing the second equation by the first gives $\frac{b_1 r^3}{b_1 r} = \frac{48}{12}$, so $r^2=4$, which implies $r=2$. Substituting $r=2$ into the first equation gives $12=b_1(2)$, so $b_1=6$. Thus, the general formula for $b_n$ is $b_n=6 \cdot 2^{n-1}$. Now, we consider the generic term of the series, $\frac{1}{a_n \cdot b_n} = \frac{1}{(3n+1)(6 \cdot 2^{n-1})}$. We need to show that $C_N = \sum_{n=1}^{N} \frac{1}{(3n+1)(6 \cdot 2^{n-1})} < \frac{1}{6}$. The first term is $C_1 = \frac{1}{(3(1)+1)(6 \cdot 2^{1-1})} = \frac{1}{4 \cdot 6} = \frac{1}{24}$. The inequality holds for $N=1$. We can prove the inequality by comparing the series with a geometric series. For $n \geq 1$, we have $3n+1 \geq 4$. Therefore, $\frac{1}{(3n+1)(6 \cdot 2^{n-1})} \leq \frac{1}{4(6 \cdot 2^{n-1})} = \frac{1}{24 \cdot 2^{n-1}} = \frac{1}{24} (\frac{1}{2})^{n-1}$. Thus, $C_N = \sum_{n=1}^{N} \frac{1}{(3n+1)(6 \cdot 2^{n-1})} \leq \sum_{n=1}^{N} \frac{1}{24} (\frac{1}{2})^{n-1} = \frac{1}{24} \sum_{n=1}^{N} (\frac{1}{2})^{n-1}$. The right side is a geometric series with first term $a=1$ and common ratio $r=\frac{1}{2}$. The sum of this infinite series is $\frac{a}{1-r} = \frac{1}{1-1/2} = \frac{1}{1/2} = 2$. Therefore, the sum of the partial geometric series is less than the sum of the infinite geometric series, so $C_N \leq \frac{1}{24} \sum_{n=1}^{\infty} (\frac{1}{2})^{n-1} = \frac{1}{24} \cdot 2 = \frac{2}{24} = \frac{1}{12}$. Since $\frac{1}{12} < \frac{1}{6}$, we have $C_N < \frac{1}{6}$ for all $N \geq 1$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(a_n)$ be an arithmetic sequence where $a_2 = 7$ and $a_5 = 16$.", "statement": "Premise:\n\u2022 $(a_n)$ is an arithmetic sequence such that $a_2 = 7$ and $a_5 = 16$ [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable (a : \u2115 \u2192 \u211d)\n(tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization uses '\u2203 d : \u211d' which allows the common difference d to vary for different pairs of indices. This contradicts the definition of an arithmetic sequence, which requires a constant common difference. The correct formalization should use '\u2203 d : \u211d, \u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d' to ensure d is the same for all pairs.", "The condition a 2 = 7 matches exactly between natural language and Lean.", "The condition a 5 = 16 matches exactly between natural language and Lean."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization uses '\u2203 d : \u211d' which allows the common difference d to vary for different pairs of indices. This contradicts the definition of an arithmetic sequence, which requires a constant common difference. The correct formalization should use '\u2203 d : \u211d, \u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d' to ensure d is the same for all pairs.\", 'The condition a 2 = 7 matches exactly between natural language and Lean.', 'The condition a 5 = 16 matches exactly between natural language and Lean.']"}, "type": "condition"}, "tc_2": {"id": "tc_2", "natural_language": "Let $(b_n)$ be a geometric sequence where $b_2 = 12$ and $b_4 = 48$.", "statement": "Premise:\n\u2022 $(b_n)$ is a geometric sequence such that $b_2 = 12$ and $b_4 = 48$ [tc_2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : (b 2 = 12 \u2227 b 4 = 48))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization is missing the crucial condition that (b_n) is a geometric sequence. Only the function declaration b : \u2115 \u2192 \u211d is present, but there is no constraint stating that b forms a geometric sequence.", "The condition b_2 = 12 is correctly captured as b 2 = 12 in the Lean conjunction.", "The condition b_4 = 48 is correctly captured as b 4 = 48 in the Lean conjunction."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization is missing the crucial condition that (b_n) is a geometric sequence. Only the function declaration b : \u2115 \u2192 \u211d is present, but there is no constraint stating that b forms a geometric sequence.', 'The condition b_2 = 12 is correctly captured as b 2 = 12 in the Lean conjunction.', 'The condition b_4 = 48 is correctly captured as b 4 = 48 in the Lean conjunction.']"}, "type": "condition"}, "tc_3": {"id": "tc_3", "natural_language": "Let $C_N = \\sum_{n=1}^{N} \\frac{1}{a_n \\cdot b_n}$ be the partial sum of the series.", "statement": "Premise:\n\u2022 For any integer $N \\geq 1$, $C_N = \\sum_{n=1}^{N} \\frac{1}{a_n \\cdot b_n}$ [tc_3].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b : \u2115 \u2192 \u211d)\n  (tc_3 : \u2200 (N : \u2115), N \u2265 1 \u2192 (\u2211 n in Finset.range N, 1 / (a n * b n)) = (fun N \u21a6 \u2211 n in Finset.range N, 1 / (a (n+1) * b (n+1))) N)", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["Natural language specifies 'integer' while Lean uses natural numbers (\u2115). However, given the constraint N \u2265 1, natural numbers are mathematically sufficient and equivalent for this context.", "The condition N \u2265 1 matches exactly between natural language and Lean formalization.", "The natural language defines C_N as a specific sum, but the Lean formalization presents an equality between two different indexing schemes rather than defining C_N. The Lean version does not capture the definition of C_N as stated in the natural language, and instead asserts a relationship between different summation ranges."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"Natural language specifies 'integer' while Lean uses natural numbers (\u2115). However, given the constraint N \u2265 1, natural numbers are mathematically sufficient and equivalent for this context.\", 'The condition N \u2265 1 matches exactly between natural language and Lean formalization.', 'The natural language defines C_N as a specific sum, but the Lean formalization presents an equality between two different indexing schemes rather than defining C_N. The Lean version does not capture the definition of C_N as stated in the natural language, and instead asserts a relationship between different summation ranges.']"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "For the arithmetic sequence $(a_n)$, the general formula is $a_n = a_1 + (n-1)d$. Given $a_2=7$ and $a_5=16$, we can form a system of equations: $7=a_1+d$ and $16=a_1+4d$. Subtracting the first equation from the second gives $9=3d$, so $d=3$.", "statement": "We assume:\n\u2022 $(a_n)$ is an arithmetic sequence with general formula $a_n = a_1 + (n-1)d$ where $a_2 = 7$ and $a_5 = 16$ [tc_1].\nTherefore, we conclude:\n\u2022 The common difference of sequence $(a_n)$ is $d=3$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16) :\n  \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16) :\n  \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3 := by\n  rcases tc_1 with \u27e8h, h2, h5\u27e9\n  obtain \u27e8d, hd\u27e9 := h 1 2 (by norm_num)\n  have h\u2081 : 7 - a 1 = d := by\n    rw [\u2190 h2, hd]\n    norm_num\n  obtain \u27e8d', hd'\u27e9 := h 2 5 (by norm_num)\n  have h\u2082 : 16 - 7 = 3 * d' := by\n    rw [\u2190 h5, \u2190 h2, hd']\n    norm_num\n  have hd'' : d = d' := by\n    rw [\u2190 h\u2081, \u2190 h\u2082]\n    field_simp\n    ring\n  refine \u27e8d, ?_, ?_\u27e9\n  \u00b7 intro n m hnm\n    obtain \u27e8d'', hd''\u27e9 := h n m hnm\n    rw [hd'']\n    congr 1\n    exact hd''.symm \u25b8 hd''.symm \u25b8 rfl\n  \u00b7 rw [\u2190 h\u2081, h\u2082]\n    field_simp\n    ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 19, "column": 14, "endLine": 19, "endColumn": 18, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  3 * d'\na : \u2115 \u2192 \u211d\nh : \u2200 (n m : \u2115), m > n \u2192 \u2203 d, a m - a n = (\u2191m - \u2191n) * d\nh2 : a 2 = 7\nh5 : a 5 = 16\nd : \u211d\nhd : a 2 - a 1 = (\u21912 - \u21911) * d\nh\u2081 : 7 - a 1 = d\nd' : \u211d\nhd' : a 5 - a 2 = (\u21915 - \u21912) * d'\nh\u2082 : 16 - 7 = 3 * d'\n\u22a2 7 - a 1 = d'"}, {"line": 27, "column": 10, "endLine": 27, "endColumn": 37, "data": "invalid `\u25b8` notation, expected result type of cast is \n  d'' = d\nhowever, the equality \n  Eq.symm hd''\nof type \n  (\u2191m - \u2191n) * d'' = a m - a n\ndoes not contain the expected result type on either the left or the right hand side"}, {"line": 28, "column": 14, "endLine": 28, "endColumn": 16, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  16 - 7\ncase intro.intro.intro.intro.refine_2\na : \u2115 \u2192 \u211d\nh : \u2200 (n m : \u2115), m > n \u2192 \u2203 d, a m - a n = (\u2191m - \u2191n) * d\nh2 : a 2 = 7\nh5 : a 5 = 16\nd : \u211d\nhd : a 2 - a 1 = (\u21912 - \u21911) * d\nh\u2081 : 7 - a 1 = d\nd' : \u211d\nhd' : a 5 - a 2 = (\u21915 - \u21912) * d'\nh\u2082 : 16 - 7 = 3 * d'\nhd'' : d = d'\n\u22a2 7 - a 1 = 3"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization incorrectly uses existential quantification inside universal quantification for the common difference. This allows d to potentially vary for different pairs of indices, which contradicts the definition of an arithmetic sequence where there should be one fixed common difference d.", "The given conditions a_2 = 7 and a_5 = 16 are correctly captured in the Lean formalization.", "The conclusion that d = 3 is correctly formalized, including the proper constraint that this d works for all pairs of indices in the arithmetic sequence.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization incorrectly uses existential quantification inside universal quantification for the common difference. This allows d to potentially vary for different pairs of indices, which contradicts the definition of an arithmetic sequence where there should be one fixed common difference d.', 'The given conditions a_2 = 7 and a_5 = 16 are correctly captured in the Lean formalization.', 'The conclusion that d = 3 is correctly formalized, including the proper constraint that this d works for all pairs of indices in the arithmetic sequence.']"}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Substituting $d=3$ into the first equation gives $7=a_1+3$, so $a_1=4$.", "statement": "We assume:\n\u2022 $(a_n)$ is an arithmetic sequence with $a_2 = 7$ [tc_1].\n\u2022 The common difference of sequence $(a_n)$ is $d=3$ [l1].\nTherefore, we conclude:\n\u2022 The first term of sequence $(a_n)$ is $a_1=4$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3) :\n  a 1 = 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3) :\n  a 1 = 4 := by\n  rcases l1 with \u27e8d, hd, hd'\u27e9\n  have h := hd 1 2 (by decide)\n  rw [tc_1.right.left, hd'] at h\n  simp at h\n  rw [sub_eq_iff_eq_add] at h\n  simp at h\n  exact h", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 15, "column": 2, "endLine": 15, "endColumn": 11, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The arithmetic sequence definition is correctly formalized using the standard mathematical definition with common difference", "The condition a_2 = 7 is directly and accurately translated", "The common difference d = 3 is properly formalized with existential quantification and the constraint", "The conclusion a_1 = 4 is correctly stated", "The extra condition a_5 = 16 in tc_1 is logically consistent with the given information and doesn't contradict the natural language - it's an acceptable additional constraint", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l2\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (\u2191m - \u2191n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (\u2191m - \u2191n) * d) \u2227 d = 3) :\n  \u00ac a 1 = 4 := by\n  rcases l1 with \u27e8d, hd, hdval\u27e9\n  have h1 : a 2 - a 1 = (\u21912 - \u21911) * d := hd 1 2 (by decide)\n  rw [hdval, tc_1.right.left] at h1\n  simp [h1]\n  norm_num"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "Thus, the general formula for $a_n$ is $a_n=4+(n-1)3=3n+1$.", "statement": "We assume:\n\u2022 $(a_n)$ is an arithmetic sequence with general formula $a_n = a_1 + (n-1)d$ [tc_1].\n\u2022 The first term is $a_1=4$ [l2].\n\u2022 The common difference is $d=3$ [l1].\nTherefore, we conclude:\n\u2022 The general formula for $(a_n)$ is $a_n = 3n+1$ [l3].", "dependencies": ["tc_1", "l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3)\n  (l2 : a 1 = 4) :\n  \u2200 n : \u2115, a n = 3 * n + 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3)\n  (l2 : a 1 = 4) :\n  \u2200 n : \u2115, a n = 3 * n + 1 := by\n  obtain \u27e8d, hd, hd'\u27e9 := l1\n  rw [hd'] at hd\n  intro n\n  induction n with\n  | zero =>\n    have h := hd 0 1 (by decide)\n    simp at h\n    rw [l2, hd'] at h\n    simp [h]\n  | succ n ih =>\n    cases n with\n    | zero =>\n      rw [hd'] at hd\n      have h := hd 1 2 (by decide)\n      simp at h\n      rw [l2, tc_1.right.left] at h\n      simp [h, l2]\n    | succ n =>\n      have h := hd (n+1) (n+2) (by decide)\n      simp at h\n      rw [ih] at h\n      simp [h]\n      ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 12, "endLine": 18, "endColumn": 15, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  d\ncase intro.intro.zero\na : \u2115 \u2192 \u211d\ntc_1 : (\u2200 (n m : \u2115), m > n \u2192 \u2203 d, a m - a n = (\u2191m - \u2191n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16\nl2 : a 1 = 4\nd : \u211d\nhd : \u2200 (n m : \u2115), m > n \u2192 a m - a n = (\u2191m - \u2191n) * 3\nhd' : d = 3\nh : 4 - a 0 = 3\n\u22a2 a 0 = 3 * \u21910 + 1"}, {"line": 23, "column": 10, "endLine": 23, "endColumn": 13, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  d\ncase intro.intro.succ.zero\na : \u2115 \u2192 \u211d\ntc_1 : (\u2200 (n m : \u2115), m > n \u2192 \u2203 d, a m - a n = (\u2191m - \u2191n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16\nl2 : a 1 = 4\nd : \u211d\nhd : \u2200 (n m : \u2115), m > n \u2192 a m - a n = (\u2191m - \u2191n) * 3\nhd' : d = 3\nih : a 0 = 3 * \u21910 + 1\n\u22a2 a (0 + 1) = 3 * \u2191(0 + 1) + 1"}, {"line": 29, "column": 35, "endLine": 29, "endColumn": 41, "data": "expected type must not contain free variables\n  n + 2 > n + 1\nUse the '+revert' option to automatically cleanup and revert free variables."}, {"line": 28, "column": 13, "endLine": 33, "endColumn": 10, "data": "unsolved goals\ncase intro.intro.succ.succ\na : \u2115 \u2192 \u211d\ntc_1 : (\u2200 (n m : \u2115), m > n \u2192 \u2203 d, a m - a n = (\u2191m - \u2191n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16\nl2 : a 1 = 4\nd : \u211d\nhd : \u2200 (n m : \u2115), m > n \u2192 a m - a n = (\u2191m - \u2191n) * 3\nhd' : d = 3\nn : \u2115\nih : a (n + 1) = 3 * \u2191(n + 1) + 1\nh : a (n + 2) - (3 * \u2191(n + 1) + 1) = (2 - 1) * 3\n\u22a2 a (2 + n) = 7 + \u2191n * 3"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The arithmetic sequence definition is mathematically equivalent between natural language and Lean. The Lean version adds specific values a 2 = 7 and a 5 = 16 which are logically consistent with the given conditions (a_1 = 4, d = 3) but not explicitly mentioned in the natural language. Since these are additional consistent details rather than contradictions, this falls under 'Perfectly match'.", "The first term condition a_1 = 4 is identically represented in both versions.", "The common difference d = 3 is correctly captured in the Lean formalization with appropriate existential quantification and arithmetic sequence property.", "The conclusion that a_n = 3n + 1 is identically represented in both the natural language and Lean formalization.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l3\n  (a : \u2115 \u2192 \u211d)\n  (tc_1 : (\u2200 n m : \u2115, m > n \u2192 \u2203 d : \u211d, a m - a n = (m - n) * d) \u2227 a 2 = 7 \u2227 a 5 = 16)\n  (l1 : \u2203 d : \u211d, (\u2200 n m : \u2115, m > n \u2192 a m - a n = (m - n) * d) \u2227 d = 3)\n  (l2 : a 1 = 4) :\n  \u00ac \u2200 n : \u2115, a n = 3 * n + 1 := by\n  intro h\n  have h2 := h 2\n  have h5 := h 5\n  rw [tc_1.right.left, tc_1.right.right] at h2 h5\n  norm_num at h2 h5\n  contradiction"}, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "For the geometric sequence $(b_n)$, the general formula is $b_n = b_1 \\cdot r^{n-1}$. Given $b_2=12$ and $b_4=48$, we have $12=b_1 r$ and $48=b_1 r^3$. Dividing the second equation by the first gives $\\frac{b_1 r^3}{b_1 r} = \\frac{48}{12}$, so $r^2=4$, which implies $r=2$.", "statement": "We assume:\n\u2022 $(b_n)$ is a geometric sequence with general formula $b_n = b_1 \\cdot r^{n-1}$ where $b_2 = 12$ and $b_4 = 48$ [tc_2].\nTherefore, we conclude:\n\u2022 The common ratio of sequence $(b_n)$ is $r=2$ [l4].", "dependencies": ["tc_2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : (b 2 = 12 \u2227 b 4 = 48)) :\n  (b 4) / (b 2) = 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : (b 2 = 12 \u2227 b 4 = 48)) :\n  (b 4) / (b 2) = 4 := by\n  rw [tc_2.1, tc_2.2]\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization has a major inconsistency because it completely omits the fundamental assumption that (b_n) is a geometric sequence with the formula b_n = b_1 \u00b7 r^(n-1). This assumption is crucial for the mathematical reasoning in the natural language. Additionally, while the conclusion r=2 is mathematically equivalent to (b_4)/(b_2)=4, the Lean code proves a different statement and without the geometric sequence context, it becomes merely a trivial arithmetic verification rather than a meaningful conclusion about the common ratio of a geometric sequence."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization has a major inconsistency because it completely omits the fundamental assumption that (b_n) is a geometric sequence with the formula b_n = b_1 \u00b7 r^(n-1). This assumption is crucial for the mathematical reasoning in the natural language. Additionally, while the conclusion r=2 is mathematically equivalent to (b_4)/(b_2)=4, the Lean code proves a different statement and without the geometric sequence context, it becomes merely a trivial arithmetic verification rather than a meaningful conclusion about the common ratio of a geometric sequence.']"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Substituting $r=2$ into the first equation gives $12=b_1(2)$, so $b_1=6$.", "statement": "We assume:\n\u2022 $(b_n)$ is a geometric sequence with $b_2 = 12$ [tc_2].\n\u2022 The common ratio of sequence $(b_n)$ is $r=2$ [l4].\nTherefore, we conclude:\n\u2022 The first term of sequence $(b_n)$ is $b_1=6$ [l5].", "dependencies": ["tc_2", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : (b 2 = 12 \u2227 b 4 = 48))\n  (l4 : (b 4) / (b 2) = 4) :\n  b 1 = 6 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : (b 2 = 12 \u2227 b 4 = 48))\n  (l4 : (b 4) / (b 2) = 4) :\n  b 1 = 6 := by\n  have h2 := tc_2.left\n  have h4 := tc_2.right\n  have r_eq_2 : b 4 / b 2 = 2 ^ 2 := by rw [h4, h2]; norm_num\n  have r_eq_2' : b 4 / b 2 = 4 := by rw [h4, h2]; norm_num\n  have : b 2 = b 1 * 2 := by\n    rw [h2]\n    have : b 1 * 2 = 12 := by\n      rw [\u2190 h2]\n      have : b (n + 1) = b n * 2 := by sorry\n      sorry\n    sorry\n  rw [h2] at this\n  rw [\u2190 mul_eq_mul_left_iff] at this\n  norm_num at this\n  exact this", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 18, "column": 16, "endLine": 18, "endColumn": 17, "data": "unknown identifier 'n'"}, {"line": 18, "column": 27, "endLine": 18, "endColumn": 28, "data": "unknown identifier 'n'"}, {"line": 22, "column": 6, "endLine": 22, "endColumn": 27, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?m.1186 = ?m.1187 \u2228 ?m.1185 = 0\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nh2 : b 2 = 12\nh4 : b 4 = 48\nr_eq_2 : b 4 / b 2 = 2 ^ 2\nr_eq_2' : b 4 / b 2 = 4\nthis : 12 = b 1 * 2\n\u22a2 b 1 = 6"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization has several significant issues: (1) It doesn't explicitly state that b is a geometric sequence, which is a key assumption in the natural language. (2) The condition l4 states the ratio b4/b2 = 4, but the natural language says the common ratio r = 2. While mathematically these are consistent (since b4/b2 = r\u00b2 = 4 when r = 2), the direct translation should reflect r = 2. (3) The condition tc_2 includes an extra constraint b4 = 48 that wasn't mentioned in the natural language assumptions. (4) The formalization misses the fundamental geometric sequence property that defines the relationship between consecutive terms.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization has several significant issues: (1) It doesn't explicitly state that b is a geometric sequence, which is a key assumption in the natural language. (2) The condition l4 states the ratio b4/b2 = 4, but the natural language says the common ratio r = 2. While mathematically these are consistent (since b4/b2 = r\u00b2 = 4 when r = 2), the direct translation should reflect r = 2. (3) The condition tc_2 includes an extra constraint b4 = 48 that wasn't mentioned in the natural language assumptions. (4) The formalization misses the fundamental geometric sequence property that defines the relationship between consecutive terms.\"]"}, "solved_negation": null, "type": "lemma"}, "l6": {"id": "l6", "natural_language": "Thus, the general formula for $b_n$ is $b_n=6 \\cdot 2^{n-1}$.", "statement": "We assume:\n\u2022 $(b_n)$ is a geometric sequence with general formula $b_n = b_1 \\cdot r^{n-1}$ [tc_2].\n\u2022 The first term is $b_1=6$ [l5].\n\u2022 The common ratio is $r=2$ [l4].\nTherefore, we conclude:\n\u2022 The general formula for $(b_n)$ is $b_n = 6 \\cdot 2^{n-1}$ [l6].", "dependencies": ["tc_2", "l4", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : b 2 = 12 \u2227 b 4 = 48)\n  (l4 : (b 4) / (b 2) = 4)\n  (l5 : b 1 = 6) :\n  b = fun n => 6 * (2 : \u211d) ^ (n - 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l6\n  (b : \u2115 \u2192 \u211d)\n  (tc_2 : b 2 = 12 \u2227 b 4 = 48)\n  (l4 : (b 4) / (b 2) = 4)\n  (l5 : b 1 = 6) :\n  b = fun n => 6 * (2 : \u211d) ^ (n - 1) := by\n  funext n\n  cases n with\n  | zero => \n    simp [l5]\n  | succ n =>\n    induction n with\n    | zero => \n      simp [l5]\n    | succ n ih =>\n      have h : b (n + 2) = 2 * b (n + 1) := by\n        have : b (n + 3) / b (n + 2) = 2 := by\n          cases n with\n          | zero => \n            simp [tc_2.1, tc_2.2, l4]\n          | succ n =>\n            have : b (n + 4) / b (n + 3) = 2 := by\n              cases n with\n              | zero => \n                simp [tc_2.1, tc_2.2, l4]\n              | succ n =>\n                have : b (n + 5) / b (n + 4) = 2 := by\n                  cases n with\n                  | zero => \n                    simp [tc_2.1, tc_2.2, l4]\n                  | succ n =>\n                    exact ih\n                exact this\n            exact this\n        field_simp at this\n        exact this\n      rw [ih, h]\n      ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 13, "column": 9, "endLine": 14, "endColumn": 13, "data": "unsolved goals\ncase h.zero\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nl5 : b 1 = 6\n\u22a2 b 0 = 6"}, {"line": 23, "column": 17, "endLine": 24, "endColumn": 37, "data": "unsolved goals\ncase zero\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nl5 : b 1 = 6\nih : b (0 + 1) = 6 * 2 ^ (0 + 1 - 1)\n\u22a2 b 3 / 12 = 2"}, {"line": 28, "column": 21, "endLine": 29, "endColumn": 41, "data": "unsolved goals\ncase zero\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nl5 : b 1 = 6\nih : b (0 + 1 + 1) = 6 * 2 ^ (0 + 1 + 1 - 1)\n\u22a2 48 / b 3 = 2"}, {"line": 33, "column": 25, "endLine": 34, "endColumn": 45, "data": "unsolved goals\ncase zero\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nl5 : b 1 = 6\nih : b (0 + 1 + 1 + 1) = 6 * 2 ^ (0 + 1 + 1 + 1 - 1)\n\u22a2 b 5 / 48 = 2"}, {"line": 36, "column": 20, "endLine": 36, "endColumn": 28, "data": "type mismatch\n  ih\nhas type\n  b (n + 1 + 1 + 1 + 1) = 6 * 2 ^ (n + 1 + 1 + 1 + 1 - 1) : Prop\nbut is expected to have type\n  b (n + 1 + 5) / b (n + 1 + 4) = 2 : Prop"}, {"line": 40, "column": 8, "endLine": 40, "endColumn": 18, "data": "type mismatch\n  this\nhas type\n  b (n + 3) / b (n + 2) = 2 : Prop\nbut is expected to have type\n  b (n + 2) = 2 * b (n + 1) : Prop"}, {"line": 41, "column": 10, "endLine": 41, "endColumn": 12, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  b (n + 1)\ncase h.succ.succ\nb : \u2115 \u2192 \u211d\ntc_2 : b 2 = 12 \u2227 b 4 = 48\nl4 : b 4 / b 2 = 4\nl5 : b 1 = 6\nn : \u2115\nih : b (n + 1) = 6 * 2 ^ (n + 1 - 1)\nh : b (n + 2) = 2 * b (n + 1)\n\u22a2 b (n + 1 + 1) = 6 * 2 ^ (n + 1 + 1 - 1)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The natural language defines the sequence as geometric with general formula b_n = b_1 * r^(n-1), while Lean provides specific term values b_2=12 and b_4=48. Though mathematically equivalent, this is a structural difference in how the geometric property is established.", "Natural language states common ratio r=2, while Lean states (b_4)/(b_2)=4. These are consistent since for a geometric sequence the ratio of terms two positions apart equals r^2=4, but the representation differs from the direct statement of the common ratio.", "Both formulations correctly state that the first term b_1 equals 6.", "Both formulations conclude with the identical general formula b_n = 6 * 2^(n-1).", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The natural language defines the sequence as geometric with general formula b_n = b_1 * r^(n-1), while Lean provides specific term values b_2=12 and b_4=48. Though mathematically equivalent, this is a structural difference in how the geometric property is established.', 'Natural language states common ratio r=2, while Lean states (b_4)/(b_2)=4. These are consistent since for a geometric sequence the ratio of terms two positions apart equals r^2=4, but the representation differs from the direct statement of the common ratio.', 'Both formulations correctly state that the first term b_1 equals 6.', 'Both formulations conclude with the identical general formula b_n = 6 * 2^(n-1).']"}, "solved_negation": null, "type": "lemma"}, "def_1": {"id": "def_1", "natural_language": "Now, we consider the generic term of the series, $\\frac{1}{a_n \\cdot b_n} = \\frac{1}{(3n+1)(6 \\cdot 2^{n-1})}$.", "statement": "Definition:\n\u2022 Based on the formulas $a_n=3n+1$ [l3] and $b_n=6 \\cdot 2^{n-1}$ [l6], the partial sum $C_N$ [tc_3] is given by $C_N = \\sum_{n=1}^{N} \\frac{1}{(3n+1)(6 \\cdot 2^{n-1})}$ [def_1].", "dependencies": ["tc_3", "l3", "l6"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable\n  (a b : \u2115 \u2192 \u211d)\n  (tc_3 : \u2200 (N : \u2115), N \u2265 1 \u2192 (\u2211 n in Finset.range N, 1 / (a n * b n)) = (fun N \u21a6 \u2211 n in Finset.range N, 1 / (a (n+1) * b (n+1))) N)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (\u2211 n in Finset.range N, 1 / (a n * b n)) = \u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))))", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.5, "semantic_feedback": ["The Lean formalization uses 0-based indexing with `a n = 3 * n + 1`, while the natural language uses 1-based indexing with $a_n = 3n + 1$. However, when used in the sum with `Finset.range N`, this effectively captures the same mathematical meaning since the sum runs from n=0 to N-1 in Lean, which corresponds to the 1-based indexing in the natural language.", "The Lean formalization perfectly captures $b_n = 6 \\cdot 2^{n-1}$ with the function definition and proper type casting to reals.", "The Lean formalization captures the essence of the conclusion but has indexing differences due to using `Finset.range N` (0-based) instead of the mathematical notation $\\sum_{n=1}^{N}$ (1-based). The mathematical meaning is preserved but the representation differs slightly. Also, the Lean version defines this as an equality between two sum expressions rather than directly defining $C_N$."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.5, below threshold 0.6.\nScorer feedback: ['The Lean formalization uses 0-based indexing with `a n = 3 * n + 1`, while the natural language uses 1-based indexing with $a_n = 3n + 1$. However, when used in the sum with `Finset.range N`, this effectively captures the same mathematical meaning since the sum runs from n=0 to N-1 in Lean, which corresponds to the 1-based indexing in the natural language.', 'The Lean formalization perfectly captures $b_n = 6 \\\\cdot 2^{n-1}$ with the function definition and proper type casting to reals.', 'The Lean formalization captures the essence of the conclusion but has indexing differences due to using `Finset.range N` (0-based) instead of the mathematical notation $\\\\sum_{n=1}^{N}$ (1-based). The mathematical meaning is preserved but the representation differs slightly. Also, the Lean version defines this as an equality between two sum expressions rather than directly defining $C_N$.']"}, "type": "definition"}, "l7": {"id": "l7", "natural_language": "For $n \\geq 1$, we have $3n+1 \\geq 4$.", "statement": "We assume:\n\u2022 $n$ is an integer such that $n \\geq 1$ [tc_3].\nTherefore, we conclude:\n\u2022 $3n+1 \\geq 4$ [l7].", "dependencies": ["tc_3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (n : \u2115)\n  (tc_3 : n \u2265 1) :\n  3 * n + 1 \u2265 4 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l7\n  (n : \u2115)\n  (tc_3 : n \u2265 1) :\n  3 * n + 1 \u2265 4 := by\n  have h : 3 * n \u2265 3 := by exact Nat.mul_le_mul_left 3 tc_3\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.75, "semantic_feedback": ["The natural language specifies 'n is an integer' but the Lean formalization uses natural numbers (\u2115) instead of integers (\u2124). However, since n \u2265 1, natural numbers are a valid subset that captures the intended meaning, though it's slightly more restrictive than the original statement.", "The assumption n \u2265 1 is correctly captured as hypothesis tc_3 with the same mathematical meaning.", "The conclusion 3n+1 \u2265 4 is perfectly translated to 3 * n + 1 \u2265 4, with only notational differences (multiplication symbol).", "The logical structure of assumption leading to conclusion is correctly represented in Lean's theorem format with hypothesis and goal."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l8": {"id": "l8", "natural_language": "Therefore, $\\frac{1}{(3n+1)(6 \\cdot 2^{n-1})} \\leq \\frac{1}{4(6 \\cdot 2^{n-1})} = \\frac{1}{24 \\cdot 2^{n-1}} = \\frac{1}{24} (\\frac{1}{2})^{n-1}$.", "statement": "We assume:\n\u2022 For $n \\geq 1$, the term of the series is $\\frac{1}{a_n \\cdot b_n} = \\frac{1}{(3n+1)(6 \\cdot 2^{n-1})}$ [def_1].\n\u2022 For $n \\geq 1$, we have $3n+1 \\geq 4$ [l7].\nTherefore, we conclude:\n\u2022 For any integer $n \\geq 1$, $\\frac{1}{(3n+1)(6 \\cdot 2^{n-1})} \\leq \\frac{1}{24} (\\frac{1}{2})^{n-1}$ [l8].", "dependencies": ["def_1", "l7"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (n : \u2115)\n  (hr : n \u2265 1)\n  (a b : \u2115 \u2192 \u211d)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (1 / (a N * b N)) = 1 / ((3 * N + 1) * (6 * (2 : \u211d) ^ (N - 1))))\n  (l7 : 3 * n + 1 \u2265 4) :\n  1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l8\n  (n : \u2115)\n  (hr : n \u2265 1)\n  (a b : \u2115 \u2192 \u211d)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (1 / (a N * b N)) = 1 / ((3 * N + 1) * (6 * (2 : \u211d) ^ (N - 1))))\n  (l7 : 3 * n + 1 \u2265 4) :\n  1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1) := by\n  have h1 : (3 * n + 1 : \u211d) \u2265 4 := by exact_mod_cast l7\n  have h2 : (6 : \u211d) * (2 : \u211d) ^ (n - 1) \u2265 6 * (2 : \u211d) ^ 0 := by\n    refine mul_le_mul_of_nonneg_left ?_ (by norm_num)\n    refine pow_le_pow_of_le_one (by norm_num) (by norm_num) (Nat.sub_le_sub_right hr 1)\n  simp at h2\n  rw [div_mul_eq_div_div, div_mul_eq_div_div]\n  refine div_le_div_of_le_left (by positivity) ?_ ?_\n  \u00b7 refine mul_pos (by linarith) (mul_pos (by norm_num) (pow_pos (by norm_num) _))\n  \u00b7 refine mul_le_mul h1 h2 (by positivity) (by positivity)", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 17, "column": 60, "endLine": 17, "endColumn": 87, "data": "application type mismatch\n  pow_le_pow_of_le_one ?m.5130 ?m.5131 (Nat.sub_le_sub_right hr 1)\nargument\n  Nat.sub_le_sub_right hr 1\nhas type\n  1 - 1 \u2264 n - 1 : Prop\nbut is expected to have type\n  n - 1 \u2264 0 : Prop"}, {"line": 17, "column": 47, "endLine": 17, "endColumn": 58, "data": "unsolved goals\nn : \u2115\nhr : n \u2265 1\na b : \u2115 \u2192 \u211d\nl3 : \u2200 (n : \u2115), a n = 3 * \u2191n + 1\nl6 : b = fun n => 6 * 2 ^ (n - 1)\ndef_1 : \u2200 N \u2265 1, 1 / (a N * b N) = 1 / ((3 * \u2191N + 1) * (6 * 2 ^ (N - 1)))\nl7 : 3 * n + 1 \u2265 4\nh1 : 3 * \u2191n + 1 \u2265 4\n\u22a2 False"}, {"line": 20, "column": 35, "endLine": 20, "endColumn": 45, "data": "failed to synthesize\n  Zero ?m.11215\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures all mathematical content from the natural language. The series term definition (def_1), constraint (l7), and main inequality conclusion (l8) are all properly represented. The additional explicit definitions of functions a and b are necessary technical details that make the formalization complete without changing the logical meaning. The constraint l7 is presented for the specific n rather than as a general statement, but this is logically equivalent given the context where n \u2265 1 is already assumed.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l8\n  (n : \u2115)\n  (hr : n \u2265 1)\n  (a b : \u2115 \u2192 \u211d)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (1 / (a N * b N)) = 1 / ((3 * N + 1) * (6 * (2 : \u211d) ^ (N - 1))))\n  (l7 : 3 * n + 1 \u2265 4) :\n  \u00ac (1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1)) := by\n  intro h\n  have h1 : (3 * 1 + 1) = 4 := by norm_num\n  have h2 : b 1 = 6 := by simp [l6]; norm_num\n  have h3 : a 1 = 4 := by simp [l3]; norm_num\n  have h4 : 1 / (a 1 * b 1) = 1 / 24 := by rw [h3, h2]; norm_num\n  have h5 : 1 / 24 \u2264 1 / 24 * (1 / 2) ^ 0 := by norm_num\n  have h6 : 1 / ((3 * 1 + 1) * (6 * (2 : \u211d) ^ (1 - 1))) = 1 / 24 := by norm_num\n  have h7 := h (n := 1) (hr := by norm_num)\n  rw [h6] at h7\n  norm_num at h7\n  exact not_le_of_gt (by norm_num) h7"}, "type": "lemma"}, "l9": {"id": "l9", "natural_language": "Thus, $C_N = \\sum_{n=1}^{N} \\frac{1}{(3n+1)(6 \\cdot 2^{n-1})} \\leq \\sum_{n=1}^{N} \\frac{1}{24} (\\frac{1}{2})^{n-1} = \\frac{1}{24} \\sum_{n=1}^{N} (\\frac{1}{2})^{n-1}$.", "statement": "We assume:\n\u2022 For integer $N \\geq 1$, $C_N = \\sum_{n=1}^{N} \\frac{1}{(3n+1)(6 \\cdot 2^{n-1})}$ [def_1].\n\u2022 For any integer $n \\geq 1$, $\\frac{1}{(3n+1)(6 \\cdot 2^{n-1})} \\leq \\frac{1}{24} (\\frac{1}{2})^{n-1}$ [l8].\nTherefore, we conclude:\n\u2022 For any integer $N \\geq 1$, $C_N \\leq \\frac{1}{24} \\sum_{n=1}^{N} (\\frac{1}{2})^{n-1}$ [l9].", "dependencies": ["def_1", "l8"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l9\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (a b : \u2115 \u2192 \u211d)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (\u2211 n in Finset.range N, 1 / (a n * b n)) = \u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))))\n  (l8 : \u2200 (n : \u2115), n \u2265 1 \u2192 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1)) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 (1 / 24) * (\u2211 n in Finset.range N, (1 / 2) ^ (n - 1)) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l9\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (a b : \u2115 \u2192 \u211d)\n  (l3 : \u2200 n : \u2115, a n = 3 * n + 1)\n  (l6 : b = fun n => 6 * (2 : \u211d) ^ (n - 1))\n  (def_1 : \u2200 (N : \u2115), N \u2265 1 \u2192 (\u2211 n in Finset.range N, 1 / (a n * b n)) = \u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))))\n  (l8 : \u2200 (n : \u2115), n \u2265 1 \u2192 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1)) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 (1 / 24) * (\u2211 n in Finset.range N, (1 / 2) ^ (n - 1)) := by\n  rw [\u2190 def_1 N hN]\n  have h : \u2200 n \u2208 Finset.range N, 1 / (a n * b n) \u2264 1 / 24 * (1 / 2) ^ (n - 1) := by\n    intro n hn\n    have := Finset.mem_range.1 hn\n    rw [l3, l6]\n    apply l8\n    linarith\n  trans \u2211 n in Finset.range N, 1 / 24 * (1 / 2) ^ (n - 1)\n  \u00b7 apply Finset.sum_le_sum h\n  \u00b7 simp only [mul_sum]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 20, "column": 4, "endLine": 20, "endColumn": 12, "data": "linarith failed to find a contradiction\ncase a.a\nN : \u2115\nhN : N \u2265 1\na b : \u2115 \u2192 \u211d\nl3 : \u2200 (n : \u2115), a n = 3 * \u2191n + 1\nl6 : b = fun n => 6 * 2 ^ (n - 1)\ndef_1 : \u2200 N \u2265 1, \u2211 n \u2208 Finset.range N, 1 / (a n * b n) = \u2211 n \u2208 Finset.range N, 1 / ((3 * \u2191n + 1) * (6 * 2 ^ (n - 1)))\nl8 : \u2200 n \u2265 1, 1 / ((3 * \u2191n + 1) * (6 * 2 ^ (n - 1))) \u2264 1 / 24 * (1 / 2) ^ (n - 1)\nn : \u2115\nhn : n \u2208 Finset.range N\nthis : n < N\na\u271d : 1 > n\n\u22a2 False failed"}, {"line": 23, "column": 15, "endLine": 23, "endColumn": 22, "data": "unknown identifier 'mul_sum'"}, {"line": 23, "column": 4, "endLine": 23, "endColumn": 23, "data": "simp made no progress"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization has a critical indexing error. The natural language defines sums from n=1 to N, but the Lean code uses 'Finset.range N' which sums from n=0 to N-1. This fundamentally changes the mathematical meaning of all definitions and statements. Additionally, the unnecessary introduction of variables 'a' and 'b' and the formulation of 'def_1' as an equality rather than a proper definition create structural issues. The constraint 'n \u2265 1' in 'l8' becomes meaningless when combined with summation starting from 0.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: [\"The Lean formalization has a critical indexing error. The natural language defines sums from n=1 to N, but the Lean code uses 'Finset.range N' which sums from n=0 to N-1. This fundamentally changes the mathematical meaning of all definitions and statements. Additionally, the unnecessary introduction of variables 'a' and 'b' and the formulation of 'def_1' as an equality rather than a proper definition create structural issues. The constraint 'n \u2265 1' in 'l8' becomes meaningless when combined with summation starting from 0.\"]"}, "solved_negation": null, "type": "lemma"}, "l10": {"id": "l10", "natural_language": "the sum of the partial geometric series is less than the sum of the infinite geometric series,", "statement": "We assume:\n\u2022 (A known property of series with non-negative terms)\nTherefore, we conclude:\n\u2022 For any integer $N \\geq 1$, $\\sum_{n=1}^{N} (\\frac{1}{2})^{n-1} \\leq \\sum_{n=1}^{\\infty} (\\frac{1}{2})^{n-1}$ [l10].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l10\n  (N : \u2115) (hN : N \u2265 1) :\n  \u2211 n in Finset.range N, ((1/2:\u211d)^(n)) \u2264 \u2211 n in Finset.range N, ((1/2:\u211d)^n) + \u2211 n in Finset.filter (fun x => x >= N) (Finset.range 100000000), ((1/2:\u211d)^n) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l10\n  (N : \u2115) (hN : N \u2265 1) :\n  \u2211 n in Finset.range N, ((1/2:\u211d)^(n)) \u2264 \u2211 n in Finset.range N, ((1/2:\u211d)^n) + \u2211 n in Finset.filter (fun x => x >= N) (Finset.range 100000000), ((1/2:\u211d)^n) := by\n  refine le_add_of_nonneg_right ?_\n  apply Finset.sum_nonneg\n  intro n _\n  exact pow_nonneg (by norm_num) n", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 3}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The Lean formalization has multiple major issues: (1) It uses (1/2)^n instead of (1/2)^{n-1} as specified in the natural language, (2) It completely fails to represent the infinite sum concept, instead using a large finite bound of 100000000, (3) The mathematical statement in Lean is structurally different - it compares a finite sum to itself plus another finite sum, rather than comparing a finite sum to an infinite sum as intended in the natural language, (4) The core mathematical meaning about partial sums being bounded by infinite sums is lost in the formalization."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The Lean formalization has multiple major issues: (1) It uses (1/2)^n instead of (1/2)^{n-1} as specified in the natural language, (2) It completely fails to represent the infinite sum concept, instead using a large finite bound of 100000000, (3) The mathematical statement in Lean is structurally different - it compares a finite sum to itself plus another finite sum, rather than comparing a finite sum to an infinite sum as intended in the natural language, (4) The core mathematical meaning about partial sums being bounded by infinite sums is lost in the formalization.']"}, "solved_negation": null, "type": "lemma"}, "l11": {"id": "l11", "natural_language": "The sum of this infinite series is $\\frac{a}{1-r} = \\frac{1}{1-1/2} = \\frac{1}{1/2} = 2$.", "statement": "We assume:\n\u2022 (The formula for the sum of an infinite geometric series $\\sum_{k=0}^{\\infty} r^k = \\frac{1}{1-r}$ for $|r|<1$)\nTherefore, we conclude:\n\u2022 The sum of the infinite series $\\sum_{n=1}^{\\infty} (\\frac{1}{2})^{n-1}$ is 2 [l11].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l11 :\n  \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l11 :\n  \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2 := by\n  have h : \u2211' (n : \u2115), (1/2 : \u211d)^n = 2 := by\n    simp [tsum_geometric_of_abs_lt_1, abs_of_pos, show (0:\u211d) < 1/2 by norm_num]\n  convert h using 1\n  ext1 n\n  cases n\n  \u00b7 simp\n  \u00b7 simp [pow_succ]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 8, "column": 10, "endLine": 8, "endColumn": 36, "data": "unknown identifier 'tsum_geometric_of_abs_lt_1'"}, {"line": 7, "column": 42, "endLine": 8, "endColumn": 79, "data": "unsolved goals\n\u22a2 \u2211' (n : \u2115), (2 ^ n)\u207b\u00b9 = 2"}, {"line": 10, "column": 2, "endLine": 10, "endColumn": 8, "data": "no applicable extensionality theorem found for\n  \u211d"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the specific mathematical conclusion stated in the natural language. The series \u2211_{n=1}^\u221e (1/2)^{n-1} = 2 is accurately represented as \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2. While the general geometric series formula is not explicitly formalized, it serves as background context in the natural language rather than a statement to be formalized. The mathematical meaning is completely preserved.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l11 :\n  \u00ac(\u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2) := by\n  have h : \u2211' (n : \u2115), (1/2 : \u211d)^n = 2 := by\n    have : HasSum (fun n : \u2115 => (1/2 : \u211d)^n) (1 / (1 - 1/2)) :=\n      hasSum_geometric_of_abs_lt_1 (by norm_num)\n    simp [this.tsum_eq, \u2190 div_eq_mul_inv] at *\n    norm_num\n  have h' : \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2 * \u2211' (n : \u2115), (1/2 : \u211d)^n := by\n    simp_rw [\u2190 pow_succ, \u2190 pow_sub_one_mul, sub_add_cancel]\n    rw [tsum_mul_right]\n  rw [h] at h'\n  norm_num at h'\n  contradiction"}, "type": "lemma"}, "l12": {"id": "l12", "natural_language": "so $C_N \\leq \\frac{1}{24} \\sum_{n=1}^{\\infty} (\\frac{1}{2})^{n-1} = \\frac{1}{24} \\cdot 2 = \\frac{2}{24} = \\frac{1}{12}$.", "statement": "We assume:\n\u2022 For any integer $N \\geq 1$, $C_N \\leq \\frac{1}{24} \\sum_{n=1}^{N} (\\frac{1}{2})^{n-1}$ [l9].\n\u2022 For any integer $N \\geq 1$, $\\sum_{n=1}^{N} (\\frac{1}{2})^{n-1} \\leq \\sum_{n=1}^{\\infty} (\\frac{1}{2})^{n-1}$ [l10].\n\u2022 The sum of the infinite series is $\\sum_{n=1}^{\\infty} (\\frac{1}{2})^{n-1} = 2$ [l11].\nTherefore, we conclude:\n\u2022 For any integer $N \\geq 1$, $C_N \\leq \\frac{1}{12}$ [l12].", "dependencies": ["l9", "l10", "l11"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l12\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (l9 : (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 (1 / 24) * (\u2211 n in Finset.range N, (1 / 2) ^ (n - 1)))\n  (l10 : \u2211 n in Finset.range N, ((1/2:\u211d)^(n-1)) \u2264 \u2211' (n : \u2115), ((1/2:\u211d)^(n-1)))\n  (l11 : \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 1 / 12 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l12\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (l9 : (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 (1 / 24) * (\u2211 n in Finset.range N, (1 / 2) ^ (n - 1)))\n  (l10 : \u2211 n in Finset.range N, ((1/2:\u211d)^(n-1)) \u2264 \u2211' (n : \u2115), ((1/2:\u211d)^(n-1)))\n  (l11 : \u2211' (n : \u2115), (1/2 : \u211d)^(n-1) = 2) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 1 / 12 := by\n  have h := le_trans l10 (le_of_eq l11)\n  have h' := mul_le_mul_of_nonneg_left h (by norm_num : (0:\u211d) \u2264 1/24)\n  rw [mul_comm (1/24:\u211d) 2, \u2190 mul_assoc, mul_one_div, mul_one] at h'\n  exact le_trans l9 h'", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 14, "column": 27, "endLine": 14, "endColumn": 38, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  ?a * (?b * ?c)\nN : \u2115\nhN : N \u2265 1\nl9 : \u2211 n \u2208 Finset.range N, 1 / ((3 * \u2191n + 1) * (6 * 2 ^ (n - 1))) \u2264 1 / 24 * \u2211 n \u2208 Finset.range N, (1 / 2) ^ (n - 1)\nl10 : \u2211 n \u2208 Finset.range N, (1 / 2) ^ (n - 1) \u2264 \u2211' (n : \u2115), (1 / 2) ^ (n - 1)\nl11 : \u2211' (n : \u2115), (1 / 2) ^ (n - 1) = 2\nh : \u2211 n \u2208 Finset.range N, (1 / 2) ^ (n - 1) \u2264 2\nh' : 1 / 24 * \u2211 n \u2208 Finset.range N, (1 / 2) ^ (n - 1) \u2264 2 * (1 / 24)\n\u22a2 \u2211 n \u2208 Finset.range N, 1 / ((3 * \u2191n + 1) * (6 * 2 ^ (n - 1))) \u2264 1 / 12"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["Variable type differs (integer vs natural number) but this is acceptable since N \u2265 1 constraint makes natural numbers appropriate", "Natural language uses undefined symbol C_N while Lean provides a specific mathematical expression for what C_N should represent. This is a major semantic gap.", "The finite vs infinite sum relationship is correctly captured in both representations", "The infinite series sum equation is perfectly matched between natural language and Lean", "Same issue as l9 - natural language uses undefined C_N while Lean uses a specific expression, creating a major inconsistency in the conclusion", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['Variable type differs (integer vs natural number) but this is acceptable since N \u2265 1 constraint makes natural numbers appropriate', 'Natural language uses undefined symbol C_N while Lean provides a specific mathematical expression for what C_N should represent. This is a major semantic gap.', 'The finite vs infinite sum relationship is correctly captured in both representations', 'The infinite series sum equation is perfectly matched between natural language and Lean', 'Same issue as l9 - natural language uses undefined C_N while Lean uses a specific expression, creating a major inconsistency in the conclusion']"}, "solved_negation": null, "type": "lemma"}, "l13": {"id": "l13", "natural_language": "Since $\\frac{1}{12} < \\frac{1}{6}$", "statement": "We assume:\n\u2022 (Basic arithmetic)\nTherefore, we conclude:\n\u2022 $\\frac{1}{12} < \\frac{1}{6}$ [l13].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l13 :\n  (1 : \u211d) / 12 < (1 : \u211d) / 6 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l13 :\n  (1 : \u211d) / 12 < (1 : \u211d) / 6 := by\n  norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical inequality 1/12 < 1/6. The use of real numbers (\u211d) is appropriate since the natural language doesn't specify a number type, and the lemma structure properly represents the conclusion being drawn from basic arithmetic. The core mathematical meaning is preserved exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "we have $C_N < \\frac{1}{6}$ for all $N \\geq 1$.", "statement": "We assume:\n\u2022 For any integer $N \\geq 1$, $C_N \\leq \\frac{1}{12}$ [l12].\n\u2022 $\\frac{1}{12} < \\frac{1}{6}$ [l13].\nTherefore, we conclude:\n\u2022 For all integers $N \\geq 1$, the inequality $C_N < \\frac{1}{6}$ holds [ts_1].", "dependencies": ["l12", "l13"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (l12 : (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 1 / 12)\n  (l13 : (1 : \u211d) / 12 < (1 : \u211d) / 6) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) < 1 / 6 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (N : \u2115)\n  (hN : N \u2265 1)\n  (l12 : (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) \u2264 1 / 12)\n  (l13 : (1 : \u211d) / 12 < (1 : \u211d) / 6) :\n  (\u2211 n in Finset.range N, 1 / ((3 * n + 1) * (6 * (2 : \u211d) ^ (n - 1)))) < 1 / 6 := by\n  exact lt_of_le_of_lt l12 l13", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly interprets C_N as a specific summation formula, which is a reasonable mathematical interpretation of the abstract C_N mentioned in natural language.", "The constraint l12 is perfectly captured - the Lean code correctly expresses that the summation is less than or equal to 1/12 for N \u2265 1.", "The inequality l13 is exactly represented in Lean with proper type annotations for real numbers.", "The conclusion ts_1 correctly states that the summation (C_N) is strictly less than 1/6, matching the natural language conclusion.", "The logical flow from assumptions to conclusion is properly structured in Lean as a lemma with hypotheses and a goal, accurately reflecting the deductive reasoning in the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_2", "label": "tc_2", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "tc_3", "label": "tc_3", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l6", "label": "l6", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l7", "label": "l7", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l8", "label": "l8", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l9", "label": "l9", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l10", "label": "l10", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l11", "label": "l11", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l12", "label": "l12", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l13", "label": "l13", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_2", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_3", "to": "l7", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "l6", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l6", "to": "def_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l7", "to": "l8", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l8", "to": "l9", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l9", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l10", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l11", "to": "l12", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l12", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l13", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

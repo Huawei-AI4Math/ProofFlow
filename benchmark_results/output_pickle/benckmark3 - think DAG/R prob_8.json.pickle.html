@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Let $(\mathbb{R}, \mathcal{B}(\mathbb{R}), \lambda)$ be the Lebesgue measure space. Let $f: \mathbb{R} 	o \mathbb{R}$ be a function defined such that $f(x) = 2$ for $x \in [0, 1]$, $f(x) = 5$ for $x \in (1, 2]$, and $f(x) = 0$ otherwise. Then $\int_{\mathbb{R}} f d\lambda = 7$.
+
+Proof: The function $f$ can be expressed as a simple function $f = 2\chi_{[0,1]} + 5\chi_{(1,2]}$, where $\chi_A$ is the characteristic function of a set $A$. By the linearity property of the Lebesgue integral, we can write $\int_{\mathbb{R}} f d\lambda = 2\int_{\mathbb{R}} \chi_{[0,1]} d\lambda + 5\int_{\mathbb{R}} \chi_{(1,2]} d\lambda$. The integral of a characteristic function is the measure of the set, so we first evaluate $\int_{\mathbb{R}} \chi_{[0,1]} d\lambda = \lambda([0,1]) = 1$. Similarly, we evaluate the second integral as $\int_{\mathbb{R}} \chi_{(1,2]} d\lambda = \lambda((1,2]) = 1$. Substituting these values back, we get the final result: $\int_{\mathbb{R}} f d\lambda = 2(1) + 5(1) = 7$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "Let $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ be the Lebesgue measure space. Let $f: \\mathbb{R} \\to \\mathbb{R}$ be a function defined such that $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise.", "statement": "Premise:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space, and $f: \\mathbb{R} \\to \\mathbb{R}$ is a function defined such that $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 :\n  let f : \u211d \u2192 \u211d := fun x => if x \u2208 Set.Icc 0 1 then 2\n                             else if x \u2208 Set.Ioc 1 2 then 5\n                             else 0\n  \u222b x, f x = 7 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language explicitly mentions the Lebesgue measure space (\u211d, \u212c(\u211d), \u03bb) as a condition, but the Lean formalization does not reference this measure space at all", "The Lean formalization correctly defines f: \u211d \u2192 \u211d as a function from reals to reals", "The Lean formalization uses Set.Icc 0 1 which correctly represents the closed interval [0,1], and assigns value 2", "The Lean formalization uses Set.Ioc 1 2 which correctly represents the half-open interval (1,2], and assigns value 5", "The Lean formalization correctly assigns 0 to all other values via the else clause", "The natural language conclusion is that 'f is completely defined on \u211d', but the Lean formalization proves '\u222b x, f x = 7' which is about the integral value, not about the function being completely defined"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language explicitly mentions the Lebesgue measure space (\u211d, \u212c(\u211d), \u03bb) as a condition, but the Lean formalization does not reference this measure space at all', 'The Lean formalization correctly defines f: \u211d \u2192 \u211d as a function from reals to reals', 'The Lean formalization uses Set.Icc 0 1 which correctly represents the closed interval [0,1], and assigns value 2', 'The Lean formalization uses Set.Ioc 1 2 which correctly represents the half-open interval (1,2], and assigns value 5', 'The Lean formalization correctly assigns 0 to all other values via the else clause', \"The natural language conclusion is that 'f is completely defined on \u211d', but the Lean formalization proves '\u222b x, f x = 7' which is about the integral value, not about the function being completely defined\"]"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "The function $f$ can be expressed as a simple function $f = 2\\chi_{[0,1]} + 5\\chi_{(1,2]}$, where $\\chi_A$ is the characteristic function of a set $A$.", "statement": "We assume:\n\u2022 $f: \\mathbb{R} \\to \\mathbb{R}$ is a function defined such that $f(x) = 2$ for $x \\in [0, 1]$, $f(x) = 5$ for $x \\in (1, 2]$, and $f(x) = 0$ otherwise [tc_1].\nTherefore, we conclude:\n\u2022 For all $x \\in \\mathbb{R}$, $f(x) = 2 \\cdot \\chi_{[0,1]}(x) + 5 \\cdot \\chi_{(1,2]}(x)$, where $\\chi_A$ is the characteristic function of a set $A$ [l1].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d)\n  (h : \u2200 x : \u211d, f x = if x \u2208 Set.Icc 0 1 then 2\n                       else if x \u2208 Set.Ioc 1 2 then 5\n                       else 0) :\n  \u2200 x : \u211d, f x = 2 * (if x \u2208 Set.Icc 0 1 then 1 else 0) + \n                 5 * (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 \n  (f : \u211d \u2192 \u211d)\n  (h : \u2200 x : \u211d, f x = if x \u2208 Set.Icc 0 1 then 2\n                       else if x \u2208 Set.Ioc 1 2 then 5\n                       else 0) :\n  \u2200 x : \u211d, f x = 2 * (if x \u2208 Set.Icc 0 1 then 1 else 0) + \n                 5 * (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n  intro x\n  have h_main : f x = 2 * (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n    have h\u2081 : f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0 := by\n      rw [h]\n    rw [h\u2081]\n    split_ifs <;>\n    (try { contradiction }) <;>\n    (try {\n      -- Case: x \u2208 Set.Icc 0 1\n      have h\u2082 : x \u2208 Set.Icc 0 1 := by assumption\n      have h\u2083 : \u00acx \u2208 Set.Ioc 1 2 := by\n        intro h\u2084\n        have h\u2085 : 1 < x := h\u2084.1\n        have h\u2086 : x \u2264 1 := h\u2082.2\n        linarith\n      simp_all [Set.Icc, Set.Ioc]\n      <;> norm_num <;>\n      (try { linarith }) <;>\n      (try { exact \u27e8by linarith, by linarith\u27e9 })\n    }) <;>\n    (try {\n      -- Case: x \u2208 Set.Ioc 1 2\n      have h\u2082 : x \u2208 Set.Ioc 1 2 := by assumption\n      have h\u2083 : \u00acx \u2208 Set.Icc 0 1 := by\n        intro h\u2084\n        have h\u2085 : x \u2264 1 := h\u2084.2\n        have h\u2086 : 1 < x := h\u2082.1\n        linarith\n      simp_all [Set.Icc, Set.Ioc]\n      <;> norm_num <;>\n      (try { linarith }) <;>\n      (try { exact \u27e8by linarith, by linarith\u27e9 })\n    }) <;>\n    (try {\n      -- Case: neither x \u2208 Set.Icc 0 1 nor x \u2208 Set.Ioc 1 2\n      have h\u2082 : \u00acx \u2208 Set.Icc 0 1 := by tauto\n      have h\u2083 : \u00acx \u2208 Set.Ioc 1 2 := by tauto\n      simp_all [Set.Icc, Set.Ioc]\n      <;> norm_num <;>\n      (try { linarith }) <;>\n      (try { exact \u27e8by linarith, by linarith\u27e9 })\n    })\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the piecewise function definition using appropriate interval notation (Set.Icc for [0,1] and Set.Ioc for (1,2]) and the conditional structure perfectly represents the mathematical definition.", "The characteristic function representation is accurately formalized using conditional expressions that return 1 for membership and 0 otherwise, which is exactly equivalent to the mathematical notation \u03c7_A(x).", "The logical structure is properly maintained with the assumption given as hypothesis h and the conclusion stated as the theorem goal, preserving the 'assume-therefore-conclude' reasoning pattern."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "By the linearity property of the Lebesgue integral, we can write $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1].\n\u2022 For all $x \\in \\mathbb{R}$, $f(x) = 2 \\cdot \\chi_{[0,1]}(x) + 5 \\cdot \\chi_{(1,2]}(x)$ [l1].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2].", "dependencies": ["tc_1", "l1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (f : \u211d \u2192 \u211d)\n  (h_f : \u2200 x : \u211d, f x = if x \u2208 Set.Icc 0 1 then 2\n                         else if x \u2208 Set.Ioc 1 2 then 5\n                         else 0) :\n  \u222b x, f x = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) + \n             5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by sorry", "lean_pass": false, "error_msg": [{"line": 12, "column": 17, "endLine": 13, "endColumn": 56, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 13, "column": 17, "endLine": 13, "endColumn": 56, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib.Analysis.MeasureTheory.Integral.SetIntegral\nimport Mathlib.Analysis.MeasureTheory.Integral.Integral\nimport Mathlib.Analysis.MeasureTheory.Integral.Lebesgue\nimport Mathlib.MeasureTheory.MeasureSpace\nimport Mathlib.MeasureTheory.Function.Integrable\nimport Mathlib.MeasureTheory.Function.LebesgueIntegral\nimport Mathlib.Analysis.SpecialFunctions.Indicator\nimport Mathlib.Data.Real.Basic\nimport Mathlib.Topology.Algebra.Order\nimport Mathlib.MeasureTheory.Measure.Lebesgue\n\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2 \n  (f : \u211d \u2192 \u211d)\n  (h_f : \u2200 x : \u211d, f x = if x \u2208 Set.Icc 0 1 then 2\n                         else if x \u2208 Set.Ioc 1 2 then 5\n                         else 0) :\n  \u222b x, f x = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) + \n             5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n  have h_pointwise : \u2200 (x : \u211d), f x = 2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0) := by\n    intro x\n    rw [h_f]\n    split_ifs <;>\n    (try { contradiction }) <;>\n    (try {\n      have h\u2081 : \u00acx \u2208 Set.Icc (0 : \u211d) 1 := by tauto\n      have h\u2082 : \u00acx \u2208 Set.Ioc (1 : \u211d) 2 := by tauto\n      simp_all [Set.Icc, Set.Ioc]\n      <;>\n      (try { nlinarith }) <;>\n      (try { linarith }) <;>\n      (try { exact False.elim (by tauto) })\n    }) <;>\n    (try {\n      have h\u2081 : x \u2208 Set.Icc (0 : \u211d) 1 := by tauto\n      have h\u2082 : \u00acx \u2208 Set.Ioc (1 : \u211d) 2 := by\n        intro h\n        have h\u2083 : x > 1 := h.1\n        have h\u2084 : x \u2264 1 := h\u2081.2\n        linarith\n      simp_all [Set.Icc, Set.Ioc]\n      <;>\n      (try { nlinarith }) <;>\n      (try { linarith }) <;>\n      (try { exact False.elim (by tauto) })\n    }) <;>\n    (try {\n      have h\u2081 : x \u2208 Set.Ioc (1 : \u211d) 2 := by tauto\n      have h\u2082 : \u00acx \u2208 Set.Icc (0 : \u211d) 1 := by\n        intro h\n        have h\u2083 : x \u2264 1 := h.2\n        have h\u2084 : x > 1 := h\u2081.1\n        linarith\n      simp_all [Set.Icc, Set.Ioc]\n      <;>\n      (try { nlinarith }) <;>\n      (try { linarith }) <;>\n      (try { exact False.elim (by tauto) })\n    }) <;>\n    (try {\n      simp_all [Set.Icc, Set.Ioc]\n      <;>\n      (try { nlinarith }) <;>\n      (try { linarith }) <;>\n      (try { exact False.elim (by tauto) })\n    })\n    <;>\n    (try { linarith })\n    <;>\n    (try { nlinarith })\n  \n  have h_integrable\u2081 : MeasureTheory.Integrable (fun x : \u211d => (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) := by\n    have h : MeasureTheory.IntegrableOn (fun x : \u211d => (1 : \u211d)) (Set.Icc (0 : \u211d) 1) := by\n      apply Continuous.integrableOn_Icc\n      <;> continuity\n    -- Use the fact that the function is zero outside [0, 1] to show it is integrable on \u211d\n    have h\u2082 : MeasureTheory.Integrable (fun x : \u211d => (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) := by\n      refine' (MeasureTheory.integrable_congr_ae _).trans (MeasureTheory.integrableOn_iff_integrable_restrict.mp _)\n      \u00b7 -- Show that the function is almost everywhere equal to an integrable function\n        filter_upwards [ae_restrict_mem measurableSet_Icc] with x hx\n        by_cases h\u2083 : x \u2208 Set.Icc (0 : \u211d) 1 <;> simp_all [h\u2083]\n        <;> aesop\n      \u00b7 -- Show that the function is integrable on the set [0, 1]\n        simpa using h\n    exact h\u2082\n  \n  have h_integrable\u2082 : MeasureTheory.Integrable (fun x : \u211d => (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) := by\n    have h : MeasureTheory.IntegrableOn (fun x : \u211d => (1 : \u211d)) (Set.Ioc (1 : \u211d) 2) := by\n      apply Continuous.integrableOn_Ioc\n      <;> continuity\n      <;> norm_num\n    -- Use the fact that the function is zero outside (1, 2] to show it is integrable on \u211d\n    have h\u2082 : MeasureTheory.Integrable (fun x : \u211d => (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) := by\n      refine' (MeasureTheory.integrable_congr_ae _).trans (MeasureTheory.integrableOn_iff_integrable_restrict.mp _)\n      \u00b7 -- Show that the function is almost everywhere equal to an integrable function\n        filter_upwards [ae_restrict_mem measurableSet_Ioc] with x hx\n        by_cases h\u2083 : x \u2208 Set.Ioc (1 : \u211d) 2 <;> simp_all [h\u2083]\n        <;> aesop\n      \u00b7 -- Show that the function is integrable on the set (1, 2]\n        simpa using h\n    exact h\u2082\n  \n  have h_main : \u222b x, f x = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then 1 else 0) := by\n    have h\u2081 : \u222b x, f x = \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) := by\n      -- Use the pointwise equality to show that the integrals are equal\n      congr\n      ext x\n      rw [h_pointwise]\n      <;>\n      simp [Set.Icc, Set.Ioc]\n      <;>\n      aesop\n    rw [h\u2081]\n    have h\u2082 : \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) = \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0)) + \u222b x : \u211d, (5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) := by\n      -- Use the additivity of the integral\n      have h\u2083 : MeasureTheory.Integrable (fun x : \u211d => (2 : \u211d) * (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) := by\n        -- Prove that the first function is integrable\n        apply MeasureTheory.Integrable.mul_left\n        exact h_integrable\u2081\n      have h\u2084 : MeasureTheory.Integrable (fun x : \u211d => (5 : \u211d) * (if x \u2208 Set.Ioc (1 : \u211d) 2 then (1 : \u211d) else 0)) := by\n        -- Prove that the second function is integrable\n        apply MeasureTheory.Integrable.mul_left\n        exact h_integrable\u2082\n      -- Use the additivity of the integral\n      have h\u2085 : \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) = \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0)) + \u222b x : \u211d, (5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) := by\n        -- Apply the additivity of the integral\n        have h\u2086 : \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) + 5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) = \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0)) + \u222b x : \u211d, (5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) := by\n          apply integral_add\n          <;>\n          (try\n            {\n              apply MeasureTheory.Integrable.mul_left\n              <;>\n              (try assumption)\n              <;>\n              (try\n                {\n                  apply h_integrable\u2081\n                })\n              <;>\n              (try\n                {\n                  apply h_integrable\u2082\n                })\n            })\n          <;>\n          (try assumption)\n          <;>\n          (try\n            {\n              simp_all [h_integrable\u2081, h_integrable\u2082]\n              <;>\n              aesop\n            })\n        -- Use the additivity of the integral\n        rw [h\u2086]\n        <;>\n        simp_all [h_integrable\u2081, h_integrable\u2082]\n        <;>\n        aesop\n      -- Use the additivity of the integral\n      rw [h\u2085]\n      <;>\n      simp_all [h_integrable\u2081, h_integrable\u2082]\n      <;>\n      aesop\n    rw [h\u2082]\n    have h\u2083 : \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0)) = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) := by\n      -- Factor out the constant 2 from the integral\n      have h\u2084 : \u222b x : \u211d, (2 * (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0)) = 2 * \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then 1 else 0) := by\n        -- Use the linearity of the integral\n        rw [integral_mul_left]\n        <;>\n        simp_all [h_integrable\u2081]\n        <;>\n        aesop\n      -- Use the result from the previous step\n      rw [h\u2084]\n      <;>\n      simp_all [h_integrable\u2081]\n      <;>\n      aesop\n    have h\u2084 : \u222b x : \u211d, (5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) = 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0) := by\n      -- Factor out the constant 5 from the integral\n      have h\u2085 : \u222b x : \u211d, (5 * (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0)) = 5 * \u222b x : \u211d, (if x \u2208 Set.Ioc (1 : \u211d) 2 then 1 else 0) := by\n        -- Use the linearity of the integral\n        rw [integral_mul_left]\n        <;>\n        simp_all [h_integrable\u2082]\n        <;>\n        aesop\n      -- Use the result from the previous step\n      rw [h\u2085]\n      <;>\n      simp_all [h_integrable\u2082]\n      <;>\n      aesop\n    rw [h\u2083, h\u2084]\n    <;>\n    simp_all [Set.Icc, Set.Ioc]\n    <;>\n    ring_nf\n    <;>\n    norm_num\n    <;>\n    aesop\n  \n  apply h_main", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 17, "endLine": 10, "endColumn": 56, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 10, "column": 17, "endLine": 10, "endColumn": 56, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 66, "column": 10, "endLine": 66, "endColumn": 20, "data": "tactic 'aesop' failed, failed to prove the goal after exhaustive search.\nInitial goal:\n  case hf\n  f : \u211d \u2192 \u211d\n  h_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\n  h_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\n  \u22a2 Continuous fun x => 1\nRemaining goals after safe rules:\n  f : \u211d \u2192 \u211d\n  x : \u2115\n  h_f : \u2200 (x : \u211d), f x = if 0 \u2264 x \u2227 x \u2264 1 then 2 else if 1 < x \u2227 x \u2264 2 then 5 else 0\n  \u22a2 MeasureTheory.MeasureSpace \u2115\n  \n  f : \u211d \u2192 \u211d\n  h_f : \u2200 (x : \u211d), f x = if 0 \u2264 x \u2227 x \u2264 1 then 2 else if 1 < x \u2227 x \u2264 2 then 5 else 0\n  \u22a2 MeasureTheory.MeasureSpace \u2115"}, {"line": 69, "column": 15, "endLine": 69, "endColumn": 48, "data": "unknown identifier 'MeasureTheory.integrable_congr_ae'"}, {"line": 70, "column": 6, "endLine": 73, "endColumn": 17, "data": "no goals to be solved"}, {"line": 81, "column": 10, "endLine": 81, "endColumn": 20, "data": "tactic 'aesop' failed, failed to prove the goal after exhaustive search.\nInitial goal:\n  case hf\n  f : \u211d \u2192 \u211d\n  h_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\n  h_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\n  h_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\n  \u22a2 Continuous fun x => 1\nRemaining goals after safe rules:\n  f : \u211d \u2192 \u211d\n  x : \u2115\n  h_f : \u2200 (x : \u211d), f x = if 0 \u2264 x \u2227 x \u2264 1 then 2 else if 1 < x \u2227 x \u2264 2 then 5 else 0\n  \u22a2 MeasureTheory.MeasureSpace \u2115\n  \n  f : \u211d \u2192 \u211d\n  h_f : \u2200 (x : \u211d), f x = if 0 \u2264 x \u2227 x \u2264 1 then 2 else if 1 < x \u2227 x \u2264 2 then 5 else 0\n  \u22a2 MeasureTheory.MeasureSpace \u2115"}, {"line": 85, "column": 15, "endLine": 85, "endColumn": 48, "data": "unknown identifier 'MeasureTheory.integrable_congr_ae'"}, {"line": 86, "column": 6, "endLine": 89, "endColumn": 17, "data": "no goals to be solved"}, {"line": 94, "column": 31, "endLine": 94, "endColumn": 116, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 94, "column": 77, "endLine": 94, "endColumn": 116, "data": "failed to synthesize\n  MeasureTheory.MeasureSpace \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 105, "column": 14, "endLine": 105, "endColumn": 116, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 105, "column": 119, "endLine": 105, "endColumn": 232, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 105, "column": 177, "endLine": 105, "endColumn": 232, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 109, "column": 14, "endLine": 109, "endColumn": 47, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  @MeasureTheory.Integrable ?m.815680 ?m.815681 ?m.815685 ?m.815881 ?m.815882\nhas type\n  (?m.815881 \u2192 ?m.815680) \u2192 autoParam (MeasureTheory.Measure ?m.815881) _auto\u271d \u2192 Prop"}, {"line": 110, "column": 8, "endLine": 110, "endColumn": 27, "data": "no goals to be solved"}, {"line": 113, "column": 14, "endLine": 113, "endColumn": 47, "data": "invalid field notation, type is not of the form (C ...) where C is a constant\n  @MeasureTheory.Integrable ?m.817258 ?m.817259 ?m.817263 ?m.817459 ?m.817460\nhas type\n  (?m.817459 \u2192 ?m.817258) \u2192 autoParam (MeasureTheory.Measure ?m.817459) _auto\u271d \u2192 Prop"}, {"line": 114, "column": 8, "endLine": 114, "endColumn": 27, "data": "no goals to be solved"}, {"line": 116, "column": 16, "endLine": 116, "endColumn": 118, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 116, "column": 121, "endLine": 116, "endColumn": 234, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 116, "column": 179, "endLine": 116, "endColumn": 234, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 118, "column": 18, "endLine": 118, "endColumn": 120, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 118, "column": 123, "endLine": 118, "endColumn": 236, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 118, "column": 181, "endLine": 118, "endColumn": 236, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 119, "column": 16, "endLine": 119, "endColumn": 28, "data": "unknown identifier 'integral_add'"}, {"line": 118, "column": 240, "endLine": 145, "endColumn": 14, "data": "unsolved goals\ncase refine_1\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 NormedAddCommGroup \u2115\n\ncase refine_2\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 NormedSpace \u211d \u2115\n\ncase refine_3\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 NormedAddCommGroup \u2115\n\ncase refine_4\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 NormedSpace \u211d \u2115\n\ncase refine_5\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 \u211d \u2192 NormedAddCommGroup \u2115\n\ncase refine_6\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh\u2081 : \u222b (x : \u211d), f x = \u222b (x : \u211d), (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh\u2083 : MeasureTheory.Integrable (fun x => 2 * if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh\u2084 : MeasureTheory.Integrable (fun x => 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 (x : \u211d) \u2192 NormedSpace \u211d \u2115"}, {"line": 199, "column": 8, "endLine": 199, "endColumn": 14, "data": "unknown identifier 'h_main'"}, {"line": 10, "column": 60, "endLine": 199, "endColumn": 14, "data": "unsolved goals\ncase refine_2\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\n\u22a2 \u2115 \u2192 MeasureTheory.MeasureSpace \u2115\n\ncase refine_3\nf : \u211d \u2192 \u211d\nh_f : \u2200 (x : \u211d), f x = if x \u2208 Set.Icc 0 1 then 2 else if x \u2208 Set.Ioc 1 2 then 5 else 0\nh_pointwise : \u2200 (x : \u211d), f x = (2 * if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * if x \u2208 Set.Ioc 1 2 then 1 else 0\nh_integrable\u2081 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Icc 0 1 then 1 else 0) MeasureTheory.volume\nh_integrable\u2082 : MeasureTheory.Integrable (fun x => if x \u2208 Set.Ioc 1 2 then 1 else 0) MeasureTheory.volume\nh_main :\n  \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u2115), if x \u2208 Set.Ioc 1 2 then 1 else 0\n\u22a2 \u222b (x : \u211d), f x = 2 * \u222b (x : \u2115), (if x \u2208 Set.Icc 0 1 then 1 else 0) + 5 * \u222b (x : \u2115), if x \u2208 Set.Ioc 1 2 then 1 else 0"}], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "The integral of a characteristic function is the measure of the set, so we first evaluate $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = \\lambda([0,1]) = 1$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = 1$ [l3].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  : \u222b x : \u211d, (if x \u2208 Set.Icc 0 1 then 1 else 0) = 1 := by sorry", "lean_pass": false, "error_msg": [{"line": 8, "column": 4, "endLine": 8, "endColumn": 47, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Mathlib.Analysis.SpecialFunctions.Integrals\nimport Mathlib.MeasureTheory.Integral.IntervalIntegral\nimport Mathlib.MeasureTheory.Measure.Lebesgue\nimport Mathlib.MeasureTheory.Function.Integrable\n\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  : \u222b x : \u211d, (if x \u2208 Set.Icc 0 1 then 1 else 0) = 1 := by\n  have h_main : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = 1 := by\n    have h\u2081 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) := by\n      -- Use the fact that the function is zero outside [0, 1] to restrict the integral\n      have h\u2082 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) := by\n        -- Use the interval integral to compute the integral over [0, 1]\n        calc\n          \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) := rfl\n          _ = \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) := by\n            -- Use the fact that the function is zero outside [0, 1]\n            have h\u2083 : \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) = \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) := by\n              -- Use the interval integral to compute the integral over [0, 1]\n              simp [intervalIntegral.integral_of_le (by norm_num : (0 : \u211d) \u2264 1)]\n              <;>\n              simp_all [Set.Icc, Set.mem_setOf_eq]\n              <;>\n              norm_num\n              <;>\n              ring_nf\n              <;>\n              simp_all [MeasureTheory.integral_ite, MeasureTheory.integral_const, Real.volume_Icc]\n              <;>\n              norm_num\n              <;>\n              linarith\n            exact h\u2083\n          _ = \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) := rfl\n      exact h\u2082\n    rw [h\u2081]\n    -- Compute the integral over [0, 1]\n    have h\u2082 : \u222b x in (0 : \u211d)..(1 : \u211d), (1 : \u211d) = 1 := by\n      -- The integral of 1 over [0, 1] is 1\n      simp [intervalIntegral.integral_const]\n      <;> norm_num\n    rw [h\u2082]\n  \n  have h_final : \u222b x : \u211d, (if x \u2208 Set.Icc 0 1 then 1 else 0) = 1 := by\n    have h\u2081 : \u222b x : \u211d, (if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0) := by\n      congr\n      ext x\n      <;> simp [Set.Icc, le_of_lt]\n      <;> norm_num\n      <;>\n      (try\n        {\n          by_cases hx : (0 : \u211d) \u2264 x <;> by_cases hx' : x \u2264 (1 : \u211d) <;> simp_all [hx, hx']\n          <;> norm_num at * <;>\n          (try { contradiction }) <;>\n          (try { linarith }) <;>\n          (try { aesop })\n        })\n      <;>\n      (try\n        {\n          by_cases hx : (0 : \u2115) \u2264 x <;> by_cases hx' : x \u2264 (1 : \u2115) <;> simp_all [hx, hx']\n          <;> norm_num at * <;>\n          (try { contradiction }) <;>\n          (try { linarith }) <;>\n          (try { aesop })\n        })\n      <;>\n      (try\n        {\n          by_cases hx : (0 : \u211d) \u2264 x <;> by_cases hx' : x \u2264 (1 : \u211d) <;>\n          by_cases hx'' : (0 : \u2115) \u2264 x <;> by_cases hx''' : x \u2264 (1 : \u2115) <;>\n          simp_all [hx, hx', hx'', hx'''] <;>\n          norm_num at * <;>\n          (try { contradiction }) <;>\n          (try { linarith }) <;>\n          (try { aesop })\n        })\n    rw [h\u2081]\n    have h\u2082 : (\u222b x : \u211d, (if x \u2208 Set.Icc (0 : \u211d) 1 then (1 : \u211d) else 0)) = (1 : \u211d) := h_main\n    rw [h\u2082]\n    <;> norm_num\n  \n  exact h_final", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 5, "column": 4, "endLine": 5, "endColumn": 47, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 19, "column": 14, "endLine": 19, "endColumn": 50, "data": "simp_all made no progress"}, {"line": 41, "column": 17, "endLine": 41, "endColumn": 60, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 44, "column": 6, "endLine": 75, "endColumn": 10, "data": "no goals to be solved"}, {"line": 76, "column": 8, "endLine": 76, "endColumn": 10, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  \u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0\nh_main : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1\nh\u2081 : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = \u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0\n\u22a2 (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1"}, {"line": 81, "column": 8, "endLine": 81, "endColumn": 15, "data": "unknown identifier 'h_final'"}, {"line": 5, "column": 55, "endLine": 81, "endColumn": 15, "data": "unsolved goals\ncase refine_2\nh_main : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1\n\u22a2 NormedSpace \u211d \u2115\n\ncase refine_3\nh_main : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1\nh_final : (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1\n\u22a2 (\u222b (x : \u211d), if x \u2208 Set.Icc 0 1 then 1 else 0) = 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Similarly, we evaluate the second integral as $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = \\lambda((1,2]) = 1$.", "statement": "We assume:\n\u2022 $(\\mathbb{R}, \\mathcal{B}(\\mathbb{R}), \\lambda)$ is the Lebesgue measure space [tc_1].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = 1$ [l4].", "dependencies": ["tc_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 :\n  MeasureTheory.volume (Set.Ioc (1 : \u211d) (2 : \u211d)) = (1 : ENNReal) := by sorry", "lean_pass": true, "error_msg": [], "tries": 3}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 :\n  MeasureTheory.volume (Set.Ioc (1 : \u211d) (2 : \u211d)) = (1 : ENNReal) := by\n  have h_main : MeasureTheory.volume (Set.Ioc (1 : \u211d) (2 : \u211d)) = (1 : ENNReal) := by\n    -- Use the known result about the volume of an interval (a, b]\n    rw [Real.volume_Ioc]\n    -- Simplify the expression 2 - 1 to 1 and cast it to ENNReal\n    <;> norm_num\n    <;> simp [ENNReal.ofReal_one]\n    <;> norm_num\n    <;> rfl\n  \n  -- The main result follows directly from the established fact\n  exact h_main", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The Lean formalization correctly captures the mathematical meaning of the natural language statement. While it expresses the result as a measure of the interval (1,2] rather than as an integral of the characteristic function, these are mathematically equivalent by the fundamental theorem relating integrals of characteristic functions to measures of sets. The interval notation Set.Ioc correctly represents (1,2], and MeasureTheory.volume appropriately represents the Lebesgue measure \u03bb."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Substituting these values back, we get the final result: $\\int_{\\mathbb{R}} f d\\lambda = 2(1) + 5(1) = 7$.", "statement": "We assume:\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 2\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda + 5\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda$ [l2].\n\u2022 $\\int_{\\mathbb{R}} \\chi_{[0,1]} d\\lambda = 1$ [l3].\n\u2022 $\\int_{\\mathbb{R}} \\chi_{(1,2]} d\\lambda = 1$ [l4].\nTherefore, we conclude:\n\u2022 $\\int_{\\mathbb{R}} f d\\lambda = 7$ [ts_1].", "dependencies": ["l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d)\n  (l2 : \u222b x, f x \u2202volume = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) \u2202volume + 5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then 1 else 0) \u2202volume)\n  (l3 : \u222b x, (if x \u2208 Set.Icc 0 1 then 1 else 0) \u2202volume = 1)\n  (l4 : \u222b x, (if x \u2208 Set.Ioc 1 2 then 1 else 0) \u2202volume = 1) :\n  \u222b x, f x \u2202volume = 7 := by sorry", "lean_pass": false, "error_msg": [{"line": 10, "column": 8, "endLine": 10, "endColumn": 55, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 11, "column": 8, "endLine": 11, "endColumn": 55, "data": "failed to synthesize\n  NormedAddCommGroup \u2115\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 \n  (f : \u211d \u2192 \u211d)\n  (l2 : \u222b x, f x \u2202volume = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else (0 : \u211d)) \u2202volume + 5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else (0 : \u211d)) \u2202volume)\n  (l3 : \u222b x, (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else (0 : \u211d)) \u2202volume = 1)\n  (l4 : \u222b x, (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else (0 : \u211d)) \u2202volume = 1) :\n  \u222b x, f x \u2202volume = 7 := by\n  calc\n    \u222b x, f x \u2202volume = 2 * \u222b x, (if x \u2208 Set.Icc 0 1 then (1 : \u211d) else (0 : \u211d)) \u2202volume + 5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else (0 : \u211d)) \u2202volume := by rw [l2]\n    _ = 2 * 1 + 5 * \u222b x, (if x \u2208 Set.Ioc 1 2 then (1 : \u211d) else (0 : \u211d)) \u2202volume := by\n      rw [l3]\n      <;> ring_nf\n      <;> norm_num\n    _ = 2 * 1 + 5 * 1 := by\n      rw [l4]\n      <;> ring_nf\n      <;> norm_num\n    _ = 7 := by norm_num", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#fa2c07", "highlight": {"background": "#8dafcc", "border": "#fa2c07"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

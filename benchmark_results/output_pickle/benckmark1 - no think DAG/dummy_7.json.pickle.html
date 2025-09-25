@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: If $P(A) = 0.6$ and $P(B) = 0.7$, then $P(A \cap B) \geq 0.3
+
+Proof: We know that $P(A \cup B) = P(A) + P(B) - P(A \cap B)$. Since $P(A \cup B) \leq 1$, we have $P(A) + P(B) - P(A \cap B) \leq 1$. Substituting the given values: $0.6 + 0.7 - P(A \cap B) \leq 1$, which gives $1.3 - P(A \cap B) \leq 1$. Therefore $P(A \cap B) \geq 0.3$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "If $P(A) = 0.6$ and $P(B) = 0.7$", "statement": "Premise:\n\u2022 A and B are events in a probability space, with P(A) = 0.6 and P(B) = 0.7 [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nvariable {\u03a9 : Type*} [MeasurableSpace \u03a9] (P : MeasureTheory.Measure \u03a9) [IsProbabilityMeasure P] (A B : Set \u03a9) [MeasurableSet A] [MeasurableSet B]\n(tc_1 : P A = 0.6 \u2227 P B = 0.7)", "lean_pass": false, "error_msg": [{"line": 5, "column": 72, "endLine": 5, "endColumn": 94, "data": "invalid binder annotation, type is not a class instance\n  ?m.38\nuse the command `set_option checkBinderAnnotations false` to disable the check"}], "tries": 5}, "solved_lemma": {}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "type": "condition"}, "l1": {"id": "l1", "natural_language": "We know that $P(A \\cup B) = P(A) + P(B) - P(A \\cap B)$.", "statement": "We assume:\n\u2022 A and B are any two events in a probability space.\nTherefore, we conclude:\n\u2022 P(A \u222a B) = P(A) + P(B) - P(A \u2229 B) [l1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9) :\n  P (A \u222a B) = P A + P B - P (A \u2229 B) := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 2}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l1\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9)\n  (hA : MeasurableSet A) (hB : MeasurableSet B) :\n  P (A \u222a B) = P A + P B - P (A \u2229 B) := by\n  rw [\u2190 MeasureTheory.measure_union_add_inter P hA hB]\n  ring", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 8, "endLine": 9, "endColumn": 53, "data": "function expected at\n  MeasureTheory.measure_union_add_inter ?m.1455 hA\nterm has type\n  ?m.1282 (?m.1455 \u222a A) + ?m.1282 (?m.1455 \u2229 A) = ?m.1282 ?m.1455 + ?m.1282 A"}, {"line": 9, "column": 6, "endLine": 9, "endColumn": 53, "data": "tactic 'rewrite' failed, equality or iff proof expected\n  ?m.3847\n\u03a9 : Type u_1\ninst\u271d\u00b9 : MeasurableSpace \u03a9\nP : MeasureTheory.Measure \u03a9\ninst\u271d : MeasureTheory.IsProbabilityMeasure P\nA B : Set \u03a9\nhA : MeasurableSet A\nhB : MeasurableSet B\n\u22a2 P (A \u222a B) = P A + P B - P (A \u2229 B)"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the probability space structure using appropriate measure theory constructs. The additional technical details (MeasurableSpace, MeasureTheory.Measure, IsProbabilityMeasure) are necessary mathematical formalizations of the informal 'probability space' concept.", "The inclusion-exclusion principle formula is translated exactly, with perfect correspondence between mathematical notation in both versions.", "The logical structure is preserved - both present this as a mathematical statement that should hold given the probability space setup, whether framed as a 'conclusion' or 'lemma'.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l1 :\n  \u00ac \u2200 {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9),\n    P (A \u222a B) = P A + P B - P (A \u2229 B) := by\n  push_neg\n  let \u03a9 := Fin 2\n  let P : MeasureTheory.Measure \u03a9 := MeasureTheory.Measure.count\n  let A : Set \u03a9 := {0}\n  let B : Set \u03a9 := {1}\n  have hA : P A = 1 := by simp [A, P]\n  have hB : P B = 1 := by simp [B, P]\n  have hUnion : P (A \u222a B) = 2 := by\n    simp [A, B, P]\n    rw [MeasureTheory.Measure.count_apply]\n    simp\n    exact MeasurableSet.union (by measurability) (by measurability)\n  have hInter : P (A \u2229 B) = 0 := by\n    simp [A, B]\n    rw [MeasureTheory.Measure.count_apply]\n    simp\n    exact MeasurableSet.inter (by measurability) (by measurability)\n  use \u03a9, inferInstance, P, inferInstance, A, B\n  linarith"}, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "Since $P(A \\cup B) \\leq 1$", "statement": "We assume:\n\u2022 A and B are any two events in a probability space.\nTherefore, we conclude:\n\u2022 P(A \u222a B) \u2264 1 [l2].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) :\n  P (A \u222a B) \u2264 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) :\n  P (A \u222a B) \u2264 1 := by\n  apply le_trans (MeasureTheory.measure_union_le P A B)\n  simp [MeasureTheory.IsProbabilityMeasure.measure_univ]", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 8, "column": 53, "endLine": 8, "endColumn": 54, "data": "application type mismatch\n  MeasureTheory.measure_union_le ?m.771 A B\nargument\n  B\nhas type\n  Set \u03a9 : Type u_1\nbut is expected to have type\n  NNReal : Type"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The Lean formalization correctly captures the natural language statement. It properly sets up a probability space, declares A and B as events (sets), and states the conclusion P(A \u222a B) \u2264 1. The additional measurability conditions (hA and hB) are technically necessary details in formal probability theory that don't contradict the natural language but make the formalization mathematically rigorous.", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma not_l2\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9) (hA : MeasurableSet A) (hB : MeasurableSet B) :\n  \u00ac (P (A \u222a B) \u2264 1) := by\n  have := MeasureTheory.IsProbabilityMeasure.measure_univ (\u03bc := P)\n  simp [this]\n  exact (MeasureTheory.measure_mono (Set.subset_univ _)).not_lt"}, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "we have $P(A) + P(B) - P(A \\cap B) \\leq 1$.", "statement": "We assume:\n\u2022 For any two events A and B, P(A \u222a B) = P(A) + P(B) - P(A \u2229 B) [l1].\n\u2022 For any two events A and B, P(A \u222a B) \u2264 1 [l2].\nTherefore, we conclude:\n\u2022 P(A) + P(B) - P(A \u2229 B) \u2264 1 [l3].", "dependencies": ["l1", "l2"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9)\n  (l1 : P (A \u222a B) = P A + P B - P (A \u2229 B))\n  (l2 : P (A \u222a B) \u2264 1) :\n  P A + P B - P (A \u2229 B) \u2264 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l3\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9)\n  (l1 : P (A \u222a B) = P A + P B - P (A \u2229 B))\n  (l2 : P (A \u222a B) \u2264 1) :\n  P A + P B - P (A \u2229 B) \u2264 1 := by\n  rw [\u2190 l1]\n  exact l2", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The measure theory setup correctly formalizes the probability theory context with events as sets and probabilities as measures", "The inclusion-exclusion principle is captured exactly, with only notational differences (function application vs parentheses)", "The probability upper bound constraint is formalized identically", "The conclusion statement matches the natural language perfectly", "The logical structure preserves the reasoning flow from assumptions to conclusion"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "Substituting the given values: $0.6 + 0.7 - P(A \\cap B) \\leq 1$", "statement": "We assume:\n\u2022 P(A) = 0.6 and P(B) = 0.7 [tc_1].\n\u2022 P(A) + P(B) - P(A \u2229 B) \u2264 1 [l3].\nTherefore, we conclude:\n\u2022 0.6 + 0.7 - P(A \u2229 B) \u2264 1 [l4].", "dependencies": ["tc_1", "l3"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9)\n  (tc_1 : P A = 0.6 \u2227 P B = 0.7)\n  (l3 : P A + P B - P (A \u2229 B) \u2264 1) :\n  0.6 + 0.7 - P (A \u2229 B) \u2264 1 := by\nsorry", "lean_pass": false, "error_msg": [{"line": 7, "column": 16, "endLine": 7, "endColumn": 19, "data": "failed to synthesize\n  OfScientific ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 7, "column": 28, "endLine": 7, "endColumn": 31, "data": "failed to synthesize\n  OfScientific ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 2, "endLine": 9, "endColumn": 5, "data": "failed to synthesize\n  OfScientific ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}, {"line": 9, "column": 8, "endLine": 9, "endColumn": 11, "data": "failed to synthesize\n  OfScientific ENNReal\nAdditional diagnostic information may be available using the `set_option diagnostics true` command."}], "tries": 5}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l4\n  {\u03a9 : Type*} [MeasurableSpace \u03a9] {P : MeasureTheory.Measure \u03a9} [MeasureTheory.IsProbabilityMeasure P] (A B : Set \u03a9)\n  (tc_1 : P A = ENNReal.ofReal 0.6 \u2227 P B = ENNReal.ofReal 0.7)\n  (l3 : (P A + P B - P (A \u2229 B)) \u2264 1) :\n  ENNReal.ofReal 0.6 + ENNReal.ofReal 0.7 - P (A \u2229 B) \u2264 1 := by\n  rw [\u2190 tc_1.1, \u2190 tc_1.2]\n  exact l3", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 4}, "score": {"semantic_score": 0, "semantic_feedback": "Failed Lean syntax check already."}, "error_report": {"error_type": "Formalization", "error_report": "Formalized statement is not a valid Lean4 statement"}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "which gives $1.3 - P(A \\cap B) \\leq 1$.", "statement": "We assume:\n\u2022 0.6 + 0.7 - P(A \u2229 B) \u2264 1 [l4].\nTherefore, we conclude:\n\u2022 1.3 - P(A \u2229 B) \u2264 1 [l5].", "dependencies": ["l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (P : Set \u03b1 \u2192 \u211d) (A B : Set \u03b1)\n  (l4 : 0.6 + 0.7 - P (A \u2229 B) \u2264 1) :\n  1.3 - P (A \u2229 B) \u2264 1 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 4}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma l5\n  (P : Set \u03b1 \u2192 \u211d) (A B : Set \u03b1)\n  (l4 : 0.6 + 0.7 - P (A \u2229 B) \u2264 1) :\n  1.3 - P (A \u2229 B) \u2264 1 := by\n  have h : 0.6 + 0.7 = 1.3 := by norm_num\n  rw [h] at l4\n  exact l4", "lean_pass": false, "lean_verify": false, "error_msg": [{"line": 9, "column": 30, "endLine": 9, "endColumn": 41, "data": "unsolved goals\n\u03b1 : Type u_1\nP : Set \u03b1 \u2192 \u211d\nA B : Set \u03b1\nl4 : 0.6 + 0.7 - P (A \u2229 B) \u2264 1\n\u22a2 0.6 + 0.7 = 1.3"}, {"line": 10, "column": 6, "endLine": 10, "endColumn": 7, "data": "tactic 'rewrite' failed, did not find instance of the pattern in the target expression\n  0.6 + 0.7\n\u03b1 : Type u_1\nP : Set \u03b1 \u2192 \u211d\nA B : Set \u03b1\nl4 : 0.6 + 0.7 - P (A \u2229 B) \u2264 1\nh : 0.6 + 0.7 = 1.3\n\u22a2 1.3 - P (A \u2229 B) \u2264 1"}], "tries": 5}, "score": {"semantic_score": 0, "semantic_feedback": ["The assumption l4 is correctly captured with identical mathematical content", "The conclusion l5 is correctly captured with identical mathematical content", "The logical flow from assumption to conclusion is properly represented in the lemma structure", "The mathematical equivalence of 0.6 + 0.7 and 1.3 is correctly preserved", "The type declarations for P, A, and B provide necessary mathematical context that is implied in the natural language", "The tactics contained syntactic mistakes, so final score is 0."]}, "error_report": {"error_type": "Prover", "error_report": "Formalization appears correct (score=1.0 > 0.6), but the prover could neither prove the lemma nor its negation. This may be due to prover limitations, missing lemmas, or incomplete context."}, "solved_negation": {"lean_verify": false, "lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma neg_l5\n  (P : Set \u03b1 \u2192 \u211d) (A B : Set \u03b1)\n  (h : \u00ac (1.3 - P (A \u2229 B) \u2264 1)) :\n  \u00ac (0.6 + 0.7 - P (A \u2229 B) \u2264 1) := by\n  simp [h]\n  intro h'\n  have : 1.3 = 0.6 + 0.7 := by norm_num\n  linarith [h']"}, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore $P(A \\cap B) \\geq 0.3$.", "statement": "We assume:\n\u2022 1.3 - P(A \u2229 B) \u2264 1 [l5].\nTherefore, we conclude:\n\u2022 P(A \u2229 B) \u2265 0.3 [ts_1].", "dependencies": ["l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (P : Set \u03b1 \u2192 \u211d) (A B : Set \u03b1)\n  (l5 : 1.3 - P (A \u2229 B) \u2264 1) :\n  P (A \u2229 B) \u2265 0.3 := by\nsorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Filter\n\nlemma ts_1\n  (P : Set \u03b1 \u2192 \u211d) (A B : Set \u03b1)\n  (l5 : 1.3 - P (A \u2229 B) \u2264 1) :\n  P (A \u2229 B) \u2265 0.3 := by\n  linarith", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The assumption is captured exactly with the same numerical values and inequality structure", "The conclusion matches precisely with identical mathematical expression", "The logical inference structure is correctly represented as a lemma with hypothesis and goal", "All mathematical content including numerical values, operations, and relationships are identical", "The explicit type declarations in Lean add helpful precision without contradicting the natural language"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#fa2c07", "highlight": {"background": "#eba0a0", "border": "#fa2c07"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#FFA500", "highlight": {"background": "#8dafcc", "border": "#FFA500"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    

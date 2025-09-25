@@ -1,0 +1,612 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Proof Graph Visualization</title>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            .container {
+                display: flex;
+                height: 100vh;
+                background: #f0f0f0;
+            }
+            
+            #left-panel {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: white;
+                border-right: 2px solid #ddd;
+                height: 100vh;
+                overflow: hidden;
+            }
+            
+            #proof-str-panel {
+                background: #f8f9fa;
+                border-bottom: 2px solid #ddd;
+                padding: 15px;
+                height: 200px;
+                overflow-y: auto;
+                flex-shrink: 0;
+            }
+            
+            #proof-str-title {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 10px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            #proof-str-content {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+                background: white;
+                padding: 12px;
+                border-radius: 4px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            #graph-container {
+                flex: 1;
+                position: relative;
+                background: white;
+                min-height: 0;
+                overflow: hidden;
+            }
+            
+            #mynetwork {
+                width: 100%;
+                height: 100%;
+            }
+            
+            #info-panel {
+                width: 40%;
+                max-width: 600px;
+                background: white;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+            }
+            
+            #info-panel.hidden {
+                display: none;
+            }
+            
+            .info-header {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                padding: 15px;
+                border-radius: 8px;
+                margin-bottom: 20px;
+            }
+            
+            .info-header h2 {
+                margin: 0;
+                font-size: 24px;
+            }
+            
+            .info-header .node-type {
+                opacity: 0.9;
+                font-size: 14px;
+                margin-top: 5px;
+            }
+            
+            .field-group {
+                background: #f8f9fa;
+                border-left: 4px solid #667eea;
+                padding: 15px;
+                margin-bottom: 15px;
+                border-radius: 4px;
+            }
+            
+            .field-name {
+                font-weight: 600;
+                color: #2d3748;
+                margin-bottom: 8px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            .field-value {
+                color: #4a5568;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                font-family: 'Monaco', 'Courier New', monospace;
+                font-size: 13px;
+            }
+            
+            .field-value.code {
+                color: #4a5568;
+                padding: 12px;
+                border-radius: 4px;
+                overflow-x: auto;
+            }
+            
+            .sub-dict {
+                background: #ffffff;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 10px;
+                margin: 8px 0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            
+            .sub-dict-title {
+                font-weight: 600;
+                color: #4a5568;
+                margin-bottom: 8px;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .sub-dict-content {
+                color: #2d3748;
+                line-height: 1.5;
+                font-size: 12px;
+            }
+            
+            .placeholder {
+                text-align: center;
+                color: #718096;
+                padding: 40px;
+                font-size: 18px;
+            }
+            
+            .placeholder-icon {
+                font-size: 48px;
+                margin-bottom: 20px;
+                opacity: 0.3;
+            }
+            
+            #toggle-panel {
+                position: absolute;
+                right: 10px;
+                top: 10px;
+                z-index: 1000;
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                transition: background 0.3s;
+            }
+            
+            #toggle-panel:hover {
+                background: #764ba2;
+            }
+            
+            .legend {
+                position: absolute;
+                top: 20px;
+                left: 20px;
+                background: white;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                z-index: 100;
+                max-width: 300px;
+            }
+            
+            .legend-section {
+                margin-bottom: 15px;
+            }
+            
+            .legend-section:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-title {
+                font-weight: 600;
+                font-size: 12px;
+                color: #2d3748;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border-bottom: 1px solid #e2e8f0;
+                padding-bottom: 4px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+            
+            .legend-item:last-child {
+                margin-bottom: 0;
+            }
+            
+            .legend-color {
+                width: 20px;
+                height: 20px;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            
+            .resizer {
+                background: #ddd;
+                cursor: col-resize;
+                width: 4px;
+                height: 100%;
+                position: absolute;
+                right: 0;
+                top: 0;
+                z-index: 1000;
+            }
+            
+            .resizer:hover {
+                background: #bbb;
+            }
+            
+            .resizer-vertical {
+                background: #ddd;
+                cursor: row-resize;
+                height: 4px;
+                width: 100%;
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                z-index: 1000;
+            }
+            
+            .resizer-vertical:hover {
+                background: #bbb;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div id="left-panel">
+                <div id="proof-str-panel">
+                    <div id="proof-str-title">Informal theorem and proof</div>
+                    <div id="proof-str-content">Theorem: Prove that for all positive real numbers $a, b, c$, the following inequality holds: $$\\frac{abc}{(1+a)(a+b)(b+c)(c+16)} \\leq \\frac{1}{81}.$$
+
+Proof: For positive real $a,b,c$, write $1+a = 1+rac{a}{2}+rac{a}{2}$, $a+b = a+rac{b}{2}+rac{b}{2}$, $b+c = b+rac{c}{2}+rac{c}{2}$, and $c+16 = c+8+8$. By AM–GM, $1+a \ge 3\sqrt[3]{rac{a^2}{4}}$, $a+b \ge 3\sqrt[3]{rac{ab^2}{4}}$, $b+c \ge 3\sqrt[3]{rac{bc^2}{4}}$, $c+16 \ge 3\sqrt[3]{64c}$. Multiplying gives $(1+a)(a+b)(b+c)(c+16) \ge 3^4 \sqrt[3]{rac{a^2}{4} \cdot rac{ab^2}{4} \cdot rac{bc^2}{4} \cdot 64c} = 81 \sqrt[3]{a^3b^3c^3} = 81abc$. Therefore, $81abc \le (1+a)(a+b)(b+c)(c+16)$.
+</div>
+                    <div class="resizer-vertical" id="vertical-resizer"></div>
+                </div>
+                <div id="graph-container">
+                    <button id="toggle-panel" onclick="togglePanel()">Toggle Info Panel</button>
+                    <div class="legend">
+                        <div class="legend-section">
+                            <div class="legend-title">Node Types</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #eba0a0;"></div>
+                                <span>Theorem Conditions (tc)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #cfb795 ;"></div>
+                                <span>Theorem Definitions (def)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #8dafcc;"></div>
+                                <span>Lemmas (l)</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #a3c2a8;"></div>
+                                <span>Theorem Solutions (ts)</span>
+                            </div>
+
+                        </div>
+                        <div class="legend-section">
+                            <div class="legend-title">Verification Status</div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #fa2c07;"></div>
+                                <span>Formalization failed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #FFA500;"></div>
+                                <span>Formalization passed</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background: #FFFFFF; border: 2px solid #00ff00;"></div>
+                                <span>Fully verified</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="mynetwork"></div>
+                </div>
+            </div>
+            
+            <div class="resizer" id="horizontal-resizer"></div>
+            
+            <div id="info-panel">
+                <div id="info-content">
+                    <div class="placeholder">
+                        <div class="placeholder-icon">📊</div>
+                        <p>Click on a node to view its details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <script type="text/javascript">
+            // Store node information
+            var nodeInfo = {"tc_1": {"id": "tc_1", "natural_language": "For positive real $a,b,c$", "statement": "Premise:\n\u2022 a, b, c are positive real numbers [tc_1].", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem tc_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The variable declarations match - both specify a, b, c as real numbers", "The positivity conditions match perfectly - Lean's '0 < a', '0 < b', '0 < c' correctly captures 'positive real numbers'", "The natural language explicitly states no conclusions are derived in this premise step, but the Lean theorem includes a complex inequality conclusion that is not mentioned in the natural language at all"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The variable declarations match - both specify a, b, c as real numbers', \"The positivity conditions match perfectly - Lean's '0 < a', '0 < b', '0 < c' correctly captures 'positive real numbers'\", 'The natural language explicitly states no conclusions are derived in this premise step, but the Lean theorem includes a complex inequality conclusion that is not mentioned in the natural language at all']"}, "type": "condition"}, "def_1": {"id": "def_1", "natural_language": "write $1+a = 1+\frac{a}{2}+\frac{a}{2}$, $a+b = a+\frac{b}{2}+\frac{b}{2}$, $b+c = b+\frac{c}{2}+\frac{c}{2}$, and $c+16 = c+8+8$.", "statement": "Definition:\n\u2022 The following expressions are rewritten as sums of three terms:\n  \u2022 $1+a = 1 + a/2 + a/2$ [def_1a]\n  \u2022 $a+b = a + b/2 + b/2$ [def_1b]\n  \u2022 $b+c = b + c/2 + c/2$ [def_1c]\n  \u2022 $c+16 = c + 8 + 8$ [def_1d]", "dependencies": [], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem inequality_abc (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (def_1a : 1 + a = 1 + a / 2 + a / 2)\n  (def_1b : a + b = a + b / 2 + b / 2)\n  (def_1c : b + c = b + c / 2 + c / 2)\n  (def_1d : c + 16 = c + 8 + 8) :\n  (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The natural language states a need to rewrite $1+a$ as three terms, but Lean introduces positivity constraint $0 < a$ not mentioned in the natural language", "The natural language states a need to rewrite $a+b$ as three terms, but Lean introduces positivity constraint $0 < b$ not mentioned in the natural language", "The natural language states a need to rewrite $b+c$ as three terms, but Lean introduces positivity constraint $0 < c$ not mentioned in the natural language", "The natural language states a need to rewrite $c+16$ as three terms, but this general requirement is not explicitly captured in Lean - only the specific definition is given", "The natural language mentions the general requirement to rewrite expressions as sums of three terms, but Lean doesn't capture this meta-requirement", "The equality $1+a = 1 + a/2 + a/2$ matches exactly between natural language and Lean", "The equality $a+b = a + b/2 + b/2$ matches exactly between natural language and Lean", "The equality $b+c = b + c/2 + c/2$ matches exactly between natural language and Lean", "The equality $c+16 = c + 8 + 8$ matches exactly between natural language and Lean", "Lean introduces an inequality conclusion $(a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81$ that is completely absent from the natural language statement"]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The natural language states a need to rewrite $1+a$ as three terms, but Lean introduces positivity constraint $0 < a$ not mentioned in the natural language', 'The natural language states a need to rewrite $a+b$ as three terms, but Lean introduces positivity constraint $0 < b$ not mentioned in the natural language', 'The natural language states a need to rewrite $b+c$ as three terms, but Lean introduces positivity constraint $0 < c$ not mentioned in the natural language', 'The natural language states a need to rewrite $c+16$ as three terms, but this general requirement is not explicitly captured in Lean - only the specific definition is given', \"The natural language mentions the general requirement to rewrite expressions as sums of three terms, but Lean doesn't capture this meta-requirement\", 'The equality $1+a = 1 + a/2 + a/2$ matches exactly between natural language and Lean', 'The equality $a+b = a + b/2 + b/2$ matches exactly between natural language and Lean', 'The equality $b+c = b + c/2 + c/2$ matches exactly between natural language and Lean', 'The equality $c+16 = c + 8 + 8$ matches exactly between natural language and Lean', 'Lean introduces an inequality conclusion $(a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81$ that is completely absent from the natural language statement']"}, "type": "definition"}, "l1": {"id": "l1", "natural_language": "By AM\u2013GM, $1+a \\ge 3\\sqrt[3]{\frac{a^2}{4}}$", "statement": "We assume:\n\u2022 a is a positive real number [tc_1]\n\u2022 $1+a = 1 + a/2 + a/2$ [def_1a]\nTherefore, we conclude:\n\u2022 By applying the AM-GM inequality to the positive terms 1, a/2, and a/2, we get $1+a \\ge 3\\sqrt[3]{1 \\cdot (a/2) \\cdot (a/2)}$, which simplifies to $1+a \\ge 3\\sqrt[3]{a^2/4}$ [l1].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a : \u211d) (ha : 0 < a) \n  (h1 : 1 + a = 1 + a/2 + a/2) :\n  1 + a \u2265 3 * (a^2/4)^(1/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l1 (a : \u211d) (ha : 0 < a) \n  (h1 : 1 + a = 1 + a/2 + a/2) :\n  1 + a \u2265 3 * (a^2/4)^(1/3 : \u211d) := by\n  have h2 : (a - 2)^2 * (4 * a + 1) \u2265 0 := by\n    have h2\u2081 : 0 \u2264 (a - 2) ^ 2 := by nlinarith\n    have h2\u2082 : 0 \u2264 4 * a + 1 := by nlinarith\n    nlinarith\n  \n  have h3 : ((1 + a) / 3 : \u211d) ^ 3 \u2265 (a ^ 2 / 4 : \u211d) := by\n    have h3\u2081 : ((1 + a) / 3 : \u211d) ^ 3 - (a ^ 2 / 4 : \u211d) = (a - 2) ^ 2 * (4 * a + 1) / 108 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> linarith\n    have h3\u2082 : ((1 + a) / 3 : \u211d) ^ 3 - (a ^ 2 / 4 : \u211d) \u2265 0 := by\n      rw [h3\u2081]\n      have h3\u2083 : (a - 2 : \u211d) ^ 2 * (4 * a + 1) \u2265 0 := h2\n      have h3\u2084 : (a - 2 : \u211d) ^ 2 * (4 * a + 1) / 108 \u2265 0 := by\n        have h3\u2085 : (0 : \u211d) \u2264 108 := by norm_num\n        have h3\u2086 : (0 : \u211d) \u2264 (a - 2 : \u211d) ^ 2 * (4 * a + 1) := by linarith\n        have h3\u2087 : (0 : \u211d) \u2264 (a - 2 : \u211d) ^ 2 * (4 * a + 1) / 108 := by positivity\n        linarith\n      linarith\n    linarith\n  \n  have h4 : (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 (1 + a) / 3 := by\n    have h4\u2081 : 0 \u2264 (a ^ 2 / 4 : \u211d) := by positivity\n    have h4\u2082 : 0 \u2264 ((1 + a) / 3 : \u211d) := by\n      have h4\u2083 : 0 < a := ha\n      have h4\u2084 : 0 < 1 + a := by linarith\n      positivity\n    -- Use the fact that the cube root function is monotonically increasing to compare the cube roots\n    have h4\u2083 : Real.log ((a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d)) \u2264 Real.log (((1 + a) / 3 : \u211d)) := by\n      -- Use the logarithm to compare the exponents\n      have h4\u2084 : Real.log ((a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d)) = (1 / 3 : \u211d) * Real.log (a ^ 2 / 4 : \u211d) := by\n        rw [Real.log_rpow (by positivity)]\n        <;> ring_nf\n      rw [h4\u2084]\n      have h4\u2085 : Real.log (((1 + a) / 3 : \u211d)) = Real.log (((1 + a) / 3 : \u211d)) := rfl\n      have h4\u2086 : (1 / 3 : \u211d) * Real.log (a ^ 2 / 4 : \u211d) \u2264 Real.log (((1 + a) / 3 : \u211d)) := by\n        -- Use the fact that the logarithm is monotonically increasing\n        have h4\u2087 : Real.log (a ^ 2 / 4 : \u211d) \u2264 Real.log (((1 + a) / 3 : \u211d) ^ 3) := by\n          apply Real.log_le_log\n          \u00b7 positivity\n          \u00b7 -- Prove that a^2 / 4 \u2264 ((1 + a) / 3)^3\n            have h4\u2088 : (a ^ 2 / 4 : \u211d) \u2264 ((1 + a) / 3 : \u211d) ^ 3 := by\n              linarith\n            linarith\n        -- Use the logarithm power rule\n        have h4\u2088 : Real.log (((1 + a) / 3 : \u211d) ^ 3) = 3 * Real.log (((1 + a) / 3 : \u211d)) := by\n          rw [Real.log_pow]\n          <;> norm_num\n          <;> linarith\n        rw [h4\u2088] at h4\u2087\n        -- Combine the inequalities\n        have h4\u2089 : (1 / 3 : \u211d) * Real.log (a ^ 2 / 4 : \u211d) \u2264 (1 / 3 : \u211d) * (3 * Real.log (((1 + a) / 3 : \u211d))) := by\n          gcongr\n        have h4\u2081\u2080 : (1 / 3 : \u211d) * (3 * Real.log (((1 + a) / 3 : \u211d))) = Real.log (((1 + a) / 3 : \u211d)) := by\n          ring_nf\n          <;> field_simp\n          <;> linarith\n        linarith\n      linarith\n    -- Use the fact that the exponential function is monotonically increasing to compare the original values\n    have h4\u2084 : (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 (1 + a) / 3 := by\n      by_contra h\n      have h4\u2085 : (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) > (1 + a) / 3 := by linarith\n      have h4\u2086 : Real.log ((a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d)) > Real.log (((1 + a) / 3 : \u211d)) := by\n        apply Real.log_lt_log (by positivity)\n        linarith\n      linarith\n    exact h4\u2084\n  \n  have h5 : 3 * (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 1 + a := by\n    have h5\u2081 : (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 (1 + a) / 3 := h4\n    have h5\u2082 : 3 * (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 3 * ((1 + a) / 3) := by\n      gcongr\n    have h5\u2083 : 3 * ((1 + a) / 3) = 1 + a := by ring\n    linarith\n  \n  have h6 : 1 + a \u2265 3 * (a ^ 2 / 4) ^ (1 / 3 : \u211d) := by\n    have h6\u2081 : 3 * (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) \u2264 1 + a := h5\n    have h6\u2082 : 3 * (a ^ 2 / 4) ^ (1 / 3 : \u211d) = 3 * (a ^ 2 / 4 : \u211d) ^ (1 / 3 : \u211d) := by norm_num\n    linarith\n  \n  exact h6", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declaration and positivity constraint are correctly captured in Lean with appropriate types and hypothesis naming.", "The equality assumption is exactly translated from natural language to Lean with identical mathematical content.", "The final inequality conclusion correctly represents the simplified AM-GM result. The Lean formalization appropriately states the theorem conclusion rather than the intermediate proof steps, which is the correct approach for theorem statements."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l2": {"id": "l2", "natural_language": "$a+b \\ge 3\\sqrt[3]{\frac{ab^2}{4}}$", "statement": "We assume:\n\u2022 a, b are positive real numbers [tc_1]\n\u2022 $a+b = a + b/2 + b/2$ [def_1b]\nTherefore, we conclude:\n\u2022 By applying the AM-GM inequality to the positive terms a, b/2, and b/2, we get $a+b \\ge 3\\sqrt[3]{a \\cdot (b/2) \\cdot (b/2)}$, which simplifies to $a+b \\ge 3\\sqrt[3]{ab^2/4}$ [l2].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a b : \u211d) \n  (ha : 0 < a) \n  (hb : 0 < b)\n  (tc_1 : 0 < a \u2227 0 < b)\n  (def_1b : a + b = a + b / 2 + b / 2) :\n  a + b \u2265 3 * Real.rpow (a * b^2 / 4) (1/3) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l2\n  (a b : \u211d) \n  (ha : 0 < a) \n  (hb : 0 < b)\n  (tc_1 : 0 < a \u2227 0 < b)\n  (def_1b : a + b = a + b / 2 + b / 2) :\n  a + b \u2265 3 * Real.rpow (a * b^2 / 4) (1/3 : \u211d) := by\n  have h_identity : (a + b)^3 - 27 * (a * b^2 / 4) = (a - b / 2)^2 * (a + 4 * b) := by\n    have h\u2081 : (a + b) ^ 3 - 27 * (a * b ^ 2 / 4) = (a - b / 2) ^ 2 * (a + 4 * b) := by\n      ring_nf\n      <;>\n      nlinarith [sq_nonneg (a - b / 2), sq_nonneg (a + b)]\n    linarith\n  \n  have h_ineq_cubed : (a + b)^3 \u2265 27 * (a * b^2 / 4) := by\n    have h\u2081 : (a - b / 2) ^ 2 * (a + 4 * b) \u2265 0 := by\n      have h\u2082 : 0 \u2264 (a - b / 2) ^ 2 := sq_nonneg _\n      have h\u2083 : 0 < a + 4 * b := by linarith\n      nlinarith\n    have h\u2084 : (a + b) ^ 3 - 27 * (a * b ^ 2 / 4) \u2265 0 := by\n      linarith [h_identity]\n    linarith\n  \n  have h_main_ineq : (a + b) / 3 \u2265 Real.rpow (a * b^2 / 4) (1 / 3 : \u211d) := by\n    have h\u2081 : 0 \u2264 a * b ^ 2 / 4 := by positivity\n    have h\u2082 : 0 \u2264 (a + b) / 3 := by positivity\n    have h\u2083 : ((a + b) / 3 : \u211d) \u2265 0 := by positivity\n    have h\u2084 : Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d) \u2265 0 := Real.rpow_nonneg (by positivity) _\n    -- Use the fact that the cube of the arithmetic mean is greater than or equal to the product\n    have h\u2085 : ((a + b) / 3 : \u211d) ^ 3 \u2265 a * b ^ 2 / 4 := by\n      have h\u2085\u2081 : (a + b) ^ 3 \u2265 27 * (a * b ^ 2 / 4) := h_ineq_cubed\n      have h\u2085\u2082 : ((a + b) / 3 : \u211d) ^ 3 = (a + b) ^ 3 / 27 := by\n        ring_nf\n        <;> field_simp\n        <;> ring_nf\n      have h\u2085\u2083 : (a + b) ^ 3 / 27 \u2265 a * b ^ 2 / 4 := by\n        linarith\n      linarith\n    -- Use the property of real power to take the cube root\n    have h\u2086 : Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d) \u2264 (a + b) / 3 := by\n      -- Use the fact that the cube of the arithmetic mean is greater than or equal to the product\n      have h\u2086\u2081 : Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d) \u2265 0 := Real.rpow_nonneg (by positivity) _\n      have h\u2086\u2082 : (Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 = a * b ^ 2 / 4 := by\n        rw [\u2190 Real.rpow_nat_cast]\n        simp [h\u2081]\n        <;>\n        rw [\u2190 Real.rpow_mul] <;>\n        ring_nf <;>\n        norm_num <;>\n        linarith\n      have h\u2086\u2083 : ((a + b) / 3 : \u211d) \u2265 0 := by positivity\n      have h\u2086\u2084 : (Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 \u2264 ((a + b) / 3 : \u211d) ^ 3 := by\n        calc\n          (Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 = a * b ^ 2 / 4 := by rw [h\u2086\u2082]\n          _ \u2264 ((a + b) / 3 : \u211d) ^ 3 := by linarith\n      -- Use the fact that the cube function is increasing to conclude the inequality\n      have h\u2086\u2085 : Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d) \u2264 (a + b) / 3 := by\n        by_contra h\n        have h\u2086\u2086 : (a + b) / 3 < Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d) := by linarith\n        have h\u2086\u2087 : ((a + b) / 3 : \u211d) ^ 3 < (Real.rpow (a * b ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by\n          gcongr\n          <;> nlinarith\n        linarith\n      exact h\u2086\u2085\n    linarith\n  \n  have h_final : a + b \u2265 3 * Real.rpow (a * b^2 / 4) (1/3 : \u211d) := by\n    have h\u2081 : (a + b) / 3 \u2265 Real.rpow (a * b^2 / 4) (1 / 3 : \u211d) := h_main_ineq\n    have h\u2082 : a + b \u2265 3 * Real.rpow (a * b^2 / 4) (1 / 3 : \u211d) := by\n      calc\n        a + b = 3 * ((a + b) / 3) := by ring\n        _ \u2265 3 * Real.rpow (a * b^2 / 4) (1 / 3 : \u211d) := by\n          gcongr\n          <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try positivity)\n    exact h\u2082\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and positivity assumptions are correctly captured. The Lean formalization includes redundant but consistent conditions (ha, hb, and tc_1 all express positivity), which is acceptable as extra logically consistent details.", "The algebraic identity a+b = a + b/2 + b/2 is perfectly represented in Lean with correct operator precedence and mathematical meaning.", "The main conclusion correctly formalizes the AM-GM inequality application. The cube root expression is properly represented using Real.rpow with exponent 1/3, and the overall inequality structure matches the natural language exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l3": {"id": "l3", "natural_language": "$b+c \\ge 3\\sqrt[3]{\frac{bc^2}{4}}$", "statement": "We assume:\n\u2022 b, c are positive real numbers [tc_1]\n\u2022 $b+c = b + c/2 + c/2$ [def_1c]\nTherefore, we conclude:\n\u2022 By applying the AM-GM inequality to the positive terms b, c/2, and c/2, we get $b+c \\ge 3\\sqrt[3]{b \\cdot (c/2) \\cdot (c/2)}$, which simplifies to $b+c \\ge 3\\sqrt[3]{bc^2/4}$ [l3].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat Classical Polynomial\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (b c : \u211d) \n  (hb : 0 < b) \n  (hc : 0 < c)\n  (def_1c : b + c = b + c / 2 + c / 2) :\n  b + c \u2265 3 * Real.rpow (b * c^2 / 4) (1/3) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l3\n  (b c : \u211d) \n  (hb : 0 < b) \n  (hc : 0 < c)\n  (def_1c : b + c = b + c / 2 + c / 2) :\n  b + c \u2265 3 * Real.rpow (b * c^2 / 4) (1/3) := by\n  have h_main_ineq : (b + c) ^ 3 \u2265 27 * (b * c ^ 2 / 4) := by\n    nlinarith [sq_nonneg (b - c / 2), sq_nonneg (b - 2 * c), sq_nonneg (b + c),\n      mul_nonneg hb.le hc.le, mul_nonneg (sq_nonneg (b - c / 2)) hb.le,\n      mul_nonneg (sq_nonneg (b - 2 * c)) hb.le, mul_nonneg (sq_nonneg (b + c)) hb.le,\n      mul_nonneg (sq_nonneg (b - c / 2)) hc.le, mul_nonneg (sq_nonneg (b - 2 * c)) hc.le,\n      mul_nonneg (sq_nonneg (b + c)) hc.le]\n  \n  have h_final : b + c \u2265 3 * Real.rpow (b * c ^ 2 / 4) (1/3) := by\n    have h\u2081 : 0 \u2264 b * c ^ 2 / 4 := by positivity\n    have h\u2082 : 0 \u2264 b + c := by positivity\n    have h\u2083 : (b + c) ^ 3 \u2265 27 * (b * c ^ 2 / 4) := h_main_ineq\n    have h\u2084 : Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) \u2265 0 := Real.rpow_nonneg h\u2081 (1 / 3)\n    have h\u2085 : (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 = 27 * (b * c ^ 2 / 4) := by\n      have h\u2085\u2081 : Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) \u2265 0 := Real.rpow_nonneg h\u2081 (1 / 3)\n      have h\u2085\u2082 : (Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 = b * c ^ 2 / 4 := by\n        rw [\u2190 Real.rpow_nat_cast]\n        simp [h\u2081]\n        <;>\n        rw [\u2190 Real.rpow_mul] <;>\n        ring_nf <;>\n        norm_num <;>\n        linarith\n      calc\n        (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 = 3 ^ 3 * (Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by\n          ring_nf\n          <;>\n          simp [pow_three]\n          <;>\n          ring_nf\n        _ = 27 * (Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by norm_num\n        _ = 27 * (b * c ^ 2 / 4) := by rw [h\u2085\u2082]\n    have h\u2086 : (b + c) ^ 3 \u2265 (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by\n      calc\n        (b + c) ^ 3 \u2265 27 * (b * c ^ 2 / 4) := h\u2083\n        _ = (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by\n          rw [h\u2085]\n    have h\u2087 : b + c \u2265 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := by\n      by_contra h\n      have h\u2088 : b + c < 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := by linarith\n      have h\u2089 : 0 < 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := by\n        have h\u2081\u2080 : 0 < b * c ^ 2 / 4 := by positivity\n        have h\u2081\u2081 : 0 < Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := Real.rpow_pos_of_pos h\u2081\u2080 (1 / 3)\n        positivity\n      have h\u2081\u2080 : 0 \u2264 b + c := by positivity\n      have h\u2081\u2081 : 0 \u2264 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := by positivity\n      have h\u2081\u2082 : (b + c) ^ 3 < (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 3 := by\n        have h\u2081\u2083 : 0 \u2264 b + c := by positivity\n        have h\u2081\u2084 : 0 \u2264 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := by positivity\n        have h\u2081\u2085 : b + c < 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := h\u2088\n        have h\u2081\u2086 : 0 < 3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d) := h\u2089\n        -- Use nlinarith to prove the inequality by considering the difference of cubes\n        have h\u2081\u2087 : 0 < (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) - (b + c) := by linarith\n        have h\u2081\u2088 : 0 < (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) ^ 2 + (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)) * (b + c) + (b + c) ^ 2 := by\n          nlinarith [sq_nonneg (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d)), sq_nonneg (b + c)]\n        nlinarith [sq_pos_of_pos h\u2081\u2087, sq_nonneg (b + c), sq_nonneg (3 * Real.rpow (b * c ^ 2 / 4) (1 / 3 : \u211d))]\n      linarith\n    exact h\u2087\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 4}, "score": {"semantic_score": 1.0, "semantic_feedback": ["The variable declarations and positivity conditions are correctly captured in Lean with appropriate types and constraints.", "The algebraic identity is exactly translated from natural language to Lean notation.", "The main inequality conclusion is perfectly formalized. The Lean code correctly represents the cube root using Real.rpow with exponent 1/3, and the mathematical expression b * c^2 / 4 exactly matches the simplified form bc\u00b2/4 from the natural language."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l4": {"id": "l4", "natural_language": "$c+16 \\ge 3\\sqrt[3]{64c}$", "statement": "We assume:\n\u2022 c is a positive real number [tc_1]\n\u2022 $c+16 = c + 8 + 8$ [def_1d]\nTherefore, we conclude:\n\u2022 By applying the AM-GM inequality to the positive terms c, 8, and 8, we get $c+16 \\ge 3\\sqrt[3]{c \\cdot 8 \\cdot 8}$, which simplifies to $c+16 \\ge 3\\sqrt[3]{64c}$ [l4].", "dependencies": ["tc_1", "def_1"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (c : \u211d) (hc : 0 < c) :\n  c + 16 \u2265 3 * (64 * c) ^ (1/3 : \u211d) := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l4 (c : \u211d) (hc : 0 < c) :\n  c + 16 \u2265 3 * (64 * c) ^ (1/3 : \u211d) := by\n  have h_poly : c^3 + 48*c^2 - 960*c + 4096 \u2265 0 := by\n    have h\u2081 : c^3 + 48*c^2 - 960*c + 4096 = (c - 8)^2 * (c + 64) := by\n      ring_nf\n      <;>\n      nlinarith [sq_nonneg (c - 8)]\n    rw [h\u2081]\n    have h\u2082 : (c - 8 : \u211d)^2 \u2265 0 := by nlinarith\n    have h\u2083 : (c + 64 : \u211d) > 0 := by nlinarith\n    nlinarith [h\u2082, h\u2083]\n  \n  have h_cube : ((c + 16) / 3 : \u211d)^3 \u2265 64 * c := by\n    have h\u2081 : ((c + 16) / 3 : \u211d)^3 = (c^3 + 48*c^2 + 768*c + 4096) / 27 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n    rw [h\u2081]\n    have h\u2082 : (c^3 + 48*c^2 + 768*c + 4096 : \u211d) / 27 \u2265 64 * c := by\n      -- Use the fact that c^3 + 48c^2 - 960c + 4096 \u2265 0 to prove the inequality\n      have h\u2083 : c^3 + 48*c^2 - 960*c + 4096 \u2265 0 := h_poly\n      have h\u2084 : c^3 + 48*c^2 + 768*c + 4096 \u2265 1728*c := by\n        nlinarith\n      have h\u2085 : (c^3 + 48*c^2 + 768*c + 4096 : \u211d) / 27 \u2265 64 * c := by\n        -- Divide both sides by 27 to get the final inequality\n        have h\u2086 : (c^3 + 48*c^2 + 768*c + 4096 : \u211d) \u2265 1728*c := by\n          exact_mod_cast h\u2084\n        have h\u2087 : (c^3 + 48*c^2 + 768*c + 4096 : \u211d) / 27 \u2265 64 * c := by\n          calc\n            (c^3 + 48*c^2 + 768*c + 4096 : \u211d) / 27 \u2265 (1728*c : \u211d) / 27 := by gcongr <;> linarith\n            _ = 64 * c := by ring_nf <;> field_simp <;> ring_nf <;> linarith\n        exact h\u2087\n      exact h\u2085\n    linarith\n  \n  have h_main : (c + 16) / 3 \u2265 (64 * c : \u211d) ^ (1 / 3 : \u211d) := by\n    have h\u2081 : 0 \u2264 (c + 16 : \u211d) / 3 := by positivity\n    have h\u2082 : 0 \u2264 (64 * c : \u211d) := by positivity\n    have h\u2083 : 0 \u2264 (64 * c : \u211d) ^ (1 / 3 : \u211d) := by positivity\n    -- Use the fact that the cube of (c + 16) / 3 is greater than or equal to 64 * c to show that (c + 16) / 3 is greater than or equal to the cube root of 64 * c.\n    have h\u2084 : ((c + 16) / 3 : \u211d) \u2265 (64 * c : \u211d) ^ (1 / 3 : \u211d) := by\n      -- Use the fact that the cube function is increasing to take the cube root of both sides of the inequality.\n      have h\u2085 : ((c + 16) / 3 : \u211d) ^ 3 \u2265 (64 * c : \u211d) := by\n        -- This is given by h_cube.\n        exact h_cube\n      -- Use the fact that the cube function is increasing to take the cube root of both sides of the inequality.\n      have h\u2086 : (64 * c : \u211d) ^ (1 / 3 : \u211d) \u2264 ((c + 16) / 3 : \u211d) := by\n        -- Use the property of real power to take the cube root.\n        have h\u2087 : (64 * c : \u211d) \u2265 0 := by positivity\n        have h\u2088 : ((c + 16) / 3 : \u211d) \u2265 0 := by positivity\n        -- Use the fact that the cube function is increasing to take the cube root of both sides of the inequality.\n        have h\u2089 : (64 * c : \u211d) \u2264 (((c + 16) / 3 : \u211d)) ^ 3 := by linarith\n        -- Use the property of real power to take the cube root.\n        have h\u2081\u2080 : (64 * c : \u211d) ^ (1 / 3 : \u211d) \u2264 (((c + 16) / 3 : \u211d)) := by\n          -- Use the property of real power to take the cube root.\n          have h\u2081\u2081 : (1 / 3 : \u211d) > 0 := by norm_num\n          have h\u2081\u2082 : (64 * c : \u211d) \u2265 0 := by positivity\n          have h\u2081\u2083 : (((c + 16) / 3 : \u211d)) \u2265 0 := by positivity\n          -- Use the property of real power to take the cube root.\n          calc\n            (64 * c : \u211d) ^ (1 / 3 : \u211d) \u2264 ((((c + 16) / 3 : \u211d)) ^ 3) ^ (1 / 3 : \u211d) := by\n              gcongr\n              <;> linarith\n            _ = ((c + 16) / 3 : \u211d) := by\n              -- Use the property of exponents to simplify.\n              have h\u2081\u2084 : ((((c + 16) / 3 : \u211d)) ^ 3 : \u211d) \u2265 0 := by positivity\n              have h\u2081\u2085 : ((((c + 16) / 3 : \u211d)) ^ 3 : \u211d) ^ (1 / 3 : \u211d) = ((c + 16) / 3 : \u211d) := by\n                rw [\u2190 Real.rpow_nat_cast]\n                rw [\u2190 Real.rpow_mul] <;>\n                  ring_nf <;>\n                  norm_num <;>\n                  linarith\n              rw [h\u2081\u2085]\n        linarith\n      linarith\n    linarith\n  \n  have h_final : c + 16 \u2265 3 * (64 * c) ^ (1/3 : \u211d) := by\n    have h\u2081 : (c + 16) / 3 \u2265 (64 * c : \u211d) ^ (1 / 3 : \u211d) := h_main\n    have h\u2082 : c + 16 \u2265 3 * (64 * c : \u211d) ^ (1 / 3 : \u211d) := by\n      calc\n        c + 16 = 3 * ((c + 16) / 3) := by ring\n        _ \u2265 3 * ((64 * c : \u211d) ^ (1 / 3 : \u211d)) := by\n          gcongr\n          <;> norm_num at h\u2081 \u22a2 <;> linarith\n        _ = 3 * (64 * c : \u211d) ^ (1 / 3 : \u211d) := by ring\n    -- Convert the right-hand side to match the goal\n    have h\u2083 : (3 : \u211d) * (64 * c : \u211d) ^ (1 / 3 : \u211d) = 3 * (64 * c) ^ (1/3 : \u211d) := by\n      norm_num\n      <;>\n      ring_nf\n      <;>\n      norm_num\n      <;>\n      simp [Real.rpow_def_of_pos]\n      <;>\n      norm_num\n      <;>\n      linarith\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 2}, "score": {"semantic_score": 0.67, "semantic_feedback": ["The variable declaration and positivity constraint are correctly captured in Lean with appropriate types and hypothesis naming.", "The arithmetic identity c+16 = c+8+8 is mentioned in the natural language but not explicitly stated in the Lean formalization. However, this is a trivial arithmetic fact that doesn't affect the logical meaning of the main theorem.", "The AM-GM inequality application and final conclusion are perfectly captured. The mathematical expressions are equivalent: 3\u221b(64c) = 3 * (64 * c)^(1/3), and the inequality direction and structure match exactly."]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "l5": {"id": "l5", "natural_language": "Multiplying gives $(1+a)(a+b)(b+c)(c+16) \\ge 3^4 \\sqrt[3]{\frac{a^2}{4} \\cdot \frac{ab^2}{4} \\cdot \frac{bc^2}{4} \\cdot 64c} = 81 \\sqrt[3]{a^3b^3c^3} = 81abc$.", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1]\n\u2022 $1+a \\ge 3\\sqrt[3]{a^2/4}$ [l1]\n\u2022 $a+b \\ge 3\\sqrt[3]{ab^2/4}$ [l2]\n\u2022 $b+c \\ge 3\\sqrt[3]{bc^2/4}$ [l3]\n\u2022 $c+16 \\ge 3\\sqrt[3]{64c}$ [l4]\nTherefore, we conclude:\n\u2022 $(1+a)(a+b)(b+c)(c+16) \\ge 81abc$ [l5].", "dependencies": ["tc_1", "l1", "l2", "l3", "l4"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h1 : 1 + a \u2265 3 * (a^2 / 4) ^ (1/3 : \u211d))\n  (h2 : a + b \u2265 3 * (a * b^2 / 4) ^ (1/3 : \u211d))\n  (h3 : b + c \u2265 3 * (b * c^2 / 4) ^ (1/3 : \u211d))\n  (h4 : c + 16 \u2265 3 * (64 * c) ^ (1/3 : \u211d)) :\n  (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * a * b * c := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem l5\n  (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c)\n  (h1 : 1 + a \u2265 3 * (a^2 / 4) ^ (1/3 : \u211d))\n  (h2 : a + b \u2265 3 * (a * b^2 / 4) ^ (1/3 : \u211d))\n  (h3 : b + c \u2265 3 * (b * c^2 / 4) ^ (1/3 : \u211d))\n  (h4 : c + 16 \u2265 3 * (64 * c) ^ (1/3 : \u211d)) :\n  (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * a * b * c := by\n  have h_product : (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d) = (a * b * c : \u211d)^3 := by\n    have h\u2081 : (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d) = (a * b * c : \u211d)^3 := by\n      ring_nf\n      <;> field_simp\n      <;> ring_nf\n      <;> nlinarith [ha, hb, hc]\n    linarith\n  \n  have h_cube_root_product : (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) = a * b * c := by\n    have h\u2085 : 0 < (a^2 / 4 : \u211d) := by positivity\n    have h\u2086 : 0 < (a * b^2 / 4 : \u211d) := by positivity\n    have h\u2087 : 0 < (b * c^2 / 4 : \u211d) := by positivity\n    have h\u2088 : 0 < (64 * c : \u211d) := by positivity\n    have h\u2089 : 0 < (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) := by positivity\n    have h\u2081\u2080 : 0 < (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) := by positivity\n    have h\u2081\u2081 : 0 < (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d) := by positivity\n    have h\u2081\u2082 : 0 < a * b * c := by positivity\n    -- Use the property of exponents to combine the terms\n    have h\u2081\u2083 : ( (a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d) : \u211d) > 0 := by positivity\n    -- Use the fact that the product of the terms is (a*b*c)^3\n    have h\u2081\u2084 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log (a * b * c) := by\n      have h\u2081\u2085 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((64 * c : \u211d) ^ (1/3 : \u211d)) := by\n        have h\u2081\u2086 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((64 * c : \u211d) ^ (1/3 : \u211d)) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        have h\u2081\u2087 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) = Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        have h\u2081\u2088 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) = Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d)) + Real.log ((a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        rw [h\u2081\u2086, h\u2081\u2087, h\u2081\u2088]\n        <;> ring_nf\n      rw [h\u2081\u2085]\n      have h\u2081\u2089 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d)) = (1/3 : \u211d) * Real.log (a^2 / 4 : \u211d) := by\n        rw [Real.log_rpow (by positivity)]\n        <;> ring_nf\n      have h\u2082\u2080 : Real.log ((a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) = (1/3 : \u211d) * Real.log (a * b^2 / 4 : \u211d) := by\n        rw [Real.log_rpow (by positivity)]\n        <;> ring_nf\n      have h\u2082\u2081 : Real.log ((b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) = (1/3 : \u211d) * Real.log (b * c^2 / 4 : \u211d) := by\n        rw [Real.log_rpow (by positivity)]\n        <;> ring_nf\n      have h\u2082\u2082 : Real.log ((64 * c : \u211d) ^ (1/3 : \u211d)) = (1/3 : \u211d) * Real.log (64 * c : \u211d) := by\n        rw [Real.log_rpow (by positivity)]\n        <;> ring_nf\n      rw [h\u2081\u2089, h\u2082\u2080, h\u2082\u2081, h\u2082\u2082]\n      have h\u2082\u2083 : (1/3 : \u211d) * Real.log (a^2 / 4 : \u211d) + (1/3 : \u211d) * Real.log (a * b^2 / 4 : \u211d) + (1/3 : \u211d) * Real.log (b * c^2 / 4 : \u211d) + (1/3 : \u211d) * Real.log (64 * c : \u211d) = (1/3 : \u211d) * (Real.log (a^2 / 4 : \u211d) + Real.log (a * b^2 / 4 : \u211d) + Real.log (b * c^2 / 4 : \u211d) + Real.log (64 * c : \u211d)) := by ring\n      rw [h\u2082\u2083]\n      have h\u2082\u2084 : Real.log (a^2 / 4 : \u211d) + Real.log (a * b^2 / 4 : \u211d) + Real.log (b * c^2 / 4 : \u211d) + Real.log (64 * c : \u211d) = Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d)) := by\n        have h\u2082\u2085 : Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d)) = Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d)) + Real.log (64 * c : \u211d) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        have h\u2082\u2086 : Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d)) = Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d)) + Real.log (b * c^2 / 4 : \u211d) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        have h\u2082\u2087 : Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d)) = Real.log (a^2 / 4 : \u211d) + Real.log (a * b^2 / 4 : \u211d) := by\n          rw [Real.log_mul (by positivity) (by positivity)]\n        rw [h\u2082\u2085, h\u2082\u2086, h\u2082\u2087]\n        <;> ring_nf\n      rw [h\u2082\u2084]\n      have h\u2082\u2088 : Real.log ((a^2 / 4 : \u211d) * (a * b^2 / 4 : \u211d) * (b * c^2 / 4 : \u211d) * (64 * c : \u211d)) = Real.log ((a * b * c : \u211d)^3) := by\n        rw [h_product]\n        <;>\n        simp [Real.log_pow]\n        <;>\n        ring_nf\n      rw [h\u2082\u2088]\n      have h\u2082\u2089 : Real.log ((a * b * c : \u211d)^3) = 3 * Real.log (a * b * c : \u211d) := by\n        rw [Real.log_pow]\n        <;> norm_num\n        <;> ring_nf\n      rw [h\u2082\u2089]\n      have h\u2083\u2080 : (1/3 : \u211d) * (3 * Real.log (a * b * c : \u211d)) = Real.log (a * b * c : \u211d) := by\n        ring_nf\n      rw [h\u2083\u2080]\n      <;> simp [Real.log_mul, Real.log_pow]\n      <;> ring_nf\n      <;> field_simp [Real.log_mul, Real.log_pow]\n      <;> linarith\n    -- Use the injectivity of the logarithm to conclude the proof\n    have h\u2083\u2081 : (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) = a * b * c := by\n      have h\u2083\u2082 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log (a * b * c) := by\n        exact h\u2081\u2084\n      have h\u2083\u2083 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log (a * b * c) := by\n        exact h\u2081\u2084\n      have h\u2083\u2084 : (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) > 0 := by positivity\n      have h\u2083\u2085 : a * b * c > 0 := by positivity\n      have h\u2083\u2086 : Real.log ((a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d)) = Real.log (a * b * c) := by\n        exact h\u2081\u2084\n      have h\u2083\u2087 : (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) = a * b * c := by\n        apply Real.log_injOn_pos (Set.mem_Ioi.mpr h\u2083\u2084) (Set.mem_Ioi.mpr h\u2083\u2085)\n        linarith\n      exact h\u2083\u2087\n    exact h\u2083\u2081\n  \n  have h_main : (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * ( (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) ) := by\n    have h\u2085 : (1 + a) \u2265 3 * (a^2 / 4 : \u211d) ^ (1/3 : \u211d) := by simpa using h1\n    have h\u2086 : (a + b) \u2265 3 * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) := by simpa using h2\n    have h\u2087 : (b + c) \u2265 3 * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) := by simpa using h3\n    have h\u2088 : (c + 16) \u2265 3 * (64 * c : \u211d) ^ (1/3 : \u211d) := by simpa using h4\n    have h\u2089 : 0 \u2264 (a^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2080 : 0 \u2264 (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2081 : 0 \u2264 (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2082 : 0 \u2264 (64 * c : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2083 : 0 \u2264 3 * (a^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2084 : 0 \u2264 3 * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2085 : 0 \u2264 3 * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) := by positivity\n    have h\u2081\u2086 : 0 \u2264 3 * (64 * c : \u211d) ^ (1/3 : \u211d) := by positivity\n    calc\n      (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 (3 * (a^2 / 4 : \u211d) ^ (1/3 : \u211d)) * (3 * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d)) * (3 * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d)) * (3 * (64 * c : \u211d) ^ (1/3 : \u211d)) := by\n        gcongr <;>\n          (try norm_num) <;>\n          (try linarith) <;>\n          (try assumption) <;>\n          (try positivity)\n      _ = 81 * ( (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) ) := by\n        ring_nf\n        <;>\n        (try norm_num) <;>\n        (try linarith) <;>\n        (try assumption) <;>\n        (try positivity)\n  \n  have h_final : (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * a * b * c := by\n    have h\u2085 : (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * ( (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) ) := by\n      exact h_main\n    have h\u2086 : (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) = a * b * c := by\n      exact h_cube_root_product\n    have h\u2087 : 81 * ( (a^2 / 4 : \u211d) ^ (1/3 : \u211d) * (a * b^2 / 4 : \u211d) ^ (1/3 : \u211d) * (b * c^2 / 4 : \u211d) ^ (1/3 : \u211d) * (64 * c : \u211d) ^ (1/3 : \u211d) ) = 81 * (a * b * c) := by\n      rw [h\u2086]\n      <;> ring\n    have h\u2088 : (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * (a * b * c) := by\n      linarith\n    have h\u2089 : 81 * (a * b * c) = 81 * a * b * c := by ring\n    linarith\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 1.0, "semantic_feedback": ["Variable declarations and positivity constraints are correctly formalized with appropriate Lean syntax", "First inequality l1 is accurately translated with proper cube root representation", "Second inequality l2 correctly captures the mathematical expression with proper operator precedence", "Third inequality l3 is faithfully represented with correct variable ordering", "Fourth inequality l4 properly translates the cube root of 64c", "Conclusion l5 accurately represents the product inequality with correct grouping and mathematical meaning"]}, "error_report": {"error_type": null, "error_report": "Natural-language lemma and formalization appear consistent (lean_verify = True)."}, "solved_negation": null, "type": "lemma"}, "ts_1": {"id": "ts_1", "natural_language": "Therefore, $81abc \\le (1+a)(a+b)(b+c)(c+16)$.", "statement": "We assume:\n\u2022 a, b, c are positive real numbers [tc_1]\n\u2022 $(1+a)(a+b)(b+c)(c+16) \\ge 81abc$ [l5]\nTherefore, we conclude:\n\u2022 $\\frac{abc}{(1+a)(a+b)(b+c)(c+16)} \\le \\frac{1}{81}$ [ts_1].", "dependencies": ["tc_1", "l5"], "formalization": {"lean_code": "import Mathlib\nimport Aesop\n\nset_option maxHeartbeats 0\n\nopen BigOperators Real Nat Topology Rat\n\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by sorry", "lean_pass": true, "error_msg": [], "tries": 1}, "solved_lemma": {"lean_code": "import Mathlib\nimport Aesop\nset_option maxHeartbeats 0\nopen BigOperators Real Nat Topology Rat Filter\n\ntheorem ts_1 (a b c : \u211d) (ha : 0 < a) (hb : 0 < b) (hc : 0 < c) :\n  (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by\n  have h_main : (1 + a) * (a + b) * (b + c) * (c + 16) \u2265 81 * a * b * c := by\n    have h\u2081 : 0 < a * b := by positivity\n    have h\u2082 : 0 < a * c := by positivity\n    have h\u2083 : 0 < b * c := by positivity\n    have h\u2084 : 0 < a * b * c := by positivity\n    have h\u2085 : 0 < a * b * c * a := by positivity\n    have h\u2086 : 0 < a * b * c * b := by positivity\n    have h\u2087 : 0 < a * b * c * c := by positivity\n    nlinarith [sq_nonneg (a - b / 2), sq_nonneg (b - c / 2), sq_nonneg (c - 4),\n      sq_nonneg (a - 1), sq_nonneg (b - 2), sq_nonneg (c - 4),\n      sq_nonneg (a * b - 4 * a * c), sq_nonneg (a * c - b * c / 2),\n      sq_nonneg (b * c - 8 * a), sq_nonneg (a * b - 2 * a * c)]\n  \n  have h_final : (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by\n    have h\u2081 : 0 < (1 + a) * (a + b) * (b + c) * (c + 16) := by\n      have h\u2081\u2081 : 0 < 1 + a := by linarith\n      have h\u2081\u2082 : 0 < a + b := by linarith\n      have h\u2081\u2083 : 0 < b + c := by linarith\n      have h\u2081\u2084 : 0 < c + 16 := by linarith\n      positivity\n    have h\u2082 : 0 < a * b * c := by positivity\n    have h\u2083 : (a * b * c) / ((1 + a) * (a + b) * (b + c) * (c + 16)) \u2264 1 / 81 := by\n      rw [div_le_div_iff (by positivity) (by positivity)]\n      nlinarith [h_main]\n    exact h\u2083\n  \n  exact h_final", "lean_pass": true, "lean_verify": true, "error_msg": [], "tries": 1}, "score": {"semantic_score": 0.0, "semantic_feedback": ["The variable declarations correctly capture that a, b, c are positive real numbers using appropriate Lean syntax.", "The crucial assumption '(1+a)(a+b)(b+c)(c+16) \u2265 81abc' is completely missing from the Lean formalization. This is a major logical component that should be included as a hypothesis.", "The conclusion is perfectly translated to Lean, with correct mathematical notation and inequality direction.", "The overall logical structure is broken because the Lean theorem attempts to prove the conclusion without the necessary assumption, fundamentally changing the mathematical statement from a conditional proof to an unconditional claim."]}, "error_report": {"error_type": "Formalizer", "error_report": "Formalization is likely incorrect: semantic score is 0.0, below threshold 0.6.\nScorer feedback: ['The variable declarations correctly capture that a, b, c are positive real numbers using appropriate Lean syntax.', \"The crucial assumption '(1+a)(a+b)(b+c)(c+16) \u2265 81abc' is completely missing from the Lean formalization. This is a major logical component that should be included as a hypothesis.\", 'The conclusion is perfectly translated to Lean, with correct mathematical notation and inequality direction.', 'The overall logical structure is broken because the Lean theorem attempts to prove the conclusion without the necessary assumption, fundamentally changing the mathematical statement from a conditional proof to an unconditional claim.']"}, "solved_negation": null, "type": "solution"}};
+            
+            // Create nodes and edges
+            var nodes = new vis.DataSet([{"id": "tc_1", "label": "tc_1", "color": {"background": "#eba0a0", "border": "#00ff00", "highlight": {"background": "#eba0a0", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "def_1", "label": "def_1", "color": {"background": "#cfb795", "border": "#00ff00", "highlight": {"background": "#cfb795", "border": "#00ff00"}}, "shape": "box", "size": 30, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l1", "label": "l1", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l2", "label": "l2", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l3", "label": "l3", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l4", "label": "l4", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "l5", "label": "l5", "color": {"background": "#8dafcc", "border": "#00ff00", "highlight": {"background": "#8dafcc", "border": "#00ff00"}}, "shape": "dot", "size": 25, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}, {"id": "ts_1", "label": "ts_1", "color": {"background": "#a3c2a8", "border": "#00ff00", "highlight": {"background": "#a3c2a8", "border": "#00ff00"}}, "shape": "star", "size": 40, "font": {"size": 14, "color": "#000000"}, "labelHighlightBold": false, "borderWidth": 3, "chosen": false}]);
+            var edges = new vis.DataSet([{"from": "tc_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "tc_1", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l2", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l3", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "def_1", "to": "l4", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l1", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l2", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l3", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l4", "to": "l5", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}, {"from": "l5", "to": "ts_1", "arrows": "to", "color": {"color": "#666666", "highlight": "#666666", "hover": "#666666"}, "width": 2}]);
+            
+            // Create network
+            var container = document.getElementById('mynetwork');
+            var data = {
+                nodes: nodes,
+                edges: edges
+            };
+            
+            var options = {
+                physics: {
+                    enabled: true,
+                    solver: 'hierarchicalRepulsion',
+                    hierarchicalRepulsion: {
+                        centralGravity: 0.0,
+                        springLength: 200,
+                        springConstant: 0.01,
+                        nodeDistance: 150,
+                        damping: 0.09
+                    }
+                },
+                edges: {
+                    smooth: {
+                        type: 'continuous',
+                        forceDirection: 'none'
+                    },
+                    color: {
+                        color: '#666666',
+                        highlight: '#666666',
+                        hover: '#666666'
+                    },
+                    width: 2
+                },
+                interaction: {
+                    hover: true,
+                    tooltipDelay: 100,
+                    navigationButtons: true,
+                    keyboard: true
+                },
+                nodes: {
+                    font: {
+                        size: 14,
+                        color: '#000000'
+                    },
+                    labelHighlightBold: false,
+                    chosen: false,
+                    shapeProperties: {
+                        useBorderWithImage: false
+                    },
+                    scaling: {
+                        label: {
+                            enabled: true,
+                            min: 8,
+                            max: 20,
+                            maxVisible: 20,
+                            drawThreshold: 5
+                        }
+                    }
+                }
+            };
+            
+            var network = new vis.Network(container, data, options);
+            
+            // Format field value for display
+            function formatFieldValue(value, fieldName) {
+                if (value === null || value === undefined) {
+                    return 'N/A';
+                }
+                
+                // Handle objects (dictionaries) as sub-boxes
+                if (typeof value === 'object' && !Array.isArray(value)) {
+                    var html = '';
+                    for (var key in value) {
+                        if (value.hasOwnProperty(key)) {
+                            var subValue = value[key];
+                            var subValueStr = '';
+                            
+                            if (typeof subValue === 'object' &&
+                                    !Array.isArray(subValue)) {
+                                // Nested object - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else if (Array.isArray(subValue)) {
+                                // Array - show as JSON
+                                subValueStr = JSON.stringify(subValue, null, 2);
+                            } else {
+                                // Primitive value
+                                subValueStr = String(subValue);
+                            }
+                            
+                            // Replace escaped newlines and tabs with actual characters
+                            subValueStr = subValueStr.replace(/\\n/g, '\n');
+                            subValueStr = subValueStr.replace(/\\t/g, '\t');
+                            subValueStr = subValueStr.replace(/\t/g, '\t');
+                            
+                            html += '<div class="sub-dict">';
+                            html += '<div class="sub-dict-title">' + key + '</div>';
+                            html += '<div class="sub-dict-content">' + subValueStr + '</div>';
+                            html += '</div>';
+                        }
+                    }
+                    return html;
+                }
+                
+                // Convert to string for primitive values and arrays
+                var strValue = String(value);
+                
+                // Handle arrays
+                if (Array.isArray(value)) {
+                    strValue = JSON.stringify(value, null, 2);
+                }
+                
+                // Replace escaped newlines and tabs with actual characters
+                strValue = strValue.replace(/\\n/g, '\n');
+                strValue = strValue.replace(/\\t/g, '\t');
+                strValue = strValue.replace(/\t/g, '\t');
+                
+                return strValue;
+            }
+            
+            // Handle node click events
+            network.on("click", function(params) {
+                if (params.nodes.length > 0) {
+                    var nodeId = params.nodes[0];
+                    var info = nodeInfo[nodeId];
+                    
+                    if (info) {
+                        var html = '<div class="info-header">';
+                        html += '<h2>' + nodeId + '</h2>';
+                        var nodeType = info.type || 'unknown';
+                        var capitalizedType = nodeType.charAt(0).toUpperCase() +
+                            nodeType.slice(1);
+                        html += '<div class="node-type">Type: ' + capitalizedType +
+                            '</div>';
+                        html += '</div>';
+                        
+                        // Add all fields
+                        for (var key in info) {
+                            if (key === 'type' || key === 'id') continue;
+                            
+                            var fieldName = key.replace(/_/g, ' ')
+                                .replace(/\b\w/g, function(l) {
+                                    return l.toUpperCase();
+                                });
+                            var fieldValue = formatFieldValue(info[key], fieldName);
+                            
+                            if (fieldValue && fieldValue !== 'N/A') {
+                                // Special formatting for code fields
+                                var isCode = key.includes('code') ||
+                                    key.includes('lean') ||
+                                    key.includes('statement');
+                                
+                                html += '<div class="field-group">';
+                                html += '<div class="field-name">' + fieldName +
+                                    '</div>';
+                                html += '<div class="field-value' +
+                                    (isCode ? ' code' : '') + '">' +
+                                    fieldValue + '</div>';
+                                html += '</div>';
+                            }
+                        }
+                        
+                        document.getElementById('info-content')
+                            .innerHTML = html;
+                    }
+                }
+            });
+            
+            // Toggle panel function
+            function togglePanel() {
+                var panel = document.getElementById('info-panel');
+                panel.classList.toggle('hidden');
+                
+                // Resize network when panel is toggled
+                setTimeout(function() {
+                    network.fit();
+                }, 300);
+            }
+            
+            // Initial network fit
+            network.once('stabilized', function() {
+                network.fit();
+            });
+            
+            // Resizable panels functionality
+            function makeResizable() {
+                const verticalResizer = document.getElementById('vertical-resizer');
+                const horizontalResizer = document.getElementById('horizontal-resizer');
+                const proofPanel = document.getElementById('proof-str-panel');
+                const graphContainer = document.getElementById('graph-container');
+                const infoPanel = document.getElementById('info-panel');
+                const leftPanel = document.getElementById('left-panel');
+                
+                let isVerticalResizing = false;
+                let isHorizontalResizing = false;
+                
+                // Vertical resizer (between proof panel and graph)
+                verticalResizer.addEventListener('mousedown', function(e) {
+                    isVerticalResizing = true;
+                    document.addEventListener('mousemove', verticalResize);
+                    document.addEventListener('mouseup', stopVerticalResize);
+                    e.preventDefault();
+                });
+                
+                function verticalResize(e) {
+                    if (!isVerticalResizing) return;
+                    
+                    const containerHeight = leftPanel.offsetHeight;
+                    const newHeight = e.clientY - leftPanel.offsetTop;
+                    const minHeight = 100;
+                    const maxHeight = containerHeight - 100;
+                    
+                    if (newHeight >= minHeight && newHeight <= maxHeight) {
+                        proofPanel.style.height = newHeight + 'px';
+                        graphContainer.style.height = (containerHeight - newHeight) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopVerticalResize() {
+                    isVerticalResizing = false;
+                    document.removeEventListener('mousemove', verticalResize);
+                    document.removeEventListener('mouseup', stopVerticalResize);
+                }
+                
+                // Horizontal resizer (between left and right panels)
+                horizontalResizer.addEventListener('mousedown', function(e) {
+                    isHorizontalResizing = true;
+                    document.addEventListener('mousemove', horizontalResize);
+                    document.addEventListener('mouseup', stopHorizontalResize);
+                    e.preventDefault();
+                });
+                
+                function horizontalResize(e) {
+                    if (!isHorizontalResizing) return;
+                    
+                    const containerWidth = document.querySelector('.container').offsetWidth;
+                    const newWidth = e.clientX - leftPanel.offsetLeft;
+                    const minWidth = 300;
+                    const maxWidth = containerWidth - 300;
+                    
+                    if (newWidth >= minWidth && newWidth <= maxWidth) {
+                        leftPanel.style.flex = 'none';
+                        leftPanel.style.width = newWidth + 'px';
+                        infoPanel.style.width = (containerWidth - newWidth) + 'px';
+                        network.fit();
+                    }
+                }
+                
+                function stopHorizontalResize() {
+                    isHorizontalResizing = false;
+                    document.removeEventListener('mousemove', horizontalResize);
+                    document.removeEventListener('mouseup', stopHorizontalResize);
+                }
+            }
+            
+            // Initialize resizable panels
+            makeResizable();
+        </script>
+    </body>
+    </html>
+    
