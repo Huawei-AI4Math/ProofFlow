@@ -3,25 +3,49 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Formalizing mathematical proofs is a critical step for ensuring logical rigor, but the manual effort required is immense. Landmark projects like the 20-year formalization of the Kepler Conjecture (Flyspeck project) and the ongoing efforts for Fermat's Last Theorem highlight this challenge.
+Formalizing mathematical proofs is a critical step for ensuring logical rigor, but the manual effort required is immense. Landmark projects like the 20-year formalization of the Kepler Conjecture and the ongoing efforts for Fermat's Last Theorem highlight this challenge.
 
-**Proof autoformalization**—the task of automatically converting natural language (NL) proofs into machine-verifiable code like Lean 4—is a promising solution. However, this is a difficult and relatively new area of research. Previous attempts often fail to preserve the semantic meaning and logical structure of the original human-written argument.
+**Proof autoformalization**—the task of automatically converting natural language (NL) proofs into machine-verifiable code like Lean 4—is a promising solution. However, this is a difficult and relatively new area of research. 
 
-**ProofFlow** is a Python package that implements our novel pipeline to address this challenge. It faithfully translates NL proofs into verifiable Lean 4 code by first constructing a dependency graph to map the proof's logical flow. This ensures the final output is not only correct but also **structurally true** to the author's original reasoning.
+**ProofFlow** is a Python package that implements our novel, state-of-the-art pipeline to address this challenge. It translates NL proofs into verifiable Lean 4 code by first constructing a dependency graph to map the proof's logical flow. This ensures the final output is not only correct but also **structurally faithful** to the author's original reasoning.
 
-![ProofFlow Results](data/images/results_ProofFlow.png)
+
+<div style="text-align: center;">
+  <figure>
+    <p align="center">
+    <img src="data/images/results_ProofFlow.png" alt="ProofFlow Results" width="500">
+    </p>
+    <figcaption>
+      <p align="center">
+The ProofFlow pipeline offers superior performance because of its new lemma-based structure and by enforcing the proof's Directed Acyclic Graph (DAG) during the formalization process.      </p>
+    </figcaption>
+  </figure>
+</div>
+
 
 ## 🚀 Features
 
 - **Intelligent Proof Graph Generation**: Automatically decomposes natural language proofs into structured dependency graphs.
 - **Lean 4 Integration**: Generates valid Lean 4 code with automatic verification.
 - **Multi-Model Support**: Compatible with various LLMs including Claude, GPT, Gemini, and custom vLLM servers.
-- **Interactive Visualizations**: Creates both static and interactive proof dependency graphs.
-- **Semantic Scoring**: Evaluates the quality of formalized proofs using our novel AI-powered metric, **ProofScore**.
+- **Interactive Visualizations**: Creates interactive proof dependency graphs.
+- **Comprehensive Score**: Evaluates the quality of formalized proofs using our novel AI-powered metric, **ProofScore**.
 - **Error Analysis**: Provides comprehensive error detection and analysis for debugging formalizations.
 
-![ProofFlow Pipeline](data/images/pipeline_ProofFlow.png)
+<div style="text-align: center;">
+  <figure>
+    <p align="center">
+    <img src="data/images/pipeline_ProofFlow.png" alt="ProofFlow Pipeline"  width="600">
+    </p>
+    <figcaption>
+      <p align="center">
+          Our proof autoformalization pipeline with three parts: (1) Graph builder; (2) Lemma Formalizer; and (3) Tactic Completer. Lean errors are verified by the Lean 4 compiler.
+      </p>
+    </figcaption>
+  </figure>
+</div>
 
+    
 ## 📦 Installation
 
 ### Prerequisites
@@ -116,8 +140,6 @@ print(f"Proof success rate: {summary['solv_acc']:.2%}")
 
 ### Visualization
 
-![Interactive Visualization](data/images/demo_ProofFlow.png)
-
 ```python
 # Create static proof graph
 proof_flow.plot_dag("proof_structure.png")
@@ -125,6 +147,20 @@ proof_flow.plot_dag("proof_structure.png")
 # Create interactive HTML visualization
 proof_flow.interactive_dag("interactive_proof.html")
 ```
+
+<div style="text-align: center;">
+  <figure>
+    <p align="center">
+     <img src="data/images/demo_ProofFlow.png" alt="Interactive Visualization" width="600"/>
+    </p>
+    <figcaption>
+      <p align="center">
+          Interactive visualization of the proof. Node contours signify the outcome of each step: Red for a formalization error, orange for formalized statement without Lean 4 tactics, and green for formalized statement with Lean 4 tactics.
+      </p>
+    </figcaption>
+  </figure>
+</div>
+
 
 ### Semantic Scoring
 
@@ -172,3 +208,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 
 **ProofFlow** - Bridging the gap between informal mathematics and formal verification.
+
