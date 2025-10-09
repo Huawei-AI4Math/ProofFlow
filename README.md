@@ -13,7 +13,7 @@ Formalizing mathematical proofs is a critical step for ensuring logical rigor, b
 <div style="text-align: center;">
   <figure>
     <p align="center">
-    <img src="data/images/results_ProofFlow.png" alt="ProofFlow Results" width="500">
+    <img src="data/images/results_ProofFlow.png" alt="ProofFlow Results" width="350">
     </p>
     <figcaption>
       <p align="center">
@@ -35,7 +35,7 @@ The ProofFlow pipeline offers superior performance because of its new lemma-base
 <div style="text-align: center;">
   <figure>
     <p align="center">
-    <img src="data/images/pipeline_ProofFlow.png" alt="ProofFlow Pipeline"  width="600">
+    <img src="data/images/pipeline_ProofFlow.png" alt="ProofFlow Pipeline"  width="450">
     </p>
     <figcaption>
       <p align="center">
@@ -151,7 +151,7 @@ proof_flow.interactive_dag("interactive_proof.html")
 <div style="text-align: center;">
   <figure>
     <p align="center">
-     <img src="data/images/demo_ProofFlow.png" alt="Interactive Visualization" width="600"/>
+     <img src="data/images/demo_ProofFlow.png" alt="Interactive Visualization" width="450"/>
     </p>
     <figcaption>
       <p align="center">
@@ -208,4 +208,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 
 **ProofFlow** - Bridging the gap between informal mathematics and formal verification.
+
 
