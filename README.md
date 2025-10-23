@@ -1,6 +1,6 @@
 # ProofFlow
 
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Formalizing mathematical proofs is a critical step for ensuring logical rigor, but the manual effort required is immense. Landmark projects like the 20-year formalization of the Kepler Conjecture and the ongoing efforts for Fermat's Last Theorem highlight this challenge.
@@ -206,6 +206,7 @@ Please cite our paper if you use the data or code in this repo.
       url={https://arxiv.org/abs/2510.15981}, 
 }
 ```
+
 
 
 
