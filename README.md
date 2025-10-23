@@ -191,23 +191,21 @@ Before you start, you'll need to fill out the .env file with the necessary API k
 
 Due to potential connection timeouts and rate limits with some services, it's a good idea to run the commands in benchmark.sh one by one in your terminal. Once the script finishes, the results—including autoformalization files (.pickle, .html) and summary tables (.xlsx)—will be stored in the benchmark_results/ folder.
 
-## 📈 Performance Metrics
+## Citation
 
-ProofFlow tracks detailed performance metrics:
+Please cite our paper if you use the data or code in this repo.
 
-- **Formalization Accuracy**: Percentage of successfully formalized proof steps
-- **Proof Success Rate**: Percentage of steps that can be automatically proven
-- **ProofScore**: A novel composite score for the whole proof formalization, taking into account semanting similarity between natural language and Lean code
-- **Token Usage**: Total tokens consumed across all LLM calls
-- **Processing Time**: Time breakdown by model and operation
-
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
-**ProofFlow** - Bridging the gap between informal mathematics and formal verification.
+```
+@misc{cabral2025proofflowdependencygraphapproach,
+      title={ProofFlow: A Dependency Graph Approach to Faithful Proof Autoformalization}, 
+      author={Rafael Cabral and Tuan Manh Do and Xuejun Yu and Wai Ming Tai and Zijin Feng and Xin Shen},
+      year={2025},
+      eprint={2510.15981},
+      archivePrefix={arXiv},
+      primaryClass={cs.AI},
+      url={https://arxiv.org/abs/2510.15981}, 
+}
+```
 
 
 
