@@ -50,7 +50,7 @@ The ProofFlow pipeline offers superior performance because of its new lemma-base
 
 ### Prerequisites
 
-- Python 3.12
+- Python 3.12+
 - Lean 4 (for local verification) or access to a Lean server
 
 ### Install from Source
@@ -206,6 +206,7 @@ Please cite our paper if you use the data or code in this repo.
       url={https://arxiv.org/abs/2510.15981}, 
 }
 ```
+
 
 
 
