@@ -1,11 +1,24 @@
-# ProofFlow
+<h1 align="center">ProofFlow</h1>
+<p align="center">
+  <strong>A dependency graph approach to faithful proof autoformalization in Lean 4</strong>
+</p>
+<p align="center">
+  <a href="https://arxiv.org/abs/2510.15981"><img src="https://img.shields.io/badge/arXiv-2510.15981-b31b1b.svg" alt="arXiv"></a>
+  ·
+  <a href="https://openreview.net/forum?id=s9t2FJVsBH"><img src="https://img.shields.io/badge/ICLR%202026-Accepted-1971c2.svg" alt="ICLR 2026"></a>
+  ·
+  <a href="https://iclr.cc/virtual/2026/poster/10007085"><img src="https://img.shields.io/badge/Poster%20%26%20Talk-5f3dc4.svg" alt="Poster and talk"></a>
+  ·
+  <a href="https://huggingface.co/datasets/rafaelcabral96/ProofFlowBench"><img src="https://img.shields.io/badge/🤗-ProofFlowBench-FFD21E.svg" alt="Hugging Face"></a>
+  ·
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT License"></a>
+</p>
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+# Why ProofFlow?
 
 Formalizing mathematical proofs is a critical step for ensuring logical rigor, but the manual effort required is immense. Landmark projects like the 20-year formalization of the Kepler Conjecture and the ongoing efforts for Fermat's Last Theorem highlight this challenge.
 
-**Proof autoformalization**—the task of automatically converting natural language (NL) proofs into machine-verifiable code like Lean 4—is a promising solution. However, this is a difficult and relatively new area of research. 
+**Proof autoformalization** is the task of automatically converting natural language (NL) proofs into machine-verifiable code like Lean 4 and it is a promising solution. However, this is a difficult and relatively new area of research. 
 
 **ProofFlow** is a Python package that implements our novel, state-of-the-art pipeline to address this challenge. It translates NL proofs into verifiable Lean 4 code by first constructing a dependency graph to map the proof's logical flow. This ensures the final output is not only correct but also **structurally faithful** to the author's original reasoning.
 
@@ -189,7 +202,7 @@ To benchmark the Goedel Formalizer and Solver, run the benchmark.sh script. This
 
 Before you start, you'll need to fill out the .env file with the necessary API keys and URLs for your services. This includes the OpenAI API, as well as the Goedel Formalizer and Solver (including their model locations), and the Lean server. An example .env file is left on the main folder, with the API key field left blank for you to fill in.
 
-Due to potential connection timeouts and rate limits with some services, it's a good idea to run the commands in benchmark.sh one by one in your terminal. Once the script finishes, the results—including autoformalization files (.pickle, .html) and summary tables (.xlsx)—will be stored in the benchmark_results/ folder.
+Due to potential connection timeouts and rate limits with some services, it's a good idea to run the commands in benchmark.sh one by one in your terminal. Once the script finishes, the results, including autoformalization files (.pickle, .html) and summary tables (.xlsx), will be stored in the benchmark_results/ folder.
 
 ## Citation
 
