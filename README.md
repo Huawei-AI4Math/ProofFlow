@@ -164,7 +164,7 @@ proof_flow.interactive_dag("interactive_proof.html")
 <div style="text-align: center;">
   <figure>
     <p align="center">
-     <img src="data/images/demo_ProofFlow.png" alt="Interactive Visualization" width="550"/>
+     <img src="data/images/demo_ProofFlow.png" alt="Interactive Visualization" width="800"/>
     </p>
     <figcaption>
       <p align="center">
